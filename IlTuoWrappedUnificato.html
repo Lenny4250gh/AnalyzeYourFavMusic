@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Wrapped - Unificato</title>
+    
+    <!-- Tailwind CSS per lo stile -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React e ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel per far funzionare React nel browser senza installazioni -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { margin: 0; background-color: #0f0f13; color: #f3f4f6; }
+        .animate-spin-slow { animation: spin 2s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useCallback } = React;
+
+        // --- ICONE SVG (Sostituiscono Lucide per far funzionare tutto in un file) ---
+        const IconUpload = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M12 12v9"></path><path d="m16 16-4-4-4 4"></path></svg>;
+        const IconMusic = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>;
+        const IconMic = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 8-9.04 9.06a2.828 2.828 0 1 0 3.988 3.988L16 12"></path><circle cx="17" cy="7" r="5"></circle></svg>;
+        const IconCalendar = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>;
+        const IconClock = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
+        const IconPlay = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>;
+        const IconYoutube = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 7.1c.1-1.4 1.2-2.5 2.6-2.6C8 4.2 12 4.2 12 4.2s4 0 6.9.3c1.4.1 2.5 1.2 2.6 2.6.3 2.1.3 4.9.3 4.9s0 2.8-.3 4.9c-.1 1.4-1.2 2.5-2.6 2.6-2.9.3-6.9.3-6.9.3s-4 0-6.9-.3c-1.4-.1-2.5-1.2-2.6-2.6C2.2 14.8 2.2 12 2.2 12s0-2.8.3-4.9z"></path><polygon fill="white" points="9.5 15.5 9.5 8.5 15.5 12 9.5 15.5"></polygon></svg>;
+        const IconDisc = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>;
+        const IconRefresh = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>;
+        const IconAlert = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>;
+
+        // --- COSTANTI E FUNZIONI DI SUPPORTO ---
+        const MESI_IT = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+        const GIORNI_IT = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+
+        const parseDate = (dataStr) => {
+            if (!dataStr) return null;
+            let dt = new Date(dataStr.replace('Z', '+00:00'));
+            if (!isNaN(dt.getTime())) return dt;
+            const match = dataStr.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
+            if (match) {
+                return new Date(match[1], match[2] - 1, match[3], match[4], match[5]);
+            }
+            return null;
+        };
+
+        const getFasciaOraria = (ora) => {
+            if (ora >= 6 && ora < 12) return 'Mattina (6-12)';
+            if (ora >= 12 && ora < 18) return 'Pomeriggio (12-18)';
+            if (ora >= 18 && ora < 24) return 'Sera (18-24)';
+            return 'Notte (0-6)';
+        };
+
+        const isUnknown = (artista, titolo) => {
+            const art = (artista || '').toLowerCase();
+            const tit = (titolo || '').toLowerCase();
+            const paroleChiave = ['unknown', 'sconosciuto', 'sconosciuta'];
+            return paroleChiave.some(k => art.includes(k) || tit.includes(k));
+        };
+
+        // --- APP PRINCIPALE ---
+        function App() {
+            const [ascolti, setAscolti] = useState([]);
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [error, setError] = useState('');
+            const [filterMode, setFilterMode] = useState('all'); // 'all' | 'year' | 'range'
+            const [selectedYear, setSelectedYear] = useState('all');
+            const [dateFrom, setDateFrom] = useState('');
+            const [dateTo, setDateTo] = useState('');
+
+            const processFiles = async (files) => {
+                setIsProcessing(true);
+                setError('');
+                let tuttiAscolti = [];
+
+                try {
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        if (!file.name.endsWith('.json')) continue;
+
+                        const text = await file.text();
+                        const data = JSON.parse(text);
+
+                        if (Array.isArray(data) && data.length > 0 && data[0].header === 'YouTube Music') {
+                            data.forEach(item => {
+                                if (item.header !== 'YouTube Music') return;
+                                let nomeArtista = 'Artista Sconosciuto';
+                                const subtitles = item.subtitles || [];
+                                if (subtitles.length > 0) {
+                                    nomeArtista = subtitles[0].name || nomeArtista;
+                                    if (nomeArtista.endsWith(' - Topic')) nomeArtista = nomeArtista.replace(' - Topic', '');
+                                }
+                                nomeArtista = nomeArtista.trim();
+
+                                let titolo = (item.title || '').trim();
+                                const prefissi = ['Hai guardato ', 'Watched ', 'Hai ascoltato ', 'Listened to '];
+                                for (let prefisso of prefissi) {
+                                    if (titolo.startsWith(prefisso)) {
+                                        titolo = titolo.replace(prefisso, '').trim();
+                                        break;
+                                    }
+                                }
+
+                                if (titolo && titolo !== 'a video that has been removed' && !titolo.toLowerCase().includes('video non disponibile') && !isUnknown(nomeArtista, titolo)) {
+                                    const dt = parseDate(item.time);
+                                    if (dt) {
+                                        tuttiAscolti.push({ fonte: 'YTMusic', artista: nomeArtista, titolo: titolo, album: null, data: dt, ms_played: 0 });
+                                    }
+                                }
+                            });
+                        } else {
+                            const items = data.items ? data.items : (Array.isArray(data) ? data : []);
+                            items.forEach(item => {
+                                const artista = item.artistName || item.master_metadata_album_artist_name;
+                                const brano = item.trackName || item.master_metadata_track_name;
+                                const msPlayed = item.msPlayed || item.ms_played || 0;
+                                const album = item.master_metadata_album_album_name || null;
+
+                                if (artista && brano && msPlayed > 30000) {
+                                    const artClean = artista.trim();
+                                    const titClean = brano.trim();
+                                    const albumClean = album ? album.trim() : null;
+
+                                    if (!isUnknown(artClean, titClean)) {
+                                        const dataStr = item.endTime || item.ts;
+                                        const dt = parseDate(dataStr);
+                                        if (dt) {
+                                            tuttiAscolti.push({ fonte: 'Spotify', artista: artClean, titolo: titClean, album: albumClean, data: dt, ms_played: msPlayed });
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    }
+
+                    if (tuttiAscolti.length === 0) {
+                        setError("Nessun dato musicale valido trovato nei file JSON.");
+                    } else {
+                        setAscolti(tuttiAscolti);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    setError("Errore nella lettura dei file. Assicurati che siano JSON validi.");
+                }
+                setIsProcessing(false);
+            };
+
+            const handleDrop = useCallback((e) => {
+                e.preventDefault();
+                processFiles(Array.from(e.dataTransfer.files));
+            }, []);
+
+            const handleFileInput = (e) => {
+                processFiles(Array.from(e.target.files));
+            };
+
+            const resetFiltri = () => {
+                setFilterMode('all');
+                setSelectedYear('all');
+                setDateFrom('');
+                setDateTo('');
+            };
+
+            const esportaCSV = (filteredData) => {
+                if (!filteredData || filteredData.length === 0) return;
+                const header = 'Data,Fonte,Artista,Titolo,Album,MinutiAscoltati\n';
+                const rows = filteredData.map(a => {
+                    const dataStr = a.data.toLocaleString('it-IT');
+                    const escape = (s) => `"${(s || '').toString().replace(/"/g, '""')}"`;
+                    return [escape(dataStr), escape(a.fonte), escape(a.artista), escape(a.titolo), escape(a.album || ''), (a.ms_played / 60000).toFixed(2)].join(',');
+                }).join('\n');
+                const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `audio_wrapped_export_${Date.now()}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            };
+
+            const datiFiltrati = useMemo(() => {
+                if (ascolti.length === 0) return [];
+                if (filterMode === 'year' && selectedYear !== 'all') {
+                    return ascolti.filter(a => a.data.getFullYear().toString() === selectedYear);
+                }
+                if (filterMode === 'range' && (dateFrom || dateTo)) {
+                    const from = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
+                    const to = dateTo ? new Date(dateTo + 'T23:59:59') : null;
+                    return ascolti.filter(a => (!from || a.data >= from) && (!to || a.data <= to));
+                }
+                return ascolti;
+            }, [ascolti, filterMode, selectedYear, dateFrom, dateTo]);
+
+            const stats = useMemo(() => {
+                if (ascolti.length === 0) return null;
+
+                let filtered = ascolti;
+                if (filterMode === 'year' && selectedYear !== 'all') {
+                    filtered = ascolti.filter(a => a.data.getFullYear().toString() === selectedYear);
+                } else if (filterMode === 'range' && (dateFrom || dateTo)) {
+                    const from = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
+                    const to = dateTo ? new Date(dateTo + 'T23:59:59') : null;
+                    filtered = ascolti.filter(a => (!from || a.data >= from) && (!to || a.data <= to));
+                }
+                if (filtered.length === 0) return null;
+
+                const ytmCount = filtered.filter(a => a.fonte === 'YTMusic').length;
+                const spCount = filtered.filter(a => a.fonte === 'Spotify').length;
+                const minutiTotali = Math.floor(filtered.reduce((acc, curr) => acc + curr.ms_played, 0) / 60000);
+
+                const artistiCount = {};
+                const braniCount = {};
+                const albumCount = {};
+                const giorniCount = {};
+                const mesiCount = {};
+                const weekdayCount = {};
+                const fasceCount = {};
+
+                let minDate = filtered[0].data;
+                let maxDate = filtered[0].data;
+
+                filtered.forEach(a => {
+                    artistiCount[a.artista] = (artistiCount[a.artista] || 0) + 1;
+                    const chiaveBrano = `${a.titolo} - ${a.artista}`;
+                    braniCount[chiaveBrano] = (braniCount[chiaveBrano] || 0) + 1;
+                    if (a.album) albumCount[`${a.album} - ${a.artista}`] = (albumCount[`${a.album} - ${a.artista}`] || 0) + 1;
+
+                    if (a.data < minDate) minDate = a.data;
+                    if (a.data > maxDate) maxDate = a.data;
+
+                    // Uso data locale (non UTC) per evitare che ascolti serali finiscano nel giorno sbagliato
+                    const y = a.data.getFullYear(), m = String(a.data.getMonth() + 1).padStart(2, '0'), d = String(a.data.getDate()).padStart(2, '0');
+                    const dateStr = `${y}-${m}-${d}`;
+                    giorniCount[dateStr] = (giorniCount[dateStr] || 0) + 1;
+
+                    const meseStr = `${a.data.getFullYear()}-${a.data.getMonth()}`;
+                    mesiCount[meseStr] = (mesiCount[meseStr] || 0) + 1;
+
+                    weekdayCount[a.data.getDay()] = (weekdayCount[a.data.getDay()] || 0) + 1;
+                    
+                    const fascia = getFasciaOraria(a.data.getHours());
+                    fasceCount[fascia] = (fasceCount[fascia] || 0) + 1;
+                });
+
+                const sortObject = (obj) => Object.entries(obj).sort((a, b) => b[1] - a[1]);
+
+                const topMeseRaw = sortObject(mesiCount)[0];
+                let topMeseNome = "N/D";
+                if (topMeseRaw) {
+                    const [anno, mese] = topMeseRaw[0].split('-');
+                    topMeseNome = `${MESI_IT[parseInt(mese)]} ${anno}`;
+                }
+
+                const weekdayFull = GIORNI_IT.map((nome, idx) => ({ nome, count: weekdayCount[idx] || 0 }));
+                const maxWeekday = Math.max(1, ...weekdayFull.map(w => w.count));
+
+                return {
+                    totali: filtered.length,
+                    ytmCount, spCount, minutiTotali,
+                    artistiUnici: Object.keys(artistiCount).length,
+                    braniUnici: Object.keys(braniCount).length,
+                    topArtisti: sortObject(artistiCount).slice(0, 10),
+                    topBrani: sortObject(braniCount).filter(b => b[1] > 1).slice(0, 10),
+                    topAlbum: sortObject(albumCount).filter(b => b[1] > 1).slice(0, 10),
+                    weekdayFull,
+                    maxWeekday,
+                    date: {
+                        inizio: minDate,
+                        fine: maxDate,
+                        giornoTop: sortObject(giorniCount)[0] ? { data: sortObject(giorniCount)[0][0], count: sortObject(giorniCount)[0][1] } : null,
+                        meseTop: topMeseNome,
+                        meseCount: topMeseRaw ? topMeseRaw[1] : 0,
+                        giornoSettimanaTop: sortObject(weekdayCount)[0] ? GIORNI_IT[sortObject(weekdayCount)[0][0]] : "N/D",
+                        fasciaTop: sortObject(fasceCount)[0] ? sortObject(fasceCount)[0][0] : "N/D"
+                    }
+                };
+            }, [ascolti, filterMode, selectedYear, dateFrom, dateTo]);
+
+            const anniDisponibili = useMemo(() => {
+                const anni = new Set();
+                ascolti.forEach(a => anni.add(a.data.getFullYear()));
+                return Array.from(anni).sort((a, b) => b - a);
+            }, [ascolti]);
+
+            if (ascolti.length === 0) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black text-white flex flex-col items-center justify-center p-6" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+                        <div className="max-w-2xl w-full bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-10 text-center shadow-2xl">
+                            <div className="flex justify-center mb-6">
+                                <div className="bg-purple-500/20 p-6 rounded-full relative">
+                                    <IconMusic className="w-16 h-16 text-purple-400" />
+                                </div>
+                            </div>
+                            <h1 className="text-4xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+                                Il Tuo Wrapped Unificato
+                            </h1>
+                            <p className="text-gray-300 text-lg mb-8">
+                                Combina i dati di Spotify e YouTube Music in un'unica dashboard locale offline.
+                            </p>
+
+                            <div className="border-2 border-dashed border-white/30 rounded-2xl p-10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer relative group">
+                                <input type="file" multiple accept=".json" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={handleFileInput} />
+                                {isProcessing ? (
+                                    <div className="flex flex-col items-center">
+                                        <IconRefresh className="w-10 h-10 text-purple-400 animate-spin-slow mb-4" />
+                                        <p className="font-semibold">Elaborazione in corso...</p>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center">
+                                        <IconUpload className="w-12 h-12 text-gray-400 group-hover:text-purple-400 transition-colors mb-4" />
+                                        <p className="font-semibold text-lg mb-2">Trascina qui i tuoi file JSON</p>
+                                        <p className="text-sm text-gray-400">oppure clicca per sfogliare</p>
+                                    </div>
+                                )}
+                            </div>
+                            {error && (
+                                <div className="mt-6 flex items-center justify-center gap-2 text-red-400 bg-red-400/10 p-3 rounded-lg">
+                                    <IconAlert className="w-5 h-5" />
+                                    <p>{error}</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen p-4 md:p-8 font-sans selection:bg-purple-500/30 pb-20">
+                    <div className="max-w-7xl mx-auto space-y-8">
+                        <header className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
+                            <div>
+                                <h1 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500">Audio Wrapped</h1>
+                                <p className="text-gray-400 mt-2 font-medium">Analisi unificata: Spotify + YouTube Music</p>
+                                <p className="text-purple-300 text-sm mt-1">
+                                    {filterMode === 'all' && 'Mostrando: tutta la cronologia'}
+                                    {filterMode === 'year' && (selectedYear === 'all' ? 'Seleziona un anno' : `Mostrando: anno ${selectedYear}`)}
+                                    {filterMode === 'range' && (dateFrom || dateTo) && `Mostrando: dal ${dateFrom ? new Date(dateFrom + 'T00:00:00').toLocaleDateString('it-IT') : 'inizio'} al ${dateTo ? new Date(dateTo + 'T00:00:00').toLocaleDateString('it-IT') : 'oggi'}`}
+                                    {filterMode === 'range' && !dateFrom && !dateTo && 'Seleziona un intervallo di date'}
+                                </p>
+                            </div>
+                            <div className="flex flex-col gap-3 bg-white/5 p-3 rounded-xl border border-white/10 w-full md:w-auto">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <div className="flex bg-black/20 rounded-lg p-1">
+                                        <button onClick={() => setFilterMode('all')} className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'all' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'}`}>Tutto</button>
+                                        <button onClick={() => setFilterMode('year')} className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'year' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'}`}>Anno</button>
+                                        <button onClick={() => setFilterMode('range')} className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'range' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'}`}>Intervallo</button>
+                                    </div>
+
+                                    {filterMode === 'year' && (
+                                        <select className="bg-black/20 text-white font-semibold outline-none cursor-pointer px-3 py-2 rounded-lg text-sm" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+                                            <option value="all" className="bg-gray-900">Seleziona anno</option>
+                                            {anniDisponibili.map(anno => <option key={anno} value={anno} className="bg-gray-900">{anno}</option>)}
+                                        </select>
+                                    )}
+
+                                    {filterMode === 'range' && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="bg-black/20 text-white px-2 py-2 rounded-lg outline-none [color-scheme:dark]" />
+                                            <span className="text-gray-400">→</span>
+                                            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="bg-black/20 text-white px-2 py-2 rounded-lg outline-none [color-scheme:dark]" />
+                                        </div>
+                                    )}
+
+                                    <button onClick={resetFiltri} className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors text-white">Reset filtri</button>
+                                    <button onClick={() => esportaCSV(datiFiltrati)} className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors text-white">Esporta CSV</button>
+                                    <button onClick={() => { setAscolti([]); resetFiltri(); }} className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors text-white">Nuovi File</button>
+                                </div>
+                                {filterMode === 'range' && dateFrom && dateTo && dateFrom > dateTo && (
+                                    <p className="text-red-400 text-xs">La data di inizio è successiva alla data di fine: nessun risultato.</p>
+                                )}
+                            </div>
+                        </header>
+
+                        {!stats && (
+                            <div className="bg-white/5 border border-white/10 rounded-3xl p-10 text-center text-gray-300">
+                                <IconAlert className="w-10 h-10 mx-auto mb-4 text-yellow-400" />
+                                <p className="text-lg font-semibold">Nessun ascolto trovato per il filtro selezionato.</p>
+                                <p className="text-sm text-gray-500 mt-2">Prova a cambiare l'anno o l'intervallo di date.</p>
+                            </div>
+                        )}
+                        {stats && (
+                            <div className="space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col hover:bg-white/10 transition-colors">
+                                        <div className="flex items-center gap-3 mb-4 text-gray-400"><IconPlay className="w-6 h-6 text-pink-400" /><h3 className="font-semibold text-sm uppercase tracking-wider">Streaming Totali</h3></div>
+                                        <p className="text-3xl font-black mb-1 text-white">{stats.totali.toLocaleString()}</p>
+                                        <p className="text-sm text-gray-500">{stats.spCount} Spotify • {stats.ytmCount} YTM</p>
+                                    </div>
+                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col hover:bg-white/10 transition-colors">
+                                        <div className="flex items-center gap-3 mb-4 text-gray-400"><IconClock className="w-6 h-6 text-purple-400" /><h3 className="font-semibold text-sm uppercase tracking-wider">Minuti su Spotify</h3></div>
+                                        <p className="text-3xl font-black mb-1 text-white">{stats.minutiTotali.toLocaleString()}</p>
+                                        <p className="text-sm text-gray-500">Circa {Math.round(stats.minutiTotali/60)} ore</p>
+                                    </div>
+                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col hover:bg-white/10 transition-colors">
+                                        <div className="flex items-center gap-3 mb-4 text-gray-400"><IconMic className="w-6 h-6 text-green-400" /><h3 className="font-semibold text-sm uppercase tracking-wider">Artisti Diversi</h3></div>
+                                        <p className="text-3xl font-black mb-1 text-white">{stats.artistiUnici.toLocaleString()}</p>
+                                        <p className="text-sm text-gray-500">Esploratore musicale!</p>
+                                    </div>
+                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col hover:bg-white/10 transition-colors">
+                                        <div className="flex items-center gap-3 mb-4 text-gray-400"><IconDisc className="w-6 h-6 text-blue-400" /><h3 className="font-semibold text-sm uppercase tracking-wider">Brani Diversi</h3></div>
+                                        <p className="text-3xl font-black mb-1 text-white">{stats.braniUnici.toLocaleString()}</p>
+                                        <p className="text-sm text-gray-500">Scoperta continua</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <IconMic className="text-purple-400 w-6 h-6" />
+                                            <h2 className="text-2xl font-bold">Top Artisti</h2>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {stats.topArtisti.map((artista, index) => {
+                                                const maxCount = stats.topArtisti[0][1];
+                                                const width = `${(artista[1] / maxCount) * 100}%`;
+                                                return (
+                                                    <div key={index} className="relative group">
+                                                        <div className="flex justify-between text-sm mb-1 z-10 relative px-2">
+                                                            <span className="font-semibold truncate pr-4 text-white">{index + 1}. {artista[0]}</span>
+                                                            <span className="text-purple-300 font-mono">{artista[1]} as.</span>
+                                                        </div>
+                                                        <div className="h-8 w-full bg-white/5 rounded-md overflow-hidden relative">
+                                                            <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-600/50 to-pink-600/50 rounded-md transition-all duration-1000 group-hover:from-purple-500/80 group-hover:to-pink-500/80" style={{ width }}></div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <IconMusic className="text-pink-400 w-6 h-6" />
+                                            <h2 className="text-2xl font-bold">Top Brani</h2>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {stats.topBrani.length > 0 ? stats.topBrani.map((brano, index) => {
+                                                const [titolo, artista] = brano[0].split(' - ');
+                                                const maxCount = stats.topBrani[0][1];
+                                                const width = `${(brano[1] / maxCount) * 100}%`;
+                                                return (
+                                                    <div key={index} className="relative group">
+                                                        <div className="flex justify-between items-center z-10 relative px-2 py-1">
+                                                            <div className="flex items-center gap-3 truncate pr-4">
+                                                                <span className="text-gray-500 font-bold w-4">{index + 1}</span>
+                                                                <div className="truncate">
+                                                                    <p className="font-bold truncate text-gray-100">{titolo}</p>
+                                                                    <p className="text-xs text-gray-400 truncate">{artista}</p>
+                                                                </div>
+                                                            </div>
+                                                            <span className="text-pink-300 font-mono text-sm whitespace-nowrap">{brano[1]} as.</span>
+                                                        </div>
+                                                        <div className="absolute top-0 left-0 h-full bg-white/5 group-hover:bg-white/10 rounded-lg transition-colors w-full">
+                                                            <div className="h-full bg-pink-500/10 rounded-lg transition-all duration-1000" style={{ width }}></div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            }) : <p className="text-gray-400 text-center py-10">Ascolta più canzoni per vedere questa classifica!</p>}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <IconDisc className="text-blue-400 w-6 h-6" />
+                                            <h2 className="text-2xl font-bold">Top Album</h2>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {stats.topAlbum.length > 0 ? stats.topAlbum.map((album, index) => {
+                                                const [nomeAlbum, artista] = album[0].split(' - ');
+                                                const maxCount = stats.topAlbum[0][1];
+                                                const width = `${(album[1] / maxCount) * 100}%`;
+                                                return (
+                                                    <div key={index} className="relative group">
+                                                        <div className="flex justify-between items-center z-10 relative px-2 py-1">
+                                                            <div className="flex items-center gap-3 truncate pr-4">
+                                                                <span className="text-gray-500 font-bold w-4">{index + 1}</span>
+                                                                <div className="truncate">
+                                                                    <p className="font-bold truncate text-gray-100">{nomeAlbum}</p>
+                                                                    <p className="text-xs text-gray-400 truncate">{artista}</p>
+                                                                </div>
+                                                            </div>
+                                                            <span className="text-blue-300 font-mono text-sm whitespace-nowrap">{album[1]} as.</span>
+                                                        </div>
+                                                        <div className="absolute top-0 left-0 h-full bg-white/5 group-hover:bg-white/10 rounded-lg transition-colors w-full">
+                                                            <div className="h-full bg-blue-500/10 rounded-lg transition-all duration-1000" style={{ width }}></div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            }) : <p className="text-gray-400 text-center py-10">Dati sugli album non disponibili (solo Spotify li include).</p>}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-500/20 rounded-3xl p-6 md:p-8">
+                                    <h2 className="text-2xl font-bold mb-6 flex items-center gap-3 text-white">
+                                        <IconCalendar className="text-indigo-400 w-6 h-6" /> Il tuo orologio musicale
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                        <div className="border-l-2 border-indigo-500/50 pl-4">
+                                            <p className="text-gray-400 text-sm mb-1">Giorno più attivo</p>
+                                            <p className="text-xl font-bold text-gray-100">{stats.date.giornoTop ? (() => { const [y, m, d] = stats.date.giornoTop.data.split('-'); return `${d}/${m}/${y}`; })() : 'N/D'}</p>
+                                            <p className="text-indigo-300 text-sm mt-1">{stats.date.giornoTop ? `${stats.date.giornoTop.count} ascolti` : ''}</p>
+                                        </div>
+                                        <div className="border-l-2 border-indigo-500/50 pl-4">
+                                            <p className="text-gray-400 text-sm mb-1">Mese preferito</p>
+                                            <p className="text-xl font-bold text-gray-100">{stats.date.meseTop}</p>
+                                            <p className="text-indigo-300 text-sm mt-1">{stats.date.meseCount} ascolti</p>
+                                        </div>
+                                        <div className="border-l-2 border-indigo-500/50 pl-4">
+                                            <p className="text-gray-400 text-sm mb-1">Giorno della settimana</p>
+                                            <p className="text-xl font-bold text-gray-100">{stats.date.giornoSettimanaTop}</p>
+                                            <p className="text-indigo-300 text-sm mt-1">Il tuo giorno relax</p>
+                                        </div>
+                                        <div className="border-l-2 border-indigo-500/50 pl-4">
+                                            <p className="text-gray-400 text-sm mb-1">Fascia oraria</p>
+                                            <p className="text-xl font-bold text-gray-100">{stats.date.fasciaTop}</p>
+                                            <p className="text-indigo-300 text-sm mt-1">Quando la musica chiama</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-8 border-t border-white/10 pt-6">
+                                        <p className="text-gray-400 text-sm mb-4">Distribuzione settimanale</p>
+                                        <div className="flex items-end justify-between gap-2 h-28">
+                                            {stats.weekdayFull.map((w, idx) => (
+                                                <div key={idx} className="flex flex-col items-center flex-1 h-full justify-end">
+                                                    <span className="text-xs text-gray-400 mb-1">{w.count}</span>
+                                                    <div className="w-full bg-indigo-500/60 hover:bg-indigo-400/80 rounded-t-md transition-all duration-700" style={{ height: `${(w.count / stats.maxWeekday) * 100}%`, minHeight: w.count > 0 ? '4px' : '0px' }}></div>
+                                                    <span className="text-xs text-gray-500 mt-2">{w.nome.slice(0, 3)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="mt-6 flex justify-between text-sm text-gray-400 border-t border-white/10 pt-4">
+                                        <span>Primo ascolto: {stats.date.inizio.toLocaleDateString('it-IT')}</span>
+                                        <span>Ultimo ascolto: {stats.date.fine.toLocaleDateString('it-IT')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
