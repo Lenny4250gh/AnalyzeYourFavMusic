@@ -402,16 +402,9 @@
             return shared / qWords.length >= 0.4;
         };
 
-        // Scarta URL che sono vettoriali (.svg) o che contengono parole chiave tipiche di loghi e firme
-        const looksLikeRealPhoto = (url) => {
-            if (!url) return false;
-            const lowerUrl = decodeURIComponent(url).toLowerCase();
-            // Scarta i vettoriali
-            if (/\.svg(\?.*)?$/.test(lowerUrl)) return false;
-            // Scarta firme, loghi, scritte e simboli
-            if (/logo|signature|firma|wordmark|text|symbol|icon/i.test(lowerUrl)) return false;
-            return true;
-        };
+        // Scarta URL che quasi certamente NON sono foto reali (loghi, firme, stemmi):
+        // su Wikipedia/Wikidata questi sono quasi sempre file .svg
+        const looksLikeRealPhoto = (url) => !!url && !/\.svg(\?.*)?$/i.test(url);
 
         // Riconosce, dalla breve descrizione che Wikipedia/Wikidata associano a una voce,
         // se si tratta plausibilmente di un musicista/gruppo. Serve a scartare omonimi
@@ -489,41 +482,37 @@
             return looksLikeRealPhoto(fileName) ? photoUrl : null;
         };
 
-        // Cerca PRIMA su iTunes per avere una copertina in altissima qualità.
-        // Se fallisce, tenta su Wikidata/Wikipedia con il nuovo filtro anti-firme.
+        // Cerca una vera fotografia dell'artista (non una copertina di album, non un logo/firma).
+        // Proviamo prima Wikidata (foto "ufficiale" dedicata), poi Wikipedia come ripiego,
+        // con più varianti di query: artisti/band meno comuni a volte emergono solo con
+        // parole chiave diverse ("rapper", "singer", "band"...).
         const fetchArtistPhoto = (artist) => runQueued(async () => {
-            
-            // 1. PRIORITÀ ASSOLUTA: iTunes (Copertina dell'album principale)
-            // Visivamente molto più coerente e preciso per un'app musicale.
-            try {
-                const results = await searchITunesResults(artist, 'album');
-                const match = results.find(r => artistMatches(artist, r.artistName));
-                if (match && match.artworkUrl100) {
-                    return match.artworkUrl100.replace('100x100bb', '300x300bb');
-                }
-            } catch (e) {
-                console.warn("Errore iTunes per l'artista:", artist, e);
-            }
-        
-            // 2. ULTIMA SPIAGGIA: Wikidata / Wikipedia
             const attempts = [
                 () => tryWikidataPhoto(`${artist} musician`),
                 () => tryWikidataPhoto(artist),
                 () => tryWikipediaPhoto(`${artist} musician`),
                 () => tryWikipediaPhoto(artist),
+                () => tryWikidataPhoto(`${artist} singer`),
+                () => tryWikidataPhoto(`${artist} rapper`),
+                () => tryWikipediaPhoto(`${artist} rapper`),
+                () => tryWikipediaPhoto(`${artist} band`),
             ];
-        
+
             for (const attempt of attempts) {
                 try {
                     const photo = await attempt();
-                    if (photo) return photo; // Ora la nuova looksLikeRealPhoto bloccherà i loghi
+                    if (photo) return photo;
                 } catch (e) {
-                    // Pausa breve per evitare rate-limit
-                    await wait(200);
+                    // Piccola pausa e un ultimo tentativo, utile in caso di rate-limit momentaneo
+                    await wait(400);
+                    try {
+                        const retryPhoto = await attempt();
+                        if (retryPhoto) return retryPhoto;
+                    } catch (e2) {
+                        console.warn("Errore fetch foto artista", e2);
+                    }
                 }
             }
-        
-            // Se non trova assolutamente nulla, restituisce null (mostrerà lo scheletro vuoto)
             return null;
         });
 
