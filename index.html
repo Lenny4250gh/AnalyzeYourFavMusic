@@ -99,11 +99,11 @@
                 brand: 'AnalyzeYourFavMusic',
                 landingTitle: 'Il Tuo Wrapped, Sempre',
                 landingSubtitle: "Combina i dati di Spotify e YouTube Music in un'unica dashboard, elaborata localmente e mai caricata online.",
-                dropTitle: 'Trascina qui i tuoi file JSON',
+                dropTitle: 'Trascina qui i tuoi file JSON o CSV',
                 dropSubtitle: 'oppure clicca per sfogliare',
                 processing: 'Elaborazione in corso...',
-                errNoData: 'Nessun dato musicale valido trovato nei file JSON.',
-                errReading: 'Errore nella lettura dei file. Assicurati che siano JSON validi.',
+                errNoData: 'Nessun dato musicale valido trovato nei file.',
+                errReading: 'Errore nella lettura dei file. Assicurati che siano JSON o CSV validi.',
                 headerSubtitle: 'Analisi unificata: Spotify + YouTube Music',
                 showingAll: 'Mostrando: tutta la cronologia',
                 showingYear: (y) => `Mostrando: anno ${y}`,
@@ -121,7 +121,7 @@
                 noResultsSubtitle: "Prova a cambiare l'anno o l'intervallo di date.",
                 cardStreams: 'Streaming Totali',
                 cardStreamsSub: (sp, yt) => `${sp} Spotify • ${yt} YTM`,
-                cardMinutes: 'Minuti su Spotify',
+                cardMinutes: 'Minuti Ascoltati',
                 cardMinutesSub: (h) => `Circa ${h} ore`,
                 cardArtists: 'Artisti Diversi',
                 cardArtistsSub: 'Esploratore musicale!',
@@ -153,11 +153,11 @@
                 brand: 'AnalyzeYourFavMusic',
                 landingTitle: 'Your Wrapped, Anytime',
                 landingSubtitle: 'Combine your Spotify and YouTube Music data into a single dashboard, processed locally and never uploaded anywhere.',
-                dropTitle: 'Drag your JSON files here',
+                dropTitle: 'Drag your JSON or CSV files here',
                 dropSubtitle: 'or click to browse',
                 processing: 'Processing...',
-                errNoData: 'No valid music data found in the JSON files.',
-                errReading: 'Error reading the files. Make sure they are valid JSON.',
+                errNoData: 'No valid music data found in the files.',
+                errReading: 'Error reading the files. Make sure they are valid JSON or CSV.',
                 headerSubtitle: 'Unified analysis: Spotify + YouTube Music',
                 showingAll: 'Showing: entire history',
                 showingYear: (y) => `Showing: year ${y}`,
@@ -175,7 +175,7 @@
                 noResultsSubtitle: 'Try changing the year or date range.',
                 cardStreams: 'Total Streams',
                 cardStreamsSub: (sp, yt) => `${sp} Spotify • ${yt} YTM`,
-                cardMinutes: 'Minutes on Spotify',
+                cardMinutes: 'Minutes Listened',
                 cardMinutesSub: (h) => `About ${h} hours`,
                 cardArtists: 'Unique Artists',
                 cardArtistsSub: 'Music explorer!',
@@ -217,6 +217,13 @@
             if (!dataStr) return null;
             let dt = new Date(dataStr.replace('Z', '+00:00'));
             if (!isNaN(dt.getTime())) return dt;
+            
+            // Gestione del formato it-IT DD/MM/YYYY, HH:mm:ss o DD/MM/YYYY HH:mm:ss esportato nel CSV
+            const matchIt = dataStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[,\s]+(\d{1,2}):(\d{2}):(\d{2})/);
+            if (matchIt) {
+                return new Date(matchIt[3], matchIt[2] - 1, matchIt[1], matchIt[4], matchIt[5], matchIt[6]);
+            }
+
             const match = dataStr.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
             if (match) {
                 return new Date(match[1], match[2] - 1, match[3], match[4], match[5]);
@@ -236,6 +243,21 @@
             const tit = (titolo || '').toLowerCase();
             const paroleChiave = ['unknown', 'sconosciuto', 'sconosciuta'];
             return paroleChiave.some(k => art.includes(k) || tit.includes(k));
+        };
+
+        const parseCsvRow = (str) => {
+            let arr = [];
+            let quote = false;
+            let row = '';
+            for (let c = 0; c < str.length; c++) {
+                let cc = str[c], nc = str[c+1];
+                if (cc === '"' && quote && nc === '"') { row += '"'; ++c; continue; }
+                if (cc === '"') { quote = !quote; continue; }
+                if (cc === ',' && !quote) { arr.push(row); row = ''; continue; }
+                row += cc;
+            }
+            arr.push(row);
+            return arr;
         };
 
         // --- APP PRINCIPALE ---
@@ -263,6 +285,33 @@
                 try {
                     for (let i = 0; i < files.length; i++) {
                         const file = files[i];
+                        
+                        // SUPPORTO IMPORTAZIONE CSV
+                        if (file.name.endsWith('.csv')) {
+                            const text = await file.text();
+                            const lines = text.split('\n');
+                            // Skip header
+                            for (let j = 1; j < lines.length; j++) {
+                                const line = lines[j].trim();
+                                if (!line) continue;
+                                const cols = parseCsvRow(line);
+                                if (cols.length >= 6) {
+                                    const dt = parseDate(cols[0]);
+                                    if (dt && !isNaN(dt.getTime())) {
+                                        tuttiAscolti.push({
+                                            fonte: cols[1],
+                                            artista: cols[2],
+                                            titolo: cols[3],
+                                            album: cols[4] || null,
+                                            data: dt,
+                                            ms_played: (parseFloat(cols[5]) || 0) * 60000
+                                        });
+                                    }
+                                }
+                            }
+                            continue;
+                        }
+
                         if (!file.name.endsWith('.json')) continue;
 
                         const text = await file.text();
@@ -498,7 +547,7 @@
                             </p>
 
                             <div className="border-2 border-dashed border-white/20 rounded-2xl p-10 bg-white/[0.03] hover:bg-white/[0.07] hover:border-purple-400/40 transition-all cursor-pointer relative group">
-                                <input type="file" multiple accept=".json" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={handleFileInput} />
+                                <input type="file" multiple accept=".json,.csv" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={handleFileInput} />
                                 {isProcessing ? (
                                     <div className="flex flex-col items-center">
                                         <IconRefresh className="w-10 h-10 text-purple-400 animate-spin-slow mb-4" />
