@@ -257,33 +257,92 @@
         // Caching delle immagini per evitare richieste multiple per lo stesso artista/brano
         const imageCache = new Map();
 
+        // Normalizza una stringa per confronti "tolleranti" (minuscolo, senza accenti/punteggiatura)
+        const normalizeForMatch = (s) => (s || '')
+            .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
+
+        // Verifica che il nome artista restituito dall'API corrisponda davvero a quello cercato,
+        // per evitare di mostrare immagini "scollegate" quando iTunes restituisce un match sbagliato
+        const artistMatches = (queryArtist, resultArtist) => {
+            const q = normalizeForMatch(queryArtist);
+            const r = normalizeForMatch(resultArtist);
+            if (!q || !r) return false;
+            if (q === r) return true;
+            // Confronto parola per parola: basta che le parole principali dell'artista cercato
+            // siano contenute nel nome restituito (gestisce feat., collaborazioni, ecc.)
+            const qWords = q.split(' ').filter(w => w.length > 1);
+            if (qWords.length === 0) return false;
+            return qWords.every(w => r.includes(w)) || r.includes(q) || q.includes(r);
+        };
+
+        // Cerca una vera fotografia dell'artista (non una copertina di album) su Wikipedia
+        const fetchArtistPhoto = async (artist) => {
+            try {
+                const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(artist + ' musician')}&format=json&origin=*&srlimit=1`;
+                const searchRes = await fetch(searchUrl);
+                const searchData = await searchRes.json();
+                const result = searchData?.query?.search?.[0];
+                const pageTitle = result?.title;
+                if (!pageTitle) return null;
+
+                // Scartiamo pagine chiaramente non pertinenti (es. disambigua) controllando il titolo
+                if (!artistMatches(artist, pageTitle.replace(/\s*\(.*?\)\s*/g, ''))) {
+                    // Non blocchiamo del tutto: proviamo comunque a leggere il riassunto,
+                    // ma solo se il nome artista compare nel titolo della pagina trovata
+                    const looseMatch = normalizeForMatch(pageTitle).includes(normalizeForMatch(artist).split(' ')[0]);
+                    if (!looseMatch) return null;
+                }
+
+                const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(pageTitle)}`;
+                const summaryRes = await fetch(summaryUrl);
+                if (!summaryRes.ok) return null;
+                const summaryData = await summaryRes.json();
+
+                // Evitiamo pagine di disambiguazione o non biografiche
+                if (summaryData?.type === 'disambiguation') return null;
+
+                return summaryData?.thumbnail?.source || null;
+            } catch (e) {
+                console.warn("Errore fetch foto artista Wikipedia", e);
+                return null;
+            }
+        };
+
         const fetchArtwork = async (artist, title, type) => {
             const cacheKey = `${type}-${artist}-${title || ''}`;
             if (imageCache.has(cacheKey)) return imageCache.get(cacheKey);
 
-            let url = '';
-            
-            // Creiamo query specifiche in base a cosa stiamo cercando per evitare risultati sballati
+            // Per gli artisti vogliamo una vera foto della persona/band, non la copertina di un album o brano
             if (type === 'artist') {
-                // Cerca solo ed esclusivamente i brani dove lui è l'artista principale (attribute=artistTerm)
-                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=musicTrack&attribute=artistTerm&limit=1`;
-            } else if (type === 'album') {
-                // Cerca specificamente tra gli album
-                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=album&limit=1`;
-            } else {
-                // Cerca specificamente un brano
-                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=musicTrack&limit=1`;
+                const photo = await fetchArtistPhoto(artist);
+                imageCache.set(cacheKey, photo);
+                return photo;
             }
+
+            // Creiamo query specifiche in base a cosa stiamo cercando per evitare risultati sballati
+            const url = type === 'album'
+                ? `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=album&limit=5`
+                : `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=musicTrack&limit=5`;
 
             try {
                 const res = await fetch(url);
                 const data = await res.json();
-                
+
                 if (data.results && data.results.length > 0) {
-                    // iTunes restituisce immagini 100x100. Sostituiamo per avere una versione 300x300 di qualità migliore
-                    let imgUrl = data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
-                    imageCache.set(cacheKey, imgUrl);
-                    return imgUrl;
+                    // Tra i primi risultati, prendiamo il primo il cui artista corrisponde davvero
+                    // a quello cercato, per evitare immagini scollegate da canzone/artista
+                    const match = data.results.find(r => artistMatches(artist, r.artistName))
+                        || data.results[0];
+
+                    if (match && match.artworkUrl100) {
+                        // iTunes restituisce immagini 100x100. Sostituiamo per avere una versione 300x300 di qualità migliore
+                        const imgUrl = match.artworkUrl100.replace('100x100bb', '300x300bb');
+                        imageCache.set(cacheKey, imgUrl);
+                        return imgUrl;
+                    }
                 }
             } catch (e) {
                 console.warn("Errore fetch artwork iTunes", e);
