@@ -482,37 +482,38 @@
             return looksLikeRealPhoto(fileName) ? photoUrl : null;
         };
 
-        // Cerca una vera fotografia dell'artista (non una copertina di album, non un logo/firma).
-        // Proviamo prima Wikidata (foto "ufficiale" dedicata), poi Wikipedia come ripiego,
-        // con più varianti di query: artisti/band meno comuni a volte emergono solo con
-        // parole chiave diverse ("rapper", "singer", "band"...).
+        // Cerca una foto artista su Wikidata/Wikipedia e, se non la trova,
+        // recupera la copertina dell'album/brano principale dell'artista da iTunes.
         const fetchArtistPhoto = (artist) => runQueued(async () => {
             const attempts = [
                 () => tryWikidataPhoto(`${artist} musician`),
                 () => tryWikidataPhoto(artist),
                 () => tryWikipediaPhoto(`${artist} musician`),
                 () => tryWikipediaPhoto(artist),
-                () => tryWikidataPhoto(`${artist} singer`),
-                () => tryWikidataPhoto(`${artist} rapper`),
-                () => tryWikipediaPhoto(`${artist} rapper`),
-                () => tryWikipediaPhoto(`${artist} band`),
             ];
-
+        
+            // 1. Prova prima su Wikidata e Wikipedia
             for (const attempt of attempts) {
                 try {
                     const photo = await attempt();
                     if (photo) return photo;
                 } catch (e) {
-                    // Piccola pausa e un ultimo tentativo, utile in caso di rate-limit momentaneo
-                    await wait(400);
-                    try {
-                        const retryPhoto = await attempt();
-                        if (retryPhoto) return retryPhoto;
-                    } catch (e2) {
-                        console.warn("Errore fetch foto artista", e2);
-                    }
+                    // Silently continue
                 }
             }
+        
+            // 2. FALLBACK: Se Wikipedia fallisce o dà risultati vuoti,
+            // prende la copertina dell'album/singolo più rilevante dell'artista da iTunes
+            try {
+                const results = await searchITunesResults(artist, 'album');
+                const match = results.find(r => artistMatches(artist, r.artistName));
+                if (match && match.artworkUrl100) {
+                    return match.artworkUrl100.replace('100x100bb', '300x300bb');
+                }
+            } catch (e) {
+                console.warn("Errore fallback iTunes per l'artista:", artist, e);
+            }
+        
             return null;
         });
 
