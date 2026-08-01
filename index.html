@@ -259,12 +259,11 @@
 
         const fetchArtwork = async (artist, title, type) => {
             const cacheKey = `${type}-${artist}-${title || ''}`;
-            // Controlla se abbiamo già cercato questa immagine [cite: 75]
             if (imageCache.has(cacheKey)) return imageCache.get(cacheKey);
         
             let url = '';
             
-            // Aumentiamo il limite da 1 a 15 per avere una lista tra cui scegliere
+            // Aumentiamo il limite a 15 risultati per avere più scelta
             if (type === 'artist') {
                 url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=musicTrack&attribute=artistTerm&limit=15`;
             } else if (type === 'album') {
@@ -278,29 +277,41 @@
                 const data = await res.json();
                 
                 if (data.results && data.results.length > 0) {
-                    // Cerchiamo l'artista esatto ignorando maiuscole e minuscole
                     const targetArtist = (artist || '').toLowerCase();
+                    const targetTitle = (title || '').toLowerCase();
                     
-                    // Trova il primo risultato in cui il nome artista di Apple è uguale al tuo
-                    let bestMatch = data.results.find(r => 
-                        r.artistName && r.artistName.toLowerCase() === targetArtist
-                    );
+                    // Cerchiamo il match esatto
+                    let bestMatch = data.results.find(r => {
+                        const apiArtist = (r.artistName || '').toLowerCase();
+                        const apiTitle = (r.trackName || r.collectionName || '').toLowerCase();
+                        
+                        if (type === 'artist') return apiArtist === targetArtist;
+                        
+                        // Se è un brano o album, controlliamo che il titolo sia corretto
+                        return apiArtist.includes(targetArtist) && apiTitle.includes(targetTitle);
+                    });
                     
-                    // Se non c'è una corrispondenza perfetta, ci accontentiamo del primo risultato
+                    // Se non c'è una corrispondenza perfetta, usa il primo risultato
                     if (!bestMatch) {
                         bestMatch = data.results[0];
                     }
         
-                    // Otteniamo l'immagine in alta qualità 300x300 [cite: 80]
-                    let imgUrl = bestMatch.artworkUrl100.replace('100x100bb', '300x300bb');
-                    imageCache.set(cacheKey, imgUrl);
-                    return imgUrl;
+                    // Se è una traccia non pubblicata e ha preso roba a caso, fermalo
+                    if (type !== 'artist' && !bestMatch.artistName.toLowerCase().includes(targetArtist)) {
+                        imageCache.set(cacheKey, null);
+                        return null;
+                    }
+        
+                    let imgUrl = (bestMatch.artworkUrl100 || '').replace('100x100bb', '300x300bb');
+                    if (imgUrl) {
+                        imageCache.set(cacheKey, imgUrl);
+                        return imgUrl;
+                    }
                 }
             } catch (e) {
-                console.warn("Errore fetch artwork iTunes", e); // [cite: 81]
+                console.warn("Errore fetch artwork iTunes", e);
             }
         
-            // Se va tutto male, salva un valore nullo [cite: 82]
             imageCache.set(cacheKey, null);
             return null;
         };
