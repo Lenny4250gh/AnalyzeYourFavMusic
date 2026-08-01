@@ -304,6 +304,10 @@
             return qWords.every(w => r.includes(w)) || r.includes(q) || q.includes(r);
         };
 
+        // Scarta URL che quasi certamente NON sono foto reali (loghi, firme, stemmi):
+        // su Wikipedia/Wikidata questi sono quasi sempre file .svg
+        const looksLikeRealPhoto = (url) => !!url && !/\.svg(\?.*)?$/i.test(url);
+
         // Un solo tentativo di ricerca+riassunto su Wikipedia per una data query
         const tryWikipediaPhoto = async (query) => {
             const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*&srlimit=1`;
@@ -322,26 +326,56 @@
             // Evitiamo pagine di disambiguazione (non hanno una foto specifica)
             if (summaryData?.type === 'disambiguation') return null;
 
-            return summaryData?.thumbnail?.source || null;
+            // Preferiamo l'immagine originale (qualità migliore del thumbnail piccolo)
+            const photoUrl = summaryData?.originalimage?.source || summaryData?.thumbnail?.source || null;
+            return looksLikeRealPhoto(photoUrl) ? photoUrl : null;
         };
 
-        // Cerca una vera fotografia dell'artista (non una copertina di album) su Wikipedia.
-        // Un primo tentativo mirato ("artista musicista") e, se non trova nulla, un secondo
-        // tentativo più semplice col solo nome: alcuni artisti (band, nomi cambiati, ecc.)
-        // non emergono bene con la query più specifica.
+        // Wikidata ha una proprietà dedicata (P18 "image") pensata proprio per la foto
+        // ufficiale della persona/band: più affidabile della semplice immagine di testa
+        // della pagina Wikipedia, che a volte è un logo o una firma.
+        const tryWikidataPhoto = async (query) => {
+            const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&limit=1&type=item`;
+            const searchRes = await fetch(searchUrl);
+            if (!searchRes.ok) return null;
+            const searchData = await searchRes.json();
+            const id = searchData?.search?.[0]?.id;
+            if (!id) return null;
+
+            const claimUrl = `https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=${id}&property=P18&format=json&origin=*`;
+            const claimRes = await fetch(claimUrl);
+            if (!claimRes.ok) return null;
+            const claimData = await claimRes.json();
+            const fileName = claimData?.claims?.P18?.[0]?.mainsnak?.datavalue?.value;
+            if (!fileName) return null;
+
+            // Special:FilePath fa da redirect diretto al file su Wikimedia Commons
+            const photoUrl = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName.replace(/ /g, '_'))}?width=300`;
+            return looksLikeRealPhoto(fileName) ? photoUrl : null;
+        };
+
+        // Cerca una vera fotografia dell'artista (non una copertina di album, non un logo/firma).
+        // Proviamo prima Wikidata (foto "ufficiale" dedicata), poi Wikipedia come ripiego,
+        // con query via via più semplici per artisti/band meno comuni.
         const fetchArtistPhoto = (artist) => runQueued(async () => {
-            for (const query of [`${artist} musician`, artist]) {
+            const attempts = [
+                () => tryWikidataPhoto(artist),
+                () => tryWikipediaPhoto(`${artist} musician`),
+                () => tryWikipediaPhoto(artist),
+            ];
+
+            for (const attempt of attempts) {
                 try {
-                    const photo = await tryWikipediaPhoto(query);
+                    const photo = await attempt();
                     if (photo) return photo;
                 } catch (e) {
                     // Piccola pausa e un ultimo tentativo, utile in caso di rate-limit momentaneo
                     await wait(400);
                     try {
-                        const retryPhoto = await tryWikipediaPhoto(query);
+                        const retryPhoto = await attempt();
                         if (retryPhoto) return retryPhoto;
                     } catch (e2) {
-                        console.warn("Errore fetch foto artista Wikipedia", e2);
+                        console.warn("Errore fetch foto artista", e2);
                     }
                 }
             }
@@ -371,10 +405,9 @@
                 });
 
                 if (data && data.results && data.results.length > 0) {
-                    // Tra i primi risultati, prendiamo il primo il cui artista corrisponde davvero
-                    // a quello cercato, per evitare immagini scollegate da canzone/artista
-                    const match = data.results.find(r => artistMatches(artist, r.artistName))
-                        || data.results[0];
+                    // Prendiamo SOLO un risultato il cui artista corrisponde davvero a quello
+                    // cercato. Se nessuno combacia, meglio nessuna immagine che una sbagliata.
+                    const match = data.results.find(r => artistMatches(artist, r.artistName));
 
                     if (match && match.artworkUrl100) {
                         // iTunes restituisce immagini 100x100. Sostituiamo per avere una versione 300x300 di qualità migliore
