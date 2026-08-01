@@ -438,7 +438,7 @@
         // Esegue una ricerca iTunes e restituisce i risultati grezzi (accodata per non
         // sovraccaricare l'API insieme alle altre richieste)
         const searchITunesResults = async (term, entity) => {
-            const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=${entity}&limit=8`;
+            const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=${entity}&limit=15`;
             const data = await runQueued(async () => {
                 const res = await fetch(url);
                 return res.json();
@@ -460,13 +460,39 @@
             const entity = type === 'album' ? 'album' : 'musicTrack';
             const cleanTitle = stripTitleQualifiers(title);
 
+            // Riconosce raccolte/compilation ("My Favorite Part: Hip Hop Goes Pop", "Now That's
+            // What I Call...", mixtape, greatest hits, ecc.): la stessa canzone può comparire
+            // anche dentro una raccolta del genere, ma la sua copertina non è quella "vera"
+            // del brano/artista e va evitata quando possibile
+            const looksLikeCompilation = (collectionName) => !!collectionName &&
+                /various artists|greatest hits|best of|now (that|playing)|mixtape|compilation|goes pop|megamix|top \d|hits collection|essentials?\b|anthology|playlist/i.test(collectionName);
+
             // Un risultato va bene solo se combaciano SIA l'artista SIA il titolo:
             // solo l'artista giusto non basta, altrimenti si prende la copertina di un
-            // brano diverso dello stesso artista (da qui le immagini "confuse")
-            const findMatch = (results) => results.find(r => {
-                const resultTitle = type === 'album' ? r.collectionName : r.trackName;
-                return artistMatches(artist, r.artistName) && titleMatches(title, resultTitle);
-            });
+            // brano diverso dello stesso artista (da qui le immagini "confuse").
+            // Tra più risultati validi, scegliamo quello più "genuino": artista/titolo
+            // che combaciano esattamente e che non è una raccolta/compilation.
+            const findMatch = (results) => {
+                const candidates = results.filter(r => {
+                    const resultTitle = type === 'album' ? r.collectionName : r.trackName;
+                    return artistMatches(artist, r.artistName) && titleMatches(title, resultTitle);
+                });
+                if (candidates.length === 0) return null;
+                if (candidates.length === 1) return candidates[0];
+
+                const score = (r) => {
+                    let s = 0;
+                    if (normalizeForMatch(r.artistName) === normalizeForMatch(artist)) s += 2;
+                    const resultTitle = type === 'album' ? r.collectionName : r.trackName;
+                    const qTitle = normalizeForMatch(stripTitleQualifiers(title));
+                    const rTitle = normalizeForMatch(stripTitleQualifiers(resultTitle));
+                    if (qTitle === rTitle) s += 2;
+                    if (looksLikeCompilation(r.collectionName)) s -= 5;
+                    return s;
+                };
+
+                return candidates.slice().sort((a, b) => score(b) - score(a))[0];
+            };
 
             try {
                 // Primo tentativo: artista + titolo originale (la ricerca testuale di iTunes
