@@ -1,4 +1,3 @@
---- START OF FILE text/plain ---
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -8,20 +7,31 @@
     <meta name="description" content="Analyze your Spotify and YouTube Music listening history — completely offline, in your browser.">
     <meta name="theme-color" content="#0f0f13">
 
+    <!-- Favicon: vinyl/wave mark, inline SVG so the file stays fully self-contained -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23a855f7'/%3E%3Cstop offset='100%25' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='%230f0f13'/%3E%3Ccircle cx='32' cy='32' r='22' fill='url(%23g)'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%230f0f13'/%3E%3Ccircle cx='32' cy='32' r='2.5' fill='url(%23g)'/%3E%3C/svg%3E">
 
+    <!-- Google Fonts: Outfit per i titoli, Inter per il corpo del testo -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+    <!-- Tailwind CSS per lo stile -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React e ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
+    <!-- Babel per far funzionare React nel browser senza installazioni -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
         :root { color-scheme: dark; }
         * { box-sizing: border-box; }
+        html, body {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
         body {
             margin: 0;
             background-color: #0b0b0f;
@@ -39,9 +49,11 @@
         @keyframes floatY { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
         .animate-float { animation: floatY 4s ease-in-out infinite; }
         ::selection { background: rgba(168, 85, 247, 0.35); }
-        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 999px; }
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.7; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -50,7 +62,7 @@
     <script type="text/babel">
         const { useState, useMemo, useCallback, useEffect } = React;
 
-        // --- ICONE ---
+        // --- ICONE SVG ---
         const IconUpload = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M12 12v9"></path><path d="m16 16-4-4-4 4"></path></svg>;
         const IconMusic = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>;
         const IconMic = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 8-9.04 9.06a2.828 2.828 0 1 0 3.988 3.988L16 12"></path><circle cx="17" cy="7" r="5"></circle></svg>;
@@ -61,6 +73,7 @@
         const IconRefresh = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>;
         const IconAlert = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>;
         const IconDownload = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>;
+        const IconImage = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>;
 
         const Logo = ({ className }) => (
             <svg className={className} viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
@@ -81,63 +94,185 @@
             it: {
                 brand: 'AnalyzeYourFavMusic',
                 landingTitle: 'Il Tuo Wrapped, Sempre',
-                landingSubtitle: "Combina i dati di Spotify e YouTube Music in un'unica dashboard locale.",
-                dropTitle: 'Trascina i file JSON o CSV',
-                dropSubtitle: 'clicca per sfogliare',
-                processing: 'Elaborazione...',
-                errNoData: 'Nessun dato valido trovato.',
-                errReading: 'Errore nella lettura dei file.',
-                topArtists: 'Top Artisti', topTracks: 'Top Brani', topAlbums: 'Top Album',
-                listens: 'asc.', na: 'N/D', cardStreams: 'Streaming Totali', cardMinutes: 'Minuti',
-                cardArtists: 'Artisti', cardTracks: 'Brani', clockTitle: 'La tua routine',
-                mostActiveDay: 'Giorno Top', favoriteMonth: 'Mese Top', weekday: 'Giorno relax',
-                timeSlot: 'Fascia Oraria', weeklyDistribution: 'Distribuzione Settimanale',
+                landingSubtitle: "Combina i dati di Spotify e YouTube Music in un'unica dashboard, elaborata localmente e mai caricata online.",
+                dropTitle: 'Trascina qui i tuoi file JSON o CSV',
+                dropSubtitle: 'oppure clicca per sfogliare',
+                processing: 'Elaborazione in corso...',
+                errNoData: 'Nessun dato musicale valido trovato nei file.',
+                errReading: 'Errore nella lettura dei file. Assicurati che siano JSON o CSV validi.',
+                headerSubtitle: 'Analisi unificata: Spotify + YouTube Music',
+                showingAll: 'Mostrando: tutta la cronologia',
+                showingYear: (y) => `Mostrando: anno ${y}`,
+                pickYear: 'Seleziona un anno',
+                showingRange: (f, t) => `Mostrando: dal ${f} al ${t}`,
+                pickRange: "Seleziona un intervallo di date",
+                fAll: 'Tutto', fYear: 'Anno', fRange: 'Intervallo',
+                selectYear: 'Seleziona anno',
+                rangeStart: 'inizio', rangeToday: 'oggi',
+                resetFilters: 'Reset filtri',
+                exportCSV: 'Esporta CSV',
+                newFiles: 'Nuovi File',
+                rangeError: 'La data di inizio è successiva alla data di fine: nessun risultato.',
+                noResultsTitle: 'Nessun ascolto trovato per il filtro selezionato.',
+                noResultsSubtitle: "Prova a cambiare l'anno o l'intervallo di date.",
+                cardStreams: 'Streaming Totali',
+                cardStreamsSub: (sp, yt) => `${sp} Spotify • ${yt} YTM`,
+                cardMinutes: 'Minuti Ascoltati',
+                cardMinutesSub: (h) => `Circa ${h} ore`,
+                cardArtists: 'Artisti Diversi',
+                cardArtistsSub: 'Esploratore musicale!',
+                cardTracks: 'Brani Diversi',
+                cardTracksSub: 'Scoperta continua',
+                topArtists: 'Top Artisti',
+                topTracks: 'Top Brani',
+                topAlbums: 'Top Album',
+                listens: 'asc.',
+                notEnoughTracks: 'Ascolta più canzoni per vedere questa classifica!',
+                noAlbumData: 'Dati sugli album non disponibili (solo Spotify li include).',
+                clockTitle: 'Il tuo orologio musicale',
+                mostActiveDay: 'Giorno più attivo',
+                nListens: (n) => `${n} ascolti`,
+                favoriteMonth: 'Mese preferito',
+                weekday: 'Giorno della settimana',
+                weekdaySub: 'Il tuo giorno relax',
+                timeSlot: 'Fascia oraria',
+                timeSlotSub: 'Quando la musica chiama',
+                weeklyDistribution: 'Distribuzione settimanale',
+                firstListen: 'Primo ascolto',
+                lastListen: 'Ultimo ascolto',
                 months: ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'],
-                days: ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'],
+                days: ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'],
                 slots: ['Notte (0-6)', 'Mattina (6-12)', 'Pomeriggio (12-18)', 'Sera (18-24)'],
-                resetFilters: 'Reset', exportCSV: 'Esporta', newFiles: 'Nuovi File',
-                fAll: 'Tutto', fYear: 'Anno', fRange: 'Date', selectYear: 'Anno...',
+                na: 'N/D',
             },
             en: {
                 brand: 'AnalyzeYourFavMusic',
                 landingTitle: 'Your Wrapped, Anytime',
-                landingSubtitle: 'Combine Spotify and YouTube Music data in a local dashboard.',
-                dropTitle: 'Drop JSON or CSV files',
-                dropSubtitle: 'click to browse',
+                landingSubtitle: 'Combine your Spotify and YouTube Music data into a single dashboard, processed locally and never uploaded anywhere.',
+                dropTitle: 'Drag your JSON or CSV files here',
+                dropSubtitle: 'or click to browse',
                 processing: 'Processing...',
-                errNoData: 'No valid data found.',
-                errReading: 'Error reading files.',
-                topArtists: 'Top Artists', topTracks: 'Top Tracks', topAlbums: 'Top Albums',
-                listens: 'plays', na: 'N/A', cardStreams: 'Total Streams', cardMinutes: 'Minutes',
-                cardArtists: 'Artists', cardTracks: 'Tracks', clockTitle: 'Your Routine',
-                mostActiveDay: 'Top Day', favoriteMonth: 'Top Month', weekday: 'Chill Day',
-                timeSlot: 'Time Slot', weeklyDistribution: 'Weekly Distribution',
+                errNoData: 'No valid music data found in the files.',
+                errReading: 'Error reading the files. Make sure they are valid JSON or CSV.',
+                headerSubtitle: 'Unified analysis: Spotify + YouTube Music',
+                showingAll: 'Showing: entire history',
+                showingYear: (y) => `Showing: year ${y}`,
+                pickYear: 'Select a year',
+                showingRange: (f, t) => `Showing: from ${f} to ${t}`,
+                pickRange: 'Select a date range',
+                fAll: 'All', fYear: 'Year', fRange: 'Range',
+                selectYear: 'Select year',
+                rangeStart: 'start', rangeToday: 'today',
+                resetFilters: 'Reset filters',
+                exportCSV: 'Export CSV',
+                newFiles: 'New Files',
+                rangeError: 'Start date is after end date: no results.',
+                noResultsTitle: 'No listens found for the selected filter.',
+                noResultsSubtitle: 'Try changing the year or date range.',
+                cardStreams: 'Total Streams',
+                cardStreamsSub: (sp, yt) => `${sp} Spotify • ${yt} YTM`,
+                cardMinutes: 'Minutes Listened',
+                cardMinutesSub: (h) => `About ${h} hours`,
+                cardArtists: 'Unique Artists',
+                cardArtistsSub: 'Music explorer!',
+                cardTracks: 'Unique Tracks',
+                cardTracksSub: 'Continuous discovery',
+                topArtists: 'Top Artists',
+                topTracks: 'Top Tracks',
+                topAlbums: 'Top Albums',
+                listens: 'plays',
+                notEnoughTracks: 'Listen to more songs to unlock this chart!',
+                noAlbumData: 'Album data not available (only Spotify includes it).',
+                clockTitle: 'Your listening clock',
+                mostActiveDay: 'Most active day',
+                nListens: (n) => `${n} listens`,
+                favoriteMonth: 'Favorite month',
+                weekday: 'Day of the week',
+                weekdaySub: 'Your chill-out day',
+                timeSlot: 'Time of day',
+                timeSlotSub: 'When music calls',
+                weeklyDistribution: 'Weekly distribution',
+                firstListen: 'First listen',
+                lastListen: 'Last listen',
                 months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
-                days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
                 slots: ['Night (0-6)', 'Morning (6-12)', 'Afternoon (12-18)', 'Evening (18-24)'],
-                resetFilters: 'Reset', exportCSV: 'Export', newFiles: 'New Files',
-                fAll: 'All', fYear: 'Year', fRange: 'Range', selectYear: 'Year...',
+                na: 'N/A',
             }
         };
 
+        const detectLang = () => {
+            try {
+                const nav = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+                return nav.startsWith('it') ? 'it' : 'en';
+            } catch (e) { return 'en'; }
+        };
+
+        const parseDate = (dataStr) => {
+            if (!dataStr) return null;
+            let dt = new Date(dataStr.replace('Z', '+00:00'));
+            if (!isNaN(dt.getTime())) return dt;
+            
+            const matchIt = dataStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[,\s]+(\d{1,2}):(\d{2}):(\d{2})/);
+            if (matchIt) {
+                return new Date(matchIt[3], matchIt[2] - 1, matchIt[1], matchIt[4], matchIt[5], matchIt[6]);
+            }
+
+            const match = dataStr.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
+            if (match) {
+                return new Date(match[1], match[2] - 1, match[3], match[4], match[5]);
+            }
+            return null;
+        };
+
+        const getFasciaIndex = (ora) => {
+            if (ora >= 6 && ora < 12) return 1;
+            if (ora >= 12 && ora < 18) return 2;
+            if (ora >= 18 && ora < 24) return 3;
+            return 0;
+        };
+
+        const isUnknown = (artista, titolo) => {
+            const art = (artista || '').toLowerCase();
+            const tit = (titolo || '').toLowerCase();
+            const paroleChiave = ['unknown', 'sconosciuto', 'sconosciuta'];
+            return paroleChiave.some(k => art.includes(k) || tit.includes(k));
+        };
+
+        const parseCsvRow = (str) => {
+            let arr = [];
+            let quote = false;
+            let row = '';
+            for (let c = 0; c < str.length; c++) {
+                let cc = str[c], nc = str[c+1];
+                if (cc === '"' && quote && nc === '"') { row += '"'; ++c; continue; }
+                if (cc === '"') { quote = !quote; continue; }
+                if (cc === ',' && !quote) { arr.push(row); row = ''; continue; }
+                row += cc;
+            }
+            arr.push(row);
+            return arr;
+        };
+
+        // Caching delle immagini per evitare richieste multiple per lo stesso artista/brano
         const imageCache = new Map();
 
-        // LOGICA DI RICERCA MIGLIORATA
         const fetchArtwork = async (artist, title, type) => {
-            const cleanArtist = (artist || '').replace(/\s-\sTopic$/i, '').trim();
-            const cleanTitle = (title || '').trim();
-            const cacheKey = `${type}-${cleanArtist}-${cleanTitle}`;
-            
+            const cacheKey = `${type}-${artist}-${title || ''}`;
             if (imageCache.has(cacheKey)) return imageCache.get(cacheKey);
 
             let url = '';
+            
+            // Creiamo query specifiche in base a cosa stiamo cercando per evitare risultati sballati
             if (type === 'artist') {
-                // Per l'artista cerchiamo specificamente l'entità musicArtist
-                url = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanArtist)}&entity=musicArtist&limit=1`;
+                // Cerca solo ed esclusivamente i brani dove lui è l'artista principale (attribute=artistTerm)
+                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=musicTrack&attribute=artistTerm&limit=1`;
             } else if (type === 'album') {
-                url = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanArtist + ' ' + cleanTitle)}&entity=album&limit=1`;
+                // Cerca specificamente tra gli album
+                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=album&limit=1`;
             } else {
-                url = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanArtist + ' ' + cleanTitle)}&entity=musicTrack&limit=1`;
+                // Cerca specificamente un brano
+                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=musicTrack&limit=1`;
             }
 
             try {
@@ -145,330 +280,640 @@
                 const data = await res.json();
                 
                 if (data.results && data.results.length > 0) {
-                    const result = data.results[0];
-                    let imgUrl = null;
-
-                    // Verifica corrispondenza per evitare foto a caso
-                    const foundName = (result.artistName || result.collectionName || '').toLowerCase();
-                    const searchName = cleanArtist.toLowerCase();
-                    
-                    // Se stiamo cercando un artista e il nome restituito non c'entra nulla, scartiamo
-                    if (type === 'artist' && !foundName.includes(searchName) && !searchName.includes(foundName)) {
-                         // Fallback: prova a cercare un brano di quell'artista per avere almeno una cover corretta se l'artista non ha foto
-                         const fallbackRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(cleanArtist)}&entity=musicTrack&limit=1`);
-                         const fallbackData = await fallbackRes.json();
-                         if (fallbackData.results?.[0]) {
-                             imgUrl = fallbackData.results[0].artworkUrl100.replace('100x100bb', '400x400bb');
-                         }
-                    } else {
-                        imgUrl = (result.artworkUrl100 || '').replace('100x100bb', '400x400bb');
-                    }
-
-                    if (imgUrl) {
-                        imageCache.set(cacheKey, imgUrl);
-                        return imgUrl;
-                    }
+                    // iTunes restituisce immagini 100x100. Sostituiamo per avere una versione 300x300 di qualità migliore
+                    let imgUrl = data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
+                    imageCache.set(cacheKey, imgUrl);
+                    return imgUrl;
                 }
-            } catch (e) { console.warn(e); }
+            } catch (e) {
+                console.warn("Errore fetch artwork iTunes", e);
+            }
 
             imageCache.set(cacheKey, null);
             return null;
         };
 
+        // Componente React per gestire il caricamento dell'immagine, lo scheletro e il fallback
         const EntityImage = ({ artist, title, type, altText, className }) => {
             const [src, setSrc] = useState(null);
             const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(false);
 
             useEffect(() => {
                 let isMounted = true;
+                setLoading(true);
+                setError(false);
+                
                 fetchArtwork(artist, title, type).then(url => {
-                    if (isMounted) { setSrc(url); setLoading(false); }
+                    if (isMounted) {
+                        setSrc(url);
+                        setLoading(false);
+                    }
                 });
+                
                 return () => { isMounted = false; };
             }, [artist, title, type]);
 
-            if (loading) return <div className={`animate-pulse bg-white/10 ${className}`}></div>;
+            const getInitials = (text) => {
+                if (!text) return '??';
+                const parts = text.trim().split(' ');
+                if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+                return text.substring(0, 2).toUpperCase();
+            };
 
-            if (!src) {
-                const charCode = (altText || 'A').charCodeAt(0);
-                const gradients = [
-                    'from-purple-600 to-blue-600',
-                    'from-pink-600 to-orange-600',
+            if (loading) {
+                return <div className={`animate-pulse bg-white/10 ${className}`}></div>;
+            }
+
+            if (!src || error) {
+                // Generazione di un gradiente unico e consistente basato sul testo
+                const charCode = (altText || '').charCodeAt(0) || 0;
+                const colors = [
+                    'from-purple-600 to-indigo-600',
+                    'from-pink-600 to-rose-600',
                     'from-emerald-600 to-teal-600',
-                    'from-blue-600 to-indigo-600'
+                    'from-orange-600 to-amber-600',
+                    'from-blue-600 to-cyan-600'
                 ];
-                const grad = gradients[charCode % gradients.length];
+                const gradient = colors[charCode % colors.length];
+
                 return (
-                    <div className={`flex items-center justify-center bg-gradient-to-br ${grad} ${className} shadow-inner`}>
-                        <span className="text-white font-bold text-xs opacity-80">
-                            {(altText || '??').substring(0, 2).toUpperCase()}
+                    <div className={`flex items-center justify-center bg-gradient-to-br ${gradient} shadow-md ${className}`}>
+                        <span className="text-white font-bold opacity-80 text-xs tracking-wider">
+                            {getInitials(altText)}
                         </span>
                     </div>
                 );
             }
 
-            return <img src={src} alt={altText} className={`object-cover shadow-md ${className}`} loading="lazy" />;
-        };
-
-        // --- UTILS ---
-        const parseDate = (s) => {
-            if (!s) return null;
-            let d = new Date(s.replace('Z', '+00:00'));
-            if (!isNaN(d.getTime())) return d;
-            const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
-            if (m1) return new Date(m1[1], m1[2]-1, m1[3], m1[4], m1[5]);
-            return null;
-        };
-
-        const getFasciaIndex = (h) => {
-            if (h >= 6 && h < 12) return 1;
-            if (h >= 12 && h < 18) return 2;
-            if (h >= 18 && h < 24) return 3;
-            return 0;
+            return (
+                <img 
+                    src={src} 
+                    alt={altText} 
+                    className={`object-cover shadow-md ${className}`} 
+                    loading="lazy" 
+                    onError={() => setError(true)} 
+                />
+            );
         };
 
         function App() {
-            const [lang, setLang] = useState('it');
+            const [lang, setLang] = useState(detectLang());
             const t = DICT[lang];
+
             const [ascolti, setAscolti] = useState([]);
             const [isProcessing, setIsProcessing] = useState(false);
+            const [error, setError] = useState('');
             const [filterMode, setFilterMode] = useState('all');
             const [selectedYear, setSelectedYear] = useState('all');
             const [dateFrom, setDateFrom] = useState('');
             const [dateTo, setDateTo] = useState('');
 
+            useEffect(() => {
+                document.documentElement.lang = lang;
+            }, [lang]);
+
             const processFiles = async (files) => {
                 setIsProcessing(true);
-                let list = [];
-                try {
-                    for (const file of files) {
-                        const text = await file.text();
-                        if (file.name.endsWith('.json')) {
-                            const data = JSON.parse(text);
-                            const items = Array.isArray(data) ? data : (data.items || []);
-                            items.forEach(item => {
-                                // Spotify or YTM
-                                const isYTM = item.header === 'YouTube Music';
-                                let art = isYTM ? (item.subtitles?.[0]?.name || '') : (item.artistName || item.master_metadata_album_artist_name);
-                                let tit = isYTM ? (item.title || '') : (item.trackName || item.master_metadata_track_name);
-                                let ms = isYTM ? 180000 : (item.msPlayed || item.ms_played || 0);
-                                let alb = item.master_metadata_album_album_name || null;
-                                let time = item.time || item.endTime || item.ts;
+                setError('');
+                let tuttiAscolti = [];
 
-                                if (isYTM && tit.startsWith('Watched ')) tit = tit.replace('Watched ', '');
-                                if (isYTM && tit.startsWith('Hai guardato ')) tit = tit.replace('Hai guardato ', '');
-                                
-                                if (art && tit && ms > 30000) {
-                                    const dt = parseDate(time);
-                                    if (dt) list.push({ fonte: isYTM ? 'YTM' : 'Spotify', artista: art.trim(), titolo: tit.trim(), album: alb, data: dt, ms_played: ms });
+                try {
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        
+                        if (file.name.endsWith('.csv')) {
+                            const text = await file.text();
+                            const lines = text.split('\n');
+                            for (let j = 1; j < lines.length; j++) {
+                                const line = lines[j].trim();
+                                if (!line) continue;
+                                const cols = parseCsvRow(line);
+                                if (cols.length >= 6) {
+                                    const dt = parseDate(cols[0]);
+                                    if (dt && !isNaN(dt.getTime())) {
+                                        tuttiAscolti.push({
+                                            fonte: cols[1],
+                                            artista: cols[2],
+                                            titolo: cols[3],
+                                            album: cols[4] || null,
+                                            data: dt,
+                                            ms_played: (parseFloat(cols[5]) || 0) * 60000
+                                        });
+                                    }
+                                }
+                            }
+                            continue;
+                        }
+
+                        if (!file.name.endsWith('.json')) continue;
+
+                        const text = await file.text();
+                        const data = JSON.parse(text);
+
+                        if (Array.isArray(data) && data.length > 0 && data[0].header === 'YouTube Music') {
+                            data.forEach(item => {
+                                if (item.header !== 'YouTube Music') return;
+                                let nomeArtista = 'Artista Sconosciuto';
+                                const subtitles = item.subtitles || [];
+                                if (subtitles.length > 0) {
+                                    nomeArtista = subtitles[0].name || nomeArtista;
+                                    if (nomeArtista.endsWith(' - Topic')) nomeArtista = nomeArtista.replace(' - Topic', '');
+                                }
+                                nomeArtista = nomeArtista.trim();
+
+                                let titolo = (item.title || '').trim();
+                                const prefissi = ['Hai guardato ', 'Watched ', 'Hai ascoltato ', 'Listened to '];
+                                for (let prefisso of prefissi) {
+                                    if (titolo.startsWith(prefisso)) {
+                                        titolo = titolo.replace(prefisso, '').trim();
+                                        break;
+                                    }
+                                }
+
+                                if (titolo && titolo !== 'a video that has been removed' && !titolo.toLowerCase().includes('video non disponibile') && !isUnknown(nomeArtista, titolo)) {
+                                    const dt = parseDate(item.time);
+                                    if (dt) {
+                                        const stimaDurataMediaMs = 180000; 
+                                        tuttiAscolti.push({ fonte: 'YTMusic', artista: nomeArtista, titolo: titolo, album: null, data: dt, ms_played: stimaDurataMediaMs });
+                                    }
+                                }
+                            });
+                        } else {
+                            const items = data.items ? data.items : (Array.isArray(data) ? data : []);
+                            items.forEach(item => {
+                                const artista = item.artistName || item.master_metadata_album_artist_name;
+                                const brano = item.trackName || item.master_metadata_track_name;
+                                const msPlayed = item.msPlayed || item.ms_played || 0;
+                                const album = item.master_metadata_album_album_name || null;
+
+                                if (artista && brano && msPlayed > 30000) {
+                                    const artClean = artista.trim();
+                                    const titClean = brano.trim();
+                                    const albumClean = album ? album.trim() : null;
+
+                                    if (!isUnknown(artClean, titClean)) {
+                                        const dataStr = item.endTime || item.ts;
+                                        const dt = parseDate(dataStr);
+                                        if (dt) {
+                                            tuttiAscolti.push({ fonte: 'Spotify', artista: artClean, titolo: titClean, album: albumClean, data: dt, ms_played: msPlayed });
+                                        }
+                                    }
                                 }
                             });
                         }
                     }
-                    setAscolti(list);
-                } catch (e) { alert(t.errReading); }
+
+                    if (tuttiAscolti.length === 0) {
+                        setError(t.errNoData);
+                    } else {
+                        setAscolti(tuttiAscolti);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    setError(t.errReading);
+                }
                 setIsProcessing(false);
             };
 
+            const handleDrop = useCallback((e) => {
+                e.preventDefault();
+                processFiles(Array.from(e.dataTransfer.files));
+            }, [lang]);
+
+            const handleFileInput = (e) => {
+                processFiles(Array.from(e.target.files));
+            };
+
+            const resetFiltri = () => {
+                setFilterMode('all');
+                setSelectedYear('all');
+                setDateFrom('');
+                setDateTo('');
+            };
+
+            const esportaCSV = (filteredData) => {
+                if (!filteredData || filteredData.length === 0) return;
+                const header = 'Date,Source,Artist,Title,Album,MinutesPlayed\n';
+                const rows = filteredData.map(a => {
+                    const dataStr = a.data.toLocaleString(lang === 'it' ? 'it-IT' : 'en-US');
+                    const escape = (s) => `"${(s || '').toString().replace(/"/g, '""')}"`;
+                    return [escape(dataStr), escape(a.fonte), escape(a.artista), escape(a.titolo), escape(a.album || ''), (a.ms_played / 60000).toFixed(2)].join(',');
+                }).join('\n');
+                const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `analyze_your_fav_music_export_${Date.now()}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            };
+
             const datiFiltrati = useMemo(() => {
-                if (filterMode === 'year' && selectedYear !== 'all') return ascolti.filter(a => a.data.getFullYear().toString() === selectedYear);
+                if (ascolti.length === 0) return [];
+                if (filterMode === 'year' && selectedYear !== 'all') {
+                    return ascolti.filter(a => a.data.getFullYear().toString() === selectedYear);
+                }
                 if (filterMode === 'range' && (dateFrom || dateTo)) {
-                    const f = dateFrom ? new Date(dateFrom) : null;
-                    const o = dateTo ? new Date(dateTo) : null;
-                    return ascolti.filter(a => (!f || a.data >= f) && (!o || a.data <= o));
+                    const from = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
+                    const to = dateTo ? new Date(dateTo + 'T23:59:59') : null;
+                    return ascolti.filter(a => (!from || a.data >= from) && (!to || a.data <= to));
                 }
                 return ascolti;
             }, [ascolti, filterMode, selectedYear, dateFrom, dateTo]);
 
             const stats = useMemo(() => {
-                if (datiFiltrati.length === 0) return null;
-                const arts = {}, trks = {}, albs = {}, wkd = {}, fsc = {}, days = {};
-                let ms = 0, sp = 0, ytm = 0;
-                let minD = datiFiltrati[0].data, maxD = datiFiltrati[0].data;
+                if (ascolti.length === 0) return null;
+                const filtered = datiFiltrati;
+                if (filtered.length === 0) return null;
 
-                datiFiltrati.forEach(a => {
-                    ms += a.ms_played;
-                    if (a.fonte === 'Spotify') sp++; else ytm++;
-                    arts[a.artista] = (arts[a.artista] || 0) + 1;
-                    trks[`${a.titolo} -|- ${a.artista}`] = (trks[`${a.titolo} -|- ${a.artista}`] || 0) + 1;
-                    if (a.album) albs[`${a.album} -|- ${a.artista}`] = (albs[`${a.album} -|- ${a.artista}`] || 0) + 1;
-                    wkd[a.data.getDay()] = (wkd[a.data.getDay()] || 0) + 1;
-                    fsc[getFasciaIndex(a.data.getHours())] = (fsc[getFasciaIndex(a.data.getHours())] || 0) + 1;
-                    const ds = a.data.toISOString().split('T')[0];
-                    days[ds] = (days[ds] || 0) + 1;
-                    if (a.data < minD) minD = a.data;
-                    if (a.data > maxD) maxD = a.data;
+                const ytmCount = filtered.filter(a => a.fonte === 'YTMusic').length;
+                const spCount = filtered.filter(a => a.fonte === 'Spotify').length;
+                const minutiTotali = Math.floor(filtered.reduce((acc, curr) => acc + curr.ms_played, 0) / 60000);
+
+                const artistiCount = {};
+                const braniCount = {};
+                const albumCount = {};
+                const giorniCount = {};
+                const mesiCount = {};
+                const weekdayCount = {};
+                const fasceCount = {};
+
+                let minDate = filtered[0].data;
+                let maxDate = filtered[0].data;
+
+                filtered.forEach(a => {
+                    artistiCount[a.artista] = (artistiCount[a.artista] || 0) + 1;
+                    const chiaveBrano = `${a.titolo} -|- ${a.artista}`;
+                    braniCount[chiaveBrano] = (braniCount[chiaveBrano] || 0) + 1;
+                    if (a.album) albumCount[`${a.album} -|- ${a.artista}`] = (albumCount[`${a.album} -|- ${a.artista}`] || 0) + 1;
+
+                    if (a.data < minDate) minDate = a.data;
+                    if (a.data > maxDate) maxDate = a.data;
+
+                    const y = a.data.getFullYear(), m = String(a.data.getMonth() + 1).padStart(2, '0'), d = String(a.data.getDate()).padStart(2, '0');
+                    const dateStr = `${y}-${m}-${d}`;
+                    giorniCount[dateStr] = (giorniCount[dateStr] || 0) + 1;
+
+                    const meseStr = `${a.data.getFullYear()}-${a.data.getMonth()}`;
+                    mesiCount[meseStr] = (mesiCount[meseStr] || 0) + 1;
+
+                    weekdayCount[a.data.getDay()] = (weekdayCount[a.data.getDay()] || 0) + 1;
+
+                    const fasciaIdx = getFasciaIndex(a.data.getHours());
+                    fasceCount[fasciaIdx] = (fasceCount[fasciaIdx] || 0) + 1;
                 });
 
-                const sort = (obj) => Object.entries(obj).sort((a,b) => b[1]-a[1]);
+                const sortObject = (obj) => Object.entries(obj).sort((a, b) => b[1] - a[1]);
+
+                const topMeseRaw = sortObject(mesiCount)[0];
+                let topMeseNome = t.na;
+                if (topMeseRaw) {
+                    const [anno, mese] = topMeseRaw[0].split('-');
+                    topMeseNome = `${t.months[parseInt(mese)]} ${anno}`;
+                }
+
+                const weekdayFull = t.days.map((nome, idx) => ({ nome, count: weekdayCount[idx] || 0 }));
+                const maxWeekday = Math.max(1, ...weekdayFull.map(w => w.count));
+
                 return {
-                    tot: datiFiltrati.length, sp, ytm, ms: Math.floor(ms/60000),
-                    artsUnici: Object.keys(arts).length,
-                    trksUnici: Object.keys(trks).length,
-                    topA: sort(arts).slice(0, 10),
-                    topT: sort(trks).slice(0, 10),
-                    topAlb: sort(albs).slice(0, 10),
-                    dayTop: sort(days)[0],
-                    wkd, fsc, minD, maxD
+                    totali: filtered.length,
+                    ytmCount, spCount, minutiTotali,
+                    artistiUnici: Object.keys(artistiCount).length,
+                    braniUnici: Object.keys(braniCount).length,
+                    topArtisti: sortObject(artistiCount).slice(0, 10),
+                    topBrani: sortObject(braniCount).filter(b => b[1] > 1).slice(0, 10),
+                    topAlbum: sortObject(albumCount).filter(b => b[1] > 1).slice(0, 10),
+                    weekdayFull, maxWeekday,
+                    date: {
+                        inizio: minDate,
+                        fine: maxDate,
+                        giornoTop: sortObject(giorniCount)[0] ? { data: sortObject(giorniCount)[0][0], count: sortObject(giorniCount)[0][1] } : null,
+                        meseTop: topMeseNome,
+                        meseCount: topMeseRaw ? topMeseRaw[1] : 0,
+                        giornoSettimanaTop: sortObject(weekdayCount)[0] ? t.days[sortObject(weekdayCount)[0][0]] : t.na,
+                        fasciaTop: sortObject(fasceCount)[0] ? t.slots[sortObject(fasceCount)[0][0]] : t.na
+                    }
                 };
-            }, [datiFiltrati]);
+            }, [datiFiltrati, lang]);
+
+            const anniDisponibili = useMemo(() => {
+                const anni = new Set();
+                ascolti.forEach(a => anni.add(a.data.getFullYear()));
+                return Array.from(anni).sort((a, b) => b - a);
+            }, [ascolti]);
+
+            const LangSwitch = ({ className }) => (
+                <div className={`flex bg-black/30 rounded-lg p-1 border border-white/10 ${className || ''}`}>
+                    <button onClick={() => setLang('it')} className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wide transition-colors ${lang === 'it' ? 'bg-white/15 text-white' : 'text-gray-500 hover:text-gray-300'}`}>IT</button>
+                    <button onClick={() => setLang('en')} className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wide transition-colors ${lang === 'en' ? 'bg-white/15 text-white' : 'text-gray-500 hover:text-gray-300'}`}>EN</button>
+                </div>
+            );
 
             if (ascolti.length === 0) {
                 return (
-                    <div className="min-h-screen flex items-center justify-center p-6" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault(); processFiles(e.dataTransfer.files)}}>
-                        <div className="max-w-xl w-full bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-12 text-center shadow-2xl">
-                            <Logo className="w-20 h-20 mx-auto mb-6 animate-float" />
-                            <h1 className="font-display text-4xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">{t.landingTitle}</h1>
-                            <p className="text-gray-400 mb-8">{t.landingSubtitle}</p>
-                            <label className="block border-2 border-dashed border-white/20 rounded-2xl p-10 hover:border-purple-500/50 transition-all cursor-pointer group">
-                                <input type="file" multiple className="hidden" onChange={e=>processFiles(e.target.files)} />
-                                <IconUpload className="w-12 h-12 mx-auto text-gray-500 group-hover:text-purple-400 mb-4 transition-colors" />
-                                <p className="font-bold">{isProcessing ? t.processing : t.dropTitle}</p>
-                                <p className="text-sm text-gray-500">{t.dropSubtitle}</p>
-                            </label>
+                    <div className="min-h-screen text-white flex flex-col items-center justify-center p-6 relative" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+                        <div className="absolute top-6 right-6"><LangSwitch /></div>
+                        <div className="max-w-2xl w-full bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-[2rem] p-10 text-center shadow-2xl shadow-purple-950/40">
+                            <div className="flex justify-center mb-6">
+                                <div className="relative animate-float">
+                                    <div className="absolute inset-0 bg-purple-500/30 blur-2xl rounded-full"></div>
+                                    <Logo className="w-20 h-20 relative" />
+                                </div>
+                            </div>
+                            <p className="uppercase tracking-[0.3em] text-xs font-bold text-purple-300/80 mb-3">{t.brand}</p>
+                            <h1 className="font-display text-4xl md:text-5xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-300 via-pink-400 to-orange-300">
+                                {t.landingTitle}
+                            </h1>
+                            <p className="text-gray-300 text-lg mb-8 leading-relaxed">
+                                {t.landingSubtitle}
+                            </p>
+
+                            <div className="border-2 border-dashed border-white/20 rounded-2xl p-10 bg-white/[0.03] hover:bg-white/[0.07] hover:border-purple-400/40 transition-all cursor-pointer relative group">
+                                <input type="file" multiple accept=".json,.csv" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={handleFileInput} />
+                                {isProcessing ? (
+                                    <div className="flex flex-col items-center">
+                                        <IconRefresh className="w-10 h-10 text-purple-400 animate-spin-slow mb-4" />
+                                        <p className="font-semibold">{t.processing}</p>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center">
+                                        <IconUpload className="w-12 h-12 text-gray-400 group-hover:text-purple-400 transition-colors mb-4" />
+                                        <p className="font-semibold text-lg mb-2">{t.dropTitle}</p>
+                                        <p className="text-sm text-gray-400">{t.dropSubtitle}</p>
+                                    </div>
+                                )}
+                            </div>
+                            {error && (
+                                <div className="mt-6 flex items-center justify-center gap-2 text-red-400 bg-red-400/10 p-3 rounded-lg">
+                                    <IconAlert className="w-5 h-5" />
+                                    <p>{error}</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 );
             }
 
             return (
-                <div className="max-w-7xl mx-auto p-4 md:p-8">
-                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-                        <div className="flex items-center gap-4">
-                            <Logo className="w-12 h-12" />
-                            <div>
-                                <h1 className="font-display text-3xl font-black text-white">{t.brand}</h1>
-                                <p className="text-purple-400 text-sm font-medium">Dashboard Analisi Musicale</p>
+                <div className="min-h-screen p-4 md:p-8 font-sans selection:bg-purple-500/30 pb-20">
+                    <div className="max-w-7xl mx-auto space-y-8">
+                        <header className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
+                            <div className="flex items-center gap-4">
+                                <Logo className="w-12 h-12 md:w-14 md:h-14 flex-shrink-0" />
+                                <div>
+                                    <h1 className="font-display text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-400 to-orange-300 leading-tight">{t.brand}</h1>
+                                    <p className="text-gray-400 mt-1 font-medium">{t.headerSubtitle}</p>
+                                    <p className="text-purple-300 text-sm mt-1">
+                                        {filterMode === 'all' && t.showingAll}
+                                        {filterMode === 'year' && (selectedYear === 'all' ? t.pickYear : t.showingYear(selectedYear))}
+                                        {filterMode === 'range' && (dateFrom || dateTo) && t.showingRange(
+                                            dateFrom ? new Date(dateFrom + 'T00:00:00').toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US') : t.rangeStart,
+                                            dateTo ? new Date(dateTo + 'T00:00:00').toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US') : t.rangeToday
+                                        )}
+                                        {filterMode === 'range' && !dateFrom && !dateTo && t.pickRange}
+                                    </p>
+                                </div>
                             </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2 bg-white/5 p-2 rounded-2xl border border-white/10">
-                            <div className="flex bg-black/40 rounded-xl p-1">
-                                {['all', 'year', 'range'].map(m => (
-                                    <button key={m} onClick={()=>setFilterMode(m)} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${filterMode===m ? 'bg-purple-600 text-white' : 'text-gray-400'}`}>{t[`f${m.charAt(0).toUpperCase()+m.slice(1)}`]}</button>
-                                ))}
-                            </div>
-                            {filterMode === 'year' && (
-                                <select className="bg-black/40 text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-white/10 outline-none" value={selectedYear} onChange={e=>setSelectedYear(e.target.value)}>
-                                    <option value="all">{t.selectYear}</option>
-                                    {[...new Set(ascolti.map(a=>a.data.getFullYear()))].sort((a,b)=>b-a).map(y=><option key={y} value={y}>{y}</option>)}
-                                </select>
-                            )}
-                            <button onClick={()=>{setAscolti([]); setFilterMode('all')}} className="px-4 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold transition-all">{t.newFiles}</button>
-                            <div className="flex bg-black/40 rounded-xl p-1 ml-2">
-                                <button onClick={()=>setLang('it')} className={`px-2 py-1 rounded-lg text-[10px] font-bold ${lang==='it'?'bg-white/20':'text-gray-500'}`}>IT</button>
-                                <button onClick={()=>setLang('en')} className={`px-2 py-1 rounded-lg text-[10px] font-bold ${lang==='en'?'bg-white/20':'text-gray-500'}`}>EN</button>
-                            </div>
-                        </div>
-                    </header>
-
-                    {stats && (
-                        <div className="space-y-8">
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                {[
-                                    { lab: t.cardStreams, val: stats.tot.toLocaleString(), sub: `${stats.sp} Sp • ${stats.ytm} YTM`, icon: <IconPlay className="text-pink-500" /> },
-                                    { lab: t.cardMinutes, val: stats.ms.toLocaleString(), sub: `~ ${Math.round(stats.ms/60)} ore`, icon: <IconClock className="text-purple-500" /> },
-                                    { lab: t.cardArtists, val: stats.artsUnici, sub: 'Artisti diversi', icon: <IconMic className="text-orange-500" /> },
-                                    { lab: t.cardTracks, val: stats.trksUnici, sub: 'Brani unici', icon: <IconMusic className="text-blue-500" /> }
-                                ].map((c, i) => (
-                                    <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-3xl hover:bg-white/[0.07] transition-all">
-                                        <div className="flex items-center gap-3 mb-4 opacity-70 uppercase tracking-tighter text-[10px] font-bold">{c.icon} {c.lab}</div>
-                                        <div className="font-display text-3xl font-black">{c.val}</div>
-                                        <div className="text-xs text-gray-500 mt-1">{c.sub}</div>
+                            
+                            {}
+                            <div className="flex flex-col gap-3 bg-white/[0.04] p-3 rounded-2xl border border-white/10 w-full md:w-auto backdrop-blur-sm">
+                                <div className="flex items-center justify-between md:justify-end gap-2">
+                                    <LangSwitch />
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <div className="flex bg-black/25 rounded-lg p-1">
+                                        <button onClick={() => setFilterMode('all')} className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'all' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fAll}</button>
+                                        <button onClick={() => setFilterMode('year')} className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'year' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fYear}</button>
+                                        <button onClick={() => setFilterMode('range')} className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'range' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fRange}</button>
                                     </div>
-                                ))}
-                            </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                {/* ARTISTI */}
-                                <div className="bg-white/5 border border-white/10 rounded-[2rem] p-8">
-                                    <h2 className="font-display text-xl font-bold mb-6 flex items-center gap-2"><IconMic className="w-5 h-5 text-purple-400" /> {t.topArtists}</h2>
-                                    <div className="space-y-4">
-                                        {stats.topA.map((a, i) => (
-                                            <div key={i} className="flex items-center gap-4 group">
-                                                <span className="w-4 text-xs font-black opacity-30">{i+1}</span>
-                                                <EntityImage artist={a[0]} type="artist" altText={a[0]} className="w-12 h-12 rounded-full border-2 border-white/10" />
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="font-bold truncate text-sm">{a[0]}</div>
-                                                    <div className="text-[10px] text-gray-500 uppercase font-bold">{a[1]} {t.listens}</div>
+                                    {filterMode === 'year' && (
+                                        <select className="bg-black/25 text-white font-semibold outline-none cursor-pointer px-3 py-2 rounded-lg text-sm border border-white/10 max-w-full" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+                                            <option value="all" className="bg-gray-900">{t.selectYear}</option>
+                                            {anniDisponibili.map(anno => <option key={anno} value={anno} className="bg-gray-900">{anno}</option>)}
+                                        </select>
+                                    )}
+
+                                    {filterMode === 'range' && (
+                                        <div className="flex flex-wrap items-center gap-2 text-sm">
+                                            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="bg-black/25 text-white px-2 py-2 rounded-lg outline-none border border-white/10 min-w-0" />
+                                            <span className="text-gray-400">→</span>
+                                            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="bg-black/25 text-white px-2 py-2 rounded-lg outline-none border border-white/10 min-w-0" />
+                                        </div>
+                                    )}
+
+                                    <button onClick={resetFiltri} className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors text-white">{t.resetFilters}</button>
+                                    <button onClick={() => esportaCSV(datiFiltrati)} className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors text-white"><IconDownload className="w-4 h-4" />{t.exportCSV}</button>
+                                    <button onClick={() => { setAscolti([]); resetFiltri(); }} className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors text-white">{t.newFiles}</button>
+                                </div>
+                                {filterMode === 'range' && dateFrom && dateTo && dateFrom > dateTo && (
+                                    <p className="text-red-400 text-xs">{t.rangeError}</p>
+                                )}
+                            </div>
+                        </header>
+
+                        {!stats && (
+                            <div className="bg-white/[0.04] border border-white/10 rounded-3xl p-10 text-center text-gray-300">
+                                <IconAlert className="w-10 h-10 mx-auto mb-4 text-yellow-400" />
+                                <p className="text-lg font-semibold">{t.noResultsTitle}</p>
+                                <p className="text-sm text-gray-500 mt-2">{t.noResultsSubtitle}</p>
+                            </div>
+                        )}
+                        
+                        {}
+                        {stats && (
+                            <div className="space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6 flex flex-col hover:bg-white/[0.08] hover:border-pink-400/30 transition-all">
+                                        <div className="flex items-center gap-3 mb-4 text-gray-400"><IconPlay className="w-6 h-6 text-pink-400" /><h3 className="font-semibold text-sm uppercase tracking-wider">{t.cardStreams}</h3></div>
+                                        <p className="font-display text-3xl font-black mb-1 text-white">{stats.totali.toLocaleString()}</p>
+                                        <p className="text-sm text-gray-500">{t.cardStreamsSub(stats.spCount, stats.ytmCount)}</p>
+                                    </div>
+                                    <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6 flex flex-col hover:bg-white/[0.08] hover:border-purple-400/30 transition-all">
+                                        <div className="flex items-center gap-3 mb-4 text-gray-400"><IconClock className="w-6 h-6 text-purple-400" /><h3 className="font-semibold text-sm uppercase tracking-wider">{t.cardMinutes}</h3></div>
+                                        <p className="font-display text-3xl font-black mb-1 text-white">{stats.minutiTotali.toLocaleString()}</p>
+                                        <p className="text-sm text-gray-500">{t.cardMinutesSub(Math.round(stats.minutiTotali/60))}</p>
+                                    </div>
+                                    <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6 flex flex-col hover:bg-white/[0.08] hover:border-green-400/30 transition-all">
+                                        <div className="flex items-center gap-3 mb-4 text-gray-400"><IconMic className="w-6 h-6 text-green-400" /><h3 className="font-semibold text-sm uppercase tracking-wider">{t.cardArtists}</h3></div>
+                                        <p className="font-display text-3xl font-black mb-1 text-white">{stats.artistiUnici.toLocaleString()}</p>
+                                        <p className="text-sm text-gray-500">{t.cardArtistsSub}</p>
+                                    </div>
+                                    <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6 flex flex-col hover:bg-white/[0.08] hover:border-blue-400/30 transition-all">
+                                        <div className="flex items-center gap-3 mb-4 text-gray-400"><IconDisc className="w-6 h-6 text-blue-400" /><h3 className="font-semibold text-sm uppercase tracking-wider">{t.cardTracks}</h3></div>
+                                        <p className="font-display text-3xl font-black mb-1 text-white">{stats.braniUnici.toLocaleString()}</p>
+                                        <p className="text-sm text-gray-500">{t.cardTracksSub}</p>
+                                    </div>
+                                </div>
+
+                                {}
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    {/* ARTISTI */}
+                                    <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <IconMic className="text-purple-400 w-6 h-6" />
+                                            <h2 className="font-display text-2xl font-bold">{t.topArtists}</h2>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {stats.topArtisti.map((artista, index) => {
+                                                const maxCount = stats.topArtisti[0][1];
+                                                const width = `${(artista[1] / maxCount) * 100}%`;
+                                                return (
+                                                    <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.05] transition-colors border border-transparent hover:border-white/5">
+                                                        <div className="flex justify-between items-center z-10 relative px-3 py-2 gap-3">
+                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0">{index + 1}</span>
+                                                                <EntityImage artist={artista[0]} type="artist" altText={artista[0]} className="w-10 h-10 rounded-full flex-shrink-0 border border-white/10" />
+                                                                <span className="font-bold truncate text-gray-100 min-w-0">{artista[0]}</span>
+                                                            </div>
+                                                            <span className="text-purple-300 font-mono text-sm flex-shrink-0">{artista[1]} <span className="hidden sm:inline">{t.listens}</span></span>
+                                                        </div>
+                                                        <div className="absolute top-0 left-0 h-full w-full pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity">
+                                                            <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-1000" style={{ width }}></div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* BRANI */}
+                                    <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <IconMusic className="text-pink-400 w-6 h-6" />
+                                            <h2 className="font-display text-2xl font-bold">{t.topTracks}</h2>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {stats.topBrani.length > 0 ? stats.topBrani.map((brano, index) => {
+                                                const [titolo, artista] = brano[0].split(' -|- ');
+                                                const maxCount = stats.topBrani[0][1];
+                                                const width = `${(brano[1] / maxCount) * 100}%`;
+                                                return (
+                                                    <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.05] transition-colors border border-transparent hover:border-white/5">
+                                                        <div className="flex justify-between items-center z-10 relative px-3 py-2 gap-3">
+                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0">{index + 1}</span>
+                                                                <EntityImage artist={artista} title={titolo} type="track" altText={titolo} className="w-10 h-10 rounded-lg flex-shrink-0 border border-white/10" />
+                                                                <div className="truncate min-w-0 flex-1">
+                                                                    <p className="font-bold truncate text-gray-100">{titolo}</p>
+                                                                    <p className="text-xs text-gray-400 truncate">{artista}</p>
+                                                                </div>
+                                                            </div>
+                                                            <span className="text-pink-300 font-mono text-sm whitespace-nowrap flex-shrink-0">{brano[1]} <span className="hidden sm:inline">{t.listens}</span></span>
+                                                        </div>
+                                                        <div className="absolute top-0 left-0 h-full w-full pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity">
+                                                            <div className="h-full bg-pink-500 transition-all duration-1000" style={{ width }}></div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            }) : <p className="text-gray-400 text-center py-10">{t.notEnoughTracks}</p>}
+                                        </div>
+                                    </div>
+
+                                    {/* ALBUM */}
+                                    <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <IconDisc className="text-blue-400 w-6 h-6" />
+                                            <h2 className="font-display text-2xl font-bold">{t.topAlbums}</h2>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {stats.topAlbum.length > 0 ? stats.topAlbum.map((album, index) => {
+                                                const [nomeAlbum, artista] = album[0].split(' -|- ');
+                                                const maxCount = stats.topAlbum[0][1];
+                                                const width = `${(album[1] / maxCount) * 100}%`;
+                                                return (
+                                                    <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.05] transition-colors border border-transparent hover:border-white/5">
+                                                        <div className="flex justify-between items-center z-10 relative px-3 py-2 gap-3">
+                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0">{index + 1}</span>
+                                                                <EntityImage artist={artista} title={nomeAlbum} type="album" altText={nomeAlbum} className="w-10 h-10 rounded-lg flex-shrink-0 border border-white/10" />
+                                                                <div className="truncate min-w-0 flex-1">
+                                                                    <p className="font-bold truncate text-gray-100">{nomeAlbum}</p>
+                                                                    <p className="text-xs text-gray-400 truncate">{artista}</p>
+                                                                </div>
+                                                            </div>
+                                                            <span className="text-blue-300 font-mono text-sm whitespace-nowrap flex-shrink-0">{album[1]} <span className="hidden sm:inline">{t.listens}</span></span>
+                                                        </div>
+                                                        <div className="absolute top-0 left-0 h-full w-full pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity">
+                                                            <div className="h-full bg-blue-500 transition-all duration-1000" style={{ width }}></div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            }) : <p className="text-gray-400 text-center py-10">{t.noAlbumData}</p>}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {}
+                                <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-500/20 rounded-3xl p-6 md:p-8">
+                                    <h2 className="font-display text-2xl font-bold mb-6 flex items-center gap-3 text-white">
+                                        <IconCalendar className="text-indigo-400 w-6 h-6" /> {t.clockTitle}
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                        <div className="border-l-2 border-indigo-500/50 pl-4">
+                                            <p className="text-gray-400 text-sm mb-1">{t.mostActiveDay}</p>
+                                            <p className="text-xl font-bold text-gray-100">{stats.date.giornoTop ? (() => { const [y, m, d] = stats.date.giornoTop.data.split('-'); return lang === 'it' ? `${d}/${m}/${y}` : `${m}/${d}/${y}`; })() : t.na}</p>
+                                            <p className="text-indigo-300 text-sm mt-1">{stats.date.giornoTop ? t.nListens(stats.date.giornoTop.count) : ''}</p>
+                                        </div>
+                                        <div className="border-l-2 border-indigo-500/50 pl-4">
+                                            <p className="text-gray-400 text-sm mb-1">{t.favoriteMonth}</p>
+                                            <p className="text-xl font-bold text-gray-100">{stats.date.meseTop}</p>
+                                            <p className="text-indigo-300 text-sm mt-1">{t.nListens(stats.date.meseCount)}</p>
+                                        </div>
+                                        <div className="border-l-2 border-indigo-500/50 pl-4">
+                                            <p className="text-gray-400 text-sm mb-1">{t.weekday}</p>
+                                            <p className="text-xl font-bold text-gray-100">{stats.date.giornoSettimanaTop}</p>
+                                            <p className="text-indigo-300 text-sm mt-1">{t.weekdaySub}</p>
+                                        </div>
+                                        <div className="border-l-2 border-indigo-500/50 pl-4">
+                                            <p className="text-gray-400 text-sm mb-1">{t.timeSlot}</p>
+                                            <p className="text-xl font-bold text-gray-100">{stats.date.fasciaTop}</p>
+                                            <p className="text-indigo-300 text-sm mt-1">{t.timeSlotSub}</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-8 border-t border-white/10 pt-6">
+                                    <p className="text-gray-400 text-sm mb-4">{t.weeklyDistribution}</p>
+                                    
+                                    <div className="flex items-end justify-between gap-2 h-32">
+                                        {stats.weekdayFull.map((w, idx) => (
+                                            <div key={idx} className="flex flex-col items-center flex-1 h-full">
+                                                <span className="text-xs text-gray-400 mb-1">{w.count}</span>
+                                                <div className="w-full flex-1 flex items-end">
+                                                    <div 
+                                                        className="w-full bg-indigo-500/60 hover:bg-indigo-400/80 rounded-t-md transition-all duration-700" 
+                                                        style={{ 
+                                                            height: `${(w.count / stats.maxWeekday) * 100}%`, 
+                                                            minHeight: w.count > 0 ? '4px' : '0px' 
+                                                        }}
+                                                    ></div>
                                                 </div>
+                                                <span className="text-xs text-gray-500 mt-2">{w.nome.slice(0, 3)}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-
-                                {/* BRANI */}
-                                <div className="bg-white/5 border border-white/10 rounded-[2rem] p-8">
-                                    <h2 className="font-display text-xl font-bold mb-6 flex items-center gap-2"><IconMusic className="w-5 h-5 text-pink-400" /> {t.topTracks}</h2>
-                                    <div className="space-y-4">
-                                        {stats.topT.map((tr, i) => {
-                                            const [tit, art] = tr[0].split(' -|- ');
-                                            return (
-                                                <div key={i} className="flex items-center gap-4">
-                                                    <span className="w-4 text-xs font-black opacity-30">{i+1}</span>
-                                                    <EntityImage artist={art} title={tit} type="track" altText={tit} className="w-12 h-12 rounded-xl border border-white/10" />
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="font-bold truncate text-sm">{tit}</div>
-                                                        <div className="text-[10px] text-gray-500 truncate">{art} • {tr[1]} {t.listens}</div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* ALBUM */}
-                                <div className="bg-white/5 border border-white/10 rounded-[2rem] p-8">
-                                    <h2 className="font-display text-xl font-bold mb-6 flex items-center gap-2"><IconDisc className="w-5 h-5 text-blue-400" /> {t.topAlbums}</h2>
-                                    <div className="space-y-4">
-                                        {stats.topAlb.map((al, i) => {
-                                            const [tit, art] = al[0].split(' -|- ');
-                                            return (
-                                                <div key={i} className="flex items-center gap-4">
-                                                    <span className="w-4 text-xs font-black opacity-30">{i+1}</span>
-                                                    <EntityImage artist={art} title={tit} type="album" altText={tit} className="w-12 h-12 rounded-xl border border-white/10" />
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="font-bold truncate text-sm">{tit}</div>
-                                                        <div className="text-[10px] text-gray-500 truncate">{art} • {al[1]} {t.listens}</div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                    <div className="mt-6 flex justify-between text-sm text-gray-400 border-t border-white/10 pt-4">
+                                        <span>{t.firstListen}: {stats.date.inizio.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US')}</span>
+                                        <span>{t.lastListen}: {stats.date.fine.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US')}</span>
                                     </div>
                                 </div>
                             </div>
+                        )}
 
-                            <div className="bg-gradient-to-br from-purple-900/20 to-indigo-900/20 border border-white/10 rounded-[2.5rem] p-8 md:p-12">
-                                <h2 className="font-display text-2xl font-black mb-10 flex items-center gap-3"><IconCalendar className="text-purple-400" /> {t.clockTitle}</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase text-gray-500 mb-2">{t.mostActiveDay}</p>
-                                        <p className="text-xl font-bold">{stats.dayTop ? stats.dayTop[0] : t.na}</p>
-                                        <p className="text-sm text-purple-400">{stats.dayTop ? `${stats.dayTop[1]} ascolti` : ''}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase text-gray-500 mb-2">{t.weekday}</p>
-                                        <p className="text-xl font-bold">{t.days[Object.entries(stats.wkd).sort((a,b)=>b[1]-a[1])[0][0]]}</p>
-                                        <p className="text-sm text-purple-400">Il tuo giorno preferito</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase text-gray-500 mb-2">{t.timeSlot}</p>
-                                        <p className="text-xl font-bold">{t.slots[Object.entries(stats.fsc).sort((a,b)=>b[1]-a[1])[0][0]]}</p>
-                                        <p className="text-sm text-purple-400">Picco di attività</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase text-gray-500 mb-2">Periodo</p>
-                                        <p className="text-xl font-bold">{stats.minD.getFullYear()} - {stats.maxD.getFullYear()}</p>
-                                        <p className="text-sm text-purple-400">Analisi completa</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                        {/* Footer con versione del sito */}
+                        <footer className="mt-12 pb-6 text-center text-xs text-gray-500">
+                            <p>AnalyzeYourFavMusic <span className="opacity-75">v1.0.0</span></p>
+                        </footer>
+                    </div>
                 </div>
             );
         }
 
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
