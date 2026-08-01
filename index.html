@@ -304,6 +304,31 @@
             return qWords.every(w => r.includes(w)) || r.includes(q) || q.includes(r);
         };
 
+        // Rimuove le annotazioni tipiche ("feat. ...", "Explicit", "Deluxe", "- Single"...)
+        // che spesso differiscono tra la tua libreria e il catalogo iTunes, e che altrimenti
+        // impediscono un confronto pulito tra i titoli
+        const stripTitleQualifiers = (s) => (s || '')
+            .replace(/[\(\[][^)\]]*feat\.?[^)\]]*[\)\]]/gi, '')
+            .replace(/[\(\[][^)\]]*with[^)\]]*[\)\]]/gi, '')
+            .replace(/[\(\[]\s*explicit\s*[\)\]]/gi, '')
+            .replace(/[\(\[]\s*clean\s*[\)\]]/gi, '')
+            .replace(/[\(\[][^)\]]*deluxe[^)\]]*[\)\]]/gi, '')
+            .replace(/[\(\[][^)\]]*remaster[^)\]]*[\)\]]/gi, '')
+            .replace(/-\s*(single|ep)\s*$/gi, '')
+            .trim();
+
+        // Verifica che anche il TITOLO restituito corrisponda davvero a quello cercato.
+        // Senza questo controllo, se iTunes non ha esattamente quel brano/album,
+        // il codice prendeva comunque un altro pezzo dello stesso artista: stesso artista
+        // giusto, ma copertina "sbagliata" perché di un brano diverso.
+        const titleMatches = (queryTitle, resultTitle) => {
+            const q = normalizeForMatch(stripTitleQualifiers(queryTitle));
+            const r = normalizeForMatch(stripTitleQualifiers(resultTitle));
+            if (!q || !r) return false;
+            if (q === r) return true;
+            return q.includes(r) || r.includes(q);
+        };
+
         // Scarta URL che quasi certamente NON sono foto reali (loghi, firme, stemmi):
         // su Wikipedia/Wikidata questi sono quasi sempre file .svg
         const looksLikeRealPhoto = (url) => !!url && !/\.svg(\?.*)?$/i.test(url);
@@ -401,6 +426,17 @@
             return null;
         });
 
+        // Esegue una ricerca iTunes e restituisce i risultati grezzi (accodata per non
+        // sovraccaricare l'API insieme alle altre richieste)
+        const searchITunesResults = async (term, entity) => {
+            const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=${entity}&limit=8`;
+            const data = await runQueued(async () => {
+                const res = await fetch(url);
+                return res.json();
+            });
+            return data?.results || [];
+        };
+
         const fetchArtwork = async (artist, title, type) => {
             const cacheKey = `${type}-${artist}-${title || ''}`;
             if (imageCache.has(cacheKey)) return imageCache.get(cacheKey);
@@ -412,28 +448,34 @@
                 return photo;
             }
 
-            // Creiamo query specifiche in base a cosa stiamo cercando per evitare risultati sballati
-            const url = type === 'album'
-                ? `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=album&limit=5`
-                : `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=musicTrack&limit=5`;
+            const entity = type === 'album' ? 'album' : 'musicTrack';
+            const cleanTitle = stripTitleQualifiers(title);
+
+            // Un risultato va bene solo se combaciano SIA l'artista SIA il titolo:
+            // solo l'artista giusto non basta, altrimenti si prende la copertina di un
+            // brano diverso dello stesso artista (da qui le immagini "confuse")
+            const findMatch = (results) => results.find(r => {
+                const resultTitle = type === 'album' ? r.collectionName : r.trackName;
+                return artistMatches(artist, r.artistName) && titleMatches(title, resultTitle);
+            });
 
             try {
-                const data = await runQueued(async () => {
-                    const res = await fetch(url);
-                    return res.json();
-                });
+                // Primo tentativo: artista + titolo ripulito da feat./explicit/deluxe/ecc.
+                let results = await searchITunesResults(`${artist} ${cleanTitle}`, entity);
+                let match = findMatch(results);
 
-                if (data && data.results && data.results.length > 0) {
-                    // Prendiamo SOLO un risultato il cui artista corrisponde davvero a quello
-                    // cercato. Se nessuno combacia, meglio nessuna immagine che una sbagliata.
-                    const match = data.results.find(r => artistMatches(artist, r.artistName));
+                // Secondo tentativo: solo il titolo, utile se il nome artista in libreria
+                // differisce leggermente da quello nel catalogo iTunes (es. ordine dei featuring)
+                if (!match) {
+                    results = await searchITunesResults(cleanTitle, entity);
+                    match = findMatch(results);
+                }
 
-                    if (match && match.artworkUrl100) {
-                        // iTunes restituisce immagini 100x100. Sostituiamo per avere una versione 300x300 di qualità migliore
-                        const imgUrl = match.artworkUrl100.replace('100x100bb', '300x300bb');
-                        imageCache.set(cacheKey, imgUrl);
-                        return imgUrl;
-                    }
+                if (match && match.artworkUrl100) {
+                    // iTunes restituisce immagini 100x100. Sostituiamo per avere una versione 300x300 di qualità migliore
+                    const imgUrl = match.artworkUrl100.replace('100x100bb', '300x300bb');
+                    imageCache.set(cacheKey, imgUrl);
+                    return imgUrl;
                 }
             } catch (e) {
                 console.warn("Errore fetch artwork iTunes", e);
