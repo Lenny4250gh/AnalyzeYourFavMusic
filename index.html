@@ -261,16 +261,24 @@
             const cacheKey = `${type}-${artist}-${title || ''}`;
             if (imageCache.has(cacheKey)) return imageCache.get(cacheKey);
 
-            // Per gli artisti, cerchiamo un brano dell'artista per avere una foto (spesso la copertina dell'album più famoso)
-            let term = artist;
-            if (title && type !== 'artist') term += ' ' + title;
-
-            // Utilizziamo l'API pubblica di iTunes Search, supporta CORS ed è gratuita
-            const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&limit=1`;
+            let url = '';
+            
+            // Creiamo query specifiche in base a cosa stiamo cercando per evitare risultati sballati
+            if (type === 'artist') {
+                // Cerca solo ed esclusivamente i brani dove lui è l'artista principale (attribute=artistTerm)
+                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=musicTrack&attribute=artistTerm&limit=1`;
+            } else if (type === 'album') {
+                // Cerca specificamente tra gli album
+                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=album&limit=1`;
+            } else {
+                // Cerca specificamente un brano
+                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=musicTrack&limit=1`;
+            }
 
             try {
                 const res = await fetch(url);
                 const data = await res.json();
+                
                 if (data.results && data.results.length > 0) {
                     // iTunes restituisce immagini 100x100. Sostituiamo per avere una versione 300x300 di qualità migliore
                     let imgUrl = data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
