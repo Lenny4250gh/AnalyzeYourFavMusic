@@ -257,6 +257,32 @@
         // Caching delle immagini per evitare richieste multiple per lo stesso artista/brano
         const imageCache = new Map();
 
+        // Coda con concorrenza limitata: se partono troppe richieste insieme verso Wikipedia/iTunes
+        // capita che alcune vadano in errore o in rate-limit e la foto non si carichi mai.
+        // Qui limitiamo a poche richieste "in volo" alla volta e le altre aspettano il loro turno.
+        const MAX_CONCURRENT_IMAGE_REQUESTS = 4;
+        let activeImageRequests = 0;
+        const imageRequestQueue = [];
+
+        const runQueued = (fn) => new Promise((resolve) => {
+            const runTask = async () => {
+                activeImageRequests++;
+                try {
+                    resolve(await fn());
+                } catch (e) {
+                    resolve(null);
+                } finally {
+                    activeImageRequests--;
+                    const next = imageRequestQueue.shift();
+                    if (next) next();
+                }
+            };
+            if (activeImageRequests < MAX_CONCURRENT_IMAGE_REQUESTS) runTask();
+            else imageRequestQueue.push(runTask);
+        });
+
+        const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
         // Normalizza una stringa per confronti "tolleranti" (minuscolo, senza accenti/punteggiatura)
         const normalizeForMatch = (s) => (s || '')
             .toLowerCase()
@@ -278,38 +304,49 @@
             return qWords.every(w => r.includes(w)) || r.includes(q) || q.includes(r);
         };
 
-        // Cerca una vera fotografia dell'artista (non una copertina di album) su Wikipedia
-        const fetchArtistPhoto = async (artist) => {
-            try {
-                const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(artist + ' musician')}&format=json&origin=*&srlimit=1`;
-                const searchRes = await fetch(searchUrl);
-                const searchData = await searchRes.json();
-                const result = searchData?.query?.search?.[0];
-                const pageTitle = result?.title;
-                if (!pageTitle) return null;
+        // Un solo tentativo di ricerca+riassunto su Wikipedia per una data query
+        const tryWikipediaPhoto = async (query) => {
+            const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*&srlimit=1`;
+            const searchRes = await fetch(searchUrl);
+            if (!searchRes.ok) return null;
+            const searchData = await searchRes.json();
+            const pageTitle = searchData?.query?.search?.[0]?.title;
+            if (!pageTitle) return null;
 
-                // Scartiamo pagine chiaramente non pertinenti (es. disambigua) controllando il titolo
-                if (!artistMatches(artist, pageTitle.replace(/\s*\(.*?\)\s*/g, ''))) {
-                    // Non blocchiamo del tutto: proviamo comunque a leggere il riassunto,
-                    // ma solo se il nome artista compare nel titolo della pagina trovata
-                    const looseMatch = normalizeForMatch(pageTitle).includes(normalizeForMatch(artist).split(' ')[0]);
-                    if (!looseMatch) return null;
-                }
+            // La REST API vuole gli underscore al posto degli spazi per essere affidabile
+            const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(pageTitle.replace(/ /g, '_'))}`;
+            const summaryRes = await fetch(summaryUrl);
+            if (!summaryRes.ok) return null;
+            const summaryData = await summaryRes.json();
 
-                const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(pageTitle)}`;
-                const summaryRes = await fetch(summaryUrl);
-                if (!summaryRes.ok) return null;
-                const summaryData = await summaryRes.json();
+            // Evitiamo pagine di disambiguazione (non hanno una foto specifica)
+            if (summaryData?.type === 'disambiguation') return null;
 
-                // Evitiamo pagine di disambiguazione o non biografiche
-                if (summaryData?.type === 'disambiguation') return null;
-
-                return summaryData?.thumbnail?.source || null;
-            } catch (e) {
-                console.warn("Errore fetch foto artista Wikipedia", e);
-                return null;
-            }
+            return summaryData?.thumbnail?.source || null;
         };
+
+        // Cerca una vera fotografia dell'artista (non una copertina di album) su Wikipedia.
+        // Un primo tentativo mirato ("artista musicista") e, se non trova nulla, un secondo
+        // tentativo più semplice col solo nome: alcuni artisti (band, nomi cambiati, ecc.)
+        // non emergono bene con la query più specifica.
+        const fetchArtistPhoto = (artist) => runQueued(async () => {
+            for (const query of [`${artist} musician`, artist]) {
+                try {
+                    const photo = await tryWikipediaPhoto(query);
+                    if (photo) return photo;
+                } catch (e) {
+                    // Piccola pausa e un ultimo tentativo, utile in caso di rate-limit momentaneo
+                    await wait(400);
+                    try {
+                        const retryPhoto = await tryWikipediaPhoto(query);
+                        if (retryPhoto) return retryPhoto;
+                    } catch (e2) {
+                        console.warn("Errore fetch foto artista Wikipedia", e2);
+                    }
+                }
+            }
+            return null;
+        });
 
         const fetchArtwork = async (artist, title, type) => {
             const cacheKey = `${type}-${artist}-${title || ''}`;
@@ -328,10 +365,12 @@
                 : `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=musicTrack&limit=5`;
 
             try {
-                const res = await fetch(url);
-                const data = await res.json();
+                const data = await runQueued(async () => {
+                    const res = await fetch(url);
+                    return res.json();
+                });
 
-                if (data.results && data.results.length > 0) {
+                if (data && data.results && data.results.length > 0) {
                     // Tra i primi risultati, prendiamo il primo il cui artista corrisponde davvero
                     // a quello cercato, per evitare immagini scollegate da canzone/artista
                     const match = data.results.find(r => artistMatches(artist, r.artistName))
@@ -809,7 +848,7 @@
                                 </div>
 
                                 {}
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                     {/* ARTISTI */}
                                     <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
                                         <div className="flex items-center gap-3 mb-6">
@@ -872,38 +911,6 @@
                                         </div>
                                     </div>
 
-                                    {/* ALBUM */}
-                                    <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
-                                        <div className="flex items-center gap-3 mb-6">
-                                            <IconDisc className="text-blue-400 w-6 h-6" />
-                                            <h2 className="font-display text-2xl font-bold">{t.topAlbums}</h2>
-                                        </div>
-                                        <div className="space-y-3">
-                                            {stats.topAlbum.length > 0 ? stats.topAlbum.map((album, index) => {
-                                                const [nomeAlbum, artista] = album[0].split(' -|- ');
-                                                const maxCount = stats.topAlbum[0][1];
-                                                const width = `${(album[1] / maxCount) * 100}%`;
-                                                return (
-                                                    <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.05] transition-colors border border-transparent hover:border-white/5">
-                                                        <div className="flex justify-between items-center z-10 relative px-3 py-2 gap-3">
-                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                                <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0">{index + 1}</span>
-                                                                <EntityImage artist={artista} title={nomeAlbum} type="album" altText={nomeAlbum} className="w-10 h-10 rounded-lg flex-shrink-0 border border-white/10" />
-                                                                <div className="truncate min-w-0 flex-1">
-                                                                    <p className="font-bold truncate text-gray-100">{nomeAlbum}</p>
-                                                                    <p className="text-xs text-gray-400 truncate">{artista}</p>
-                                                                </div>
-                                                            </div>
-                                                            <span className="text-blue-300 font-mono text-sm whitespace-nowrap flex-shrink-0">{album[1]} <span className="hidden sm:inline">{t.listens}</span></span>
-                                                        </div>
-                                                        <div className="absolute top-0 left-0 h-full w-full pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity">
-                                                            <div className="h-full bg-blue-500 transition-all duration-1000" style={{ width }}></div>
-                                                        </div>
-                                                    </div>
-                                                )
-                                            }) : <p className="text-gray-400 text-center py-10">{t.noAlbumData}</p>}
-                                        </div>
-                                    </div>
                                 </div>
 
                                 {}
