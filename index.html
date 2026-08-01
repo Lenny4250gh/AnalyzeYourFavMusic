@@ -571,36 +571,13 @@
                 return () => { isMounted = false; };
             }, [artist, title, type]);
 
-            const getInitials = (text) => {
-                if (!text) return '??';
-                const parts = text.trim().split(' ');
-                if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-                return text.substring(0, 2).toUpperCase();
-            };
-
             if (loading) {
                 return <div className={`animate-pulse bg-white/10 ${className}`}></div>;
             }
 
             if (!src || error) {
-                // Generazione di un gradiente unico e consistente basato sul testo
-                const charCode = (altText || '').charCodeAt(0) || 0;
-                const colors = [
-                    'from-purple-600 to-indigo-600',
-                    'from-pink-600 to-rose-600',
-                    'from-emerald-600 to-teal-600',
-                    'from-orange-600 to-amber-600',
-                    'from-blue-600 to-cyan-600'
-                ];
-                const gradient = colors[charCode % colors.length];
-
-                return (
-                    <div className={`flex items-center justify-center bg-gradient-to-br ${gradient} shadow-md ${className}`}>
-                        <span className="text-white font-bold opacity-80 text-xs tracking-wider">
-                            {getInitials(altText)}
-                        </span>
-                    </div>
-                );
+                // Se la foto non carica o c'è un errore, non viene mostrato nulla (si toglie)
+                return null;
             }
 
             return (
