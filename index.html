@@ -73,7 +73,6 @@
         const IconRefresh = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>;
         const IconAlert = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>;
         const IconDownload = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>;
-        const IconImage = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>;
 
         const Logo = ({ className }) => (
             <svg className={className} viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
@@ -125,10 +124,8 @@
                 cardTracksSub: 'Scoperta continua',
                 topArtists: 'Top Artisti',
                 topTracks: 'Top Brani',
-                topAlbums: 'Top Album',
                 listens: 'asc.',
                 notEnoughTracks: 'Ascolta più canzoni per vedere questa classifica!',
-                noAlbumData: 'Dati sugli album non disponibili (solo Spotify li include).',
                 clockTitle: 'Il tuo orologio musicale',
                 mostActiveDay: 'Giorno più attivo',
                 nListens: (n) => `${n} ascolti`,
@@ -179,10 +176,8 @@
                 cardTracksSub: 'Continuous discovery',
                 topArtists: 'Top Artists',
                 topTracks: 'Top Tracks',
-                topAlbums: 'Top Albums',
                 listens: 'plays',
                 notEnoughTracks: 'Listen to more songs to unlock this chart!',
-                noAlbumData: 'Album data not available (only Spotify includes it).',
                 clockTitle: 'Your listening clock',
                 mostActiveDay: 'Most active day',
                 nListens: (n) => `${n} listens`,
@@ -263,11 +258,8 @@
         
             let url = '';
             
-            // Aumentiamo il limite a 15 risultati per avere più scelta
             if (type === 'artist') {
                 url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=musicTrack&attribute=artistTerm&limit=15`;
-            } else if (type === 'album') {
-                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=album&limit=15`;
             } else {
                 url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=musicTrack&limit=15`;
             }
@@ -280,23 +272,18 @@
                     const targetArtist = (artist || '').toLowerCase();
                     const targetTitle = (title || '').toLowerCase();
                     
-                    // Cerchiamo il match esatto
                     let bestMatch = data.results.find(r => {
                         const apiArtist = (r.artistName || '').toLowerCase();
                         const apiTitle = (r.trackName || r.collectionName || '').toLowerCase();
                         
                         if (type === 'artist') return apiArtist === targetArtist;
-                        
-                        // Se è un brano o album, controlliamo che il titolo sia corretto
                         return apiArtist.includes(targetArtist) && apiTitle.includes(targetTitle);
                     });
                     
-                    // Se non c'è una corrispondenza perfetta, usa il primo risultato
                     if (!bestMatch) {
                         bestMatch = data.results[0];
                     }
         
-                    // Se è una traccia non pubblicata e ha preso roba a caso, fermalo
                     if (type !== 'artist' && !bestMatch.artistName.toLowerCase().includes(targetArtist)) {
                         imageCache.set(cacheKey, null);
                         return null;
@@ -316,7 +303,6 @@
             return null;
         };
 
-        // Componente React per gestire il caricamento dell'immagine, lo scheletro e il fallback
         const EntityImage = ({ artist, title, type, altText, className }) => {
             const [src, setSrc] = useState(null);
             const [loading, setLoading] = useState(true);
@@ -349,7 +335,6 @@
             }
 
             if (!src || error) {
-                // Generazione di un gradiente unico e consistente basato sul testo
                 const charCode = (altText || '').charCodeAt(0) || 0;
                 const colors = [
                     'from-purple-600 to-indigo-600',
@@ -558,7 +543,6 @@
 
                 const artistiCount = {};
                 const braniCount = {};
-                const albumCount = {};
                 const giorniCount = {};
                 const mesiCount = {};
                 const weekdayCount = {};
@@ -571,7 +555,6 @@
                     artistiCount[a.artista] = (artistiCount[a.artista] || 0) + 1;
                     const chiaveBrano = `${a.titolo} -|- ${a.artista}`;
                     braniCount[chiaveBrano] = (braniCount[chiaveBrano] || 0) + 1;
-                    if (a.album) albumCount[`${a.album} -|- ${a.artista}`] = (albumCount[`${a.album} -|- ${a.artista}`] || 0) + 1;
 
                     if (a.data < minDate) minDate = a.data;
                     if (a.data > maxDate) maxDate = a.data;
@@ -608,7 +591,6 @@
                     braniUnici: Object.keys(braniCount).length,
                     topArtisti: sortObject(artistiCount).slice(0, 10),
                     topBrani: sortObject(braniCount).filter(b => b[1] > 1).slice(0, 10),
-                    topAlbum: sortObject(albumCount).filter(b => b[1] > 1).slice(0, 10),
                     weekdayFull, maxWeekday,
                     date: {
                         inizio: minDate,
@@ -701,7 +683,6 @@
                                 </div>
                             </div>
                             
-                            {}
                             <div className="flex flex-col gap-3 bg-white/[0.04] p-3 rounded-2xl border border-white/10 w-full md:w-auto backdrop-blur-sm">
                                 <div className="flex items-center justify-between md:justify-end gap-2">
                                     <LangSwitch />
@@ -746,7 +727,6 @@
                             </div>
                         )}
                         
-                        {}
                         {stats && (
                             <div className="space-y-8">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -772,8 +752,7 @@
                                     </div>
                                 </div>
 
-                                {}
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                     {/* ARTISTI */}
                                     <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
                                         <div className="flex items-center gap-3 mb-6">
@@ -835,42 +814,8 @@
                                             }) : <p className="text-gray-400 text-center py-10">{t.notEnoughTracks}</p>}
                                         </div>
                                     </div>
-
-                                    {/* ALBUM */}
-                                    <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
-                                        <div className="flex items-center gap-3 mb-6">
-                                            <IconDisc className="text-blue-400 w-6 h-6" />
-                                            <h2 className="font-display text-2xl font-bold">{t.topAlbums}</h2>
-                                        </div>
-                                        <div className="space-y-3">
-                                            {stats.topAlbum.length > 0 ? stats.topAlbum.map((album, index) => {
-                                                const [nomeAlbum, artista] = album[0].split(' -|- ');
-                                                const maxCount = stats.topAlbum[0][1];
-                                                const width = `${(album[1] / maxCount) * 100}%`;
-                                                return (
-                                                    <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.05] transition-colors border border-transparent hover:border-white/5">
-                                                        <div className="flex justify-between items-center z-10 relative px-3 py-2 gap-3">
-                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                                <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0">{index + 1}</span>
-                                                                <EntityImage artist={artista} title={nomeAlbum} type="album" altText={nomeAlbum} className="w-10 h-10 rounded-lg flex-shrink-0 border border-white/10" />
-                                                                <div className="truncate min-w-0 flex-1">
-                                                                    <p className="font-bold truncate text-gray-100">{nomeAlbum}</p>
-                                                                    <p className="text-xs text-gray-400 truncate">{artista}</p>
-                                                                </div>
-                                                            </div>
-                                                            <span className="text-blue-300 font-mono text-sm whitespace-nowrap flex-shrink-0">{album[1]} <span className="hidden sm:inline">{t.listens}</span></span>
-                                                        </div>
-                                                        <div className="absolute top-0 left-0 h-full w-full pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity">
-                                                            <div className="h-full bg-blue-500 transition-all duration-1000" style={{ width }}></div>
-                                                        </div>
-                                                    </div>
-                                                )
-                                            }) : <p className="text-gray-400 text-center py-10">{t.noAlbumData}</p>}
-                                        </div>
-                                    </div>
                                 </div>
 
-                                {}
                                 <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-500/20 rounded-3xl p-6 md:p-8">
                                     <h2 className="font-display text-2xl font-bold mb-6 flex items-center gap-3 text-white">
                                         <IconCalendar className="text-indigo-400 w-6 h-6" /> {t.clockTitle}
