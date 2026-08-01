@@ -402,9 +402,16 @@
             return shared / qWords.length >= 0.4;
         };
 
-        // Scarta URL che quasi certamente NON sono foto reali (loghi, firme, stemmi):
-        // su Wikipedia/Wikidata questi sono quasi sempre file .svg
-        const looksLikeRealPhoto = (url) => !!url && !/\.svg(\?.*)?$/i.test(url);
+        // Scarta URL che sono vettoriali (.svg) o che contengono parole chiave tipiche di loghi e firme
+        const looksLikeRealPhoto = (url) => {
+            if (!url) return false;
+            const lowerUrl = decodeURIComponent(url).toLowerCase();
+            // Scarta i vettoriali
+            if (/\.svg(\?.*)?$/.test(lowerUrl)) return false;
+            // Scarta firme, loghi, scritte e simboli
+            if (/logo|signature|firma|wordmark|text|symbol|icon/i.test(lowerUrl)) return false;
+            return true;
+        };
 
         // Riconosce, dalla breve descrizione che Wikipedia/Wikidata associano a una voce,
         // se si tratta plausibilmente di un musicista/gruppo. Serve a scartare omonimi
