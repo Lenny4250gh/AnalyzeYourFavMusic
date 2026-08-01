@@ -266,11 +266,11 @@
             
             // Aumentiamo il limite da 1 a 15 per avere una lista tra cui scegliere
             if (type === 'artist') {
-                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=musicTrack&attribute=artistTerm&limit=15`;
+                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=musicTrack&attribute=artistTerm&limit=105`;
             } else if (type === 'album') {
-                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=album&limit=15`;
+                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=album&limit=105`;
             } else {
-                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=musicTrack&limit=15`;
+                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=musicTrack&limit=105`;
             }
         
             try {
