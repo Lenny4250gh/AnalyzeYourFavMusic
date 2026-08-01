@@ -266,13 +266,13 @@
             // Creiamo query specifiche in base a cosa stiamo cercando per evitare risultati sballati
             if (type === 'artist') {
                 // Cerca solo ed esclusivamente i brani dove lui è l'artista principale (attribute=artistTerm)
-                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=musicTrack&attribute=artistTerm&limit=15`;
+                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=musicTrack&attribute=artistTerm&limit=50`;
             } else if (type === 'album') {
                 // Cerca specificamente tra gli album
-                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=album&limit=15`;
+                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=album&limit=50`;
             } else {
                 // Cerca specificamente un brano
-                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=musicTrack&limit=15`;
+                url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&entity=musicTrack&limit=50`;
             }
 
             try {
