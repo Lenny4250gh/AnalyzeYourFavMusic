@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AnalyzeYourFavMusic</title>
-    <meta name="description" content="Analyze your Spotify and YouTube Music listening history — completely offline, in your browser. / Analizza la tua cronologia di ascolto Spotify e YouTube Music, completamente offline nel tuo browser.">
+    <meta name="description" content="Analyze your Spotify and YouTube Music listening history — completely offline, in your browser.">
     <meta name="theme-color" content="#0f0f13">
-    <meta property="og:title" content="AnalyzeYourFavMusic">
-    <meta property="og:description" content="Turn your Spotify & YouTube Music history into a beautiful, private Wrapped-style dashboard.">
-    <meta property="og:type" content="website">
 
     <!-- Favicon: vinyl/wave mark, inline SVG so the file stays fully self-contained -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23a855f7'/%3E%3Cstop offset='100%25' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='%230f0f13'/%3E%3Ccircle cx='32' cy='32' r='22' fill='url(%23g)'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%230f0f13'/%3E%3Ccircle cx='32' cy='32' r='2.5' fill='url(%23g)'/%3E%3C/svg%3E">
@@ -65,7 +62,7 @@
     <script type="text/babel">
         const { useState, useMemo, useCallback, useEffect } = React;
 
-        // --- ICONE SVG (Sostituiscono Lucide per far funzionare tutto in un file) ---
+        // --- ICONE SVG ---
         const IconUpload = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M12 12v9"></path><path d="m16 16-4-4-4 4"></path></svg>;
         const IconMusic = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>;
         const IconMic = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 8-9.04 9.06a2.828 2.828 0 1 0 3.988 3.988L16 12"></path><circle cx="17" cy="7" r="5"></circle></svg>;
@@ -76,8 +73,8 @@
         const IconRefresh = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>;
         const IconAlert = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>;
         const IconDownload = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>;
+        const IconImage = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>;
 
-        // Logo mark del brand, riusato in header e schermata iniziale
         const Logo = ({ className }) => (
             <svg className={className} viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
                 <defs>
@@ -93,7 +90,6 @@
             </svg>
         );
 
-        // --- TRADUZIONI / TRANSLATIONS ---
         const DICT = {
             it: {
                 brand: 'AnalyzeYourFavMusic',
@@ -212,13 +208,11 @@
             } catch (e) { return 'en'; }
         };
 
-        // --- FUNZIONI DI SUPPORTO (indipendenti dalla lingua di visualizzazione) ---
         const parseDate = (dataStr) => {
             if (!dataStr) return null;
             let dt = new Date(dataStr.replace('Z', '+00:00'));
             if (!isNaN(dt.getTime())) return dt;
             
-            // Gestione del formato it-IT DD/MM/YYYY, HH:mm:ss o DD/MM/YYYY HH:mm:ss esportato nel CSV
             const matchIt = dataStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[,\s]+(\d{1,2}):(\d{2}):(\d{2})/);
             if (matchIt) {
                 return new Date(matchIt[3], matchIt[2] - 1, matchIt[1], matchIt[4], matchIt[5], matchIt[6]);
@@ -260,7 +254,101 @@
             return arr;
         };
 
-        // --- APP PRINCIPALE ---
+        // Caching delle immagini per evitare richieste multiple per lo stesso artista/brano
+        const imageCache = new Map();
+
+        const fetchArtwork = async (artist, title, type) => {
+            const cacheKey = `${type}-${artist}-${title || ''}`;
+            if (imageCache.has(cacheKey)) return imageCache.get(cacheKey);
+
+            // Per gli artisti, cerchiamo un brano dell'artista per avere una foto (spesso la copertina dell'album più famoso)
+            let term = artist;
+            if (title && type !== 'artist') term += ' ' + title;
+
+            // Utilizziamo l'API pubblica di iTunes Search, supporta CORS ed è gratuita
+            const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&limit=1`;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data.results && data.results.length > 0) {
+                    // iTunes restituisce immagini 100x100. Sostituiamo per avere una versione 300x300 di qualità migliore
+                    let imgUrl = data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
+                    imageCache.set(cacheKey, imgUrl);
+                    return imgUrl;
+                }
+            } catch (e) {
+                console.warn("Errore fetch artwork iTunes", e);
+            }
+
+            imageCache.set(cacheKey, null);
+            return null;
+        };
+
+        // Componente React per gestire il caricamento dell'immagine, lo scheletro e il fallback
+        const EntityImage = ({ artist, title, type, altText, className }) => {
+            const [src, setSrc] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(false);
+
+            useEffect(() => {
+                let isMounted = true;
+                setLoading(true);
+                setError(false);
+                
+                fetchArtwork(artist, title, type).then(url => {
+                    if (isMounted) {
+                        setSrc(url);
+                        setLoading(false);
+                    }
+                });
+                
+                return () => { isMounted = false; };
+            }, [artist, title, type]);
+
+            const getInitials = (text) => {
+                if (!text) return '??';
+                const parts = text.trim().split(' ');
+                if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+                return text.substring(0, 2).toUpperCase();
+            };
+
+            if (loading) {
+                return <div className={`animate-pulse bg-white/10 ${className}`}></div>;
+            }
+
+            if (!src || error) {
+                // Generazione di un gradiente unico e consistente basato sul testo
+                const charCode = (altText || '').charCodeAt(0) || 0;
+                const colors = [
+                    'from-purple-600 to-indigo-600',
+                    'from-pink-600 to-rose-600',
+                    'from-emerald-600 to-teal-600',
+                    'from-orange-600 to-amber-600',
+                    'from-blue-600 to-cyan-600'
+                ];
+                const gradient = colors[charCode % colors.length];
+
+                return (
+                    <div className={`flex items-center justify-center bg-gradient-to-br ${gradient} shadow-md ${className}`}>
+                        <span className="text-white font-bold opacity-80 text-xs tracking-wider">
+                            {getInitials(altText)}
+                        </span>
+                    </div>
+                );
+            }
+
+            return (
+                <img 
+                    src={src} 
+                    alt={altText} 
+                    className={`object-cover shadow-md ${className}`} 
+                    loading="lazy" 
+                    onError={() => setError(true)} 
+                />
+            );
+        };
+
         function App() {
             const [lang, setLang] = useState(detectLang());
             const t = DICT[lang];
@@ -268,7 +356,7 @@
             const [ascolti, setAscolti] = useState([]);
             const [isProcessing, setIsProcessing] = useState(false);
             const [error, setError] = useState('');
-            const [filterMode, setFilterMode] = useState('all'); // 'all' | 'year' | 'range'
+            const [filterMode, setFilterMode] = useState('all');
             const [selectedYear, setSelectedYear] = useState('all');
             const [dateFrom, setDateFrom] = useState('');
             const [dateTo, setDateTo] = useState('');
@@ -286,11 +374,9 @@
                     for (let i = 0; i < files.length; i++) {
                         const file = files[i];
                         
-                        // SUPPORTO IMPORTAZIONE CSV
                         if (file.name.endsWith('.csv')) {
                             const text = await file.text();
                             const lines = text.split('\n');
-                            // Skip header
                             for (let j = 1; j < lines.length; j++) {
                                 const line = lines[j].trim();
                                 if (!line) continue;
@@ -340,8 +426,6 @@
                                 if (titolo && titolo !== 'a video that has been removed' && !titolo.toLowerCase().includes('video non disponibile') && !isUnknown(nomeArtista, titolo)) {
                                     const dt = parseDate(item.time);
                                     if (dt) {
-                                        // YouTube Music non fornisce la durata nel file di esportazione.
-                                        // Usiamo una media statistica di 3 minuti (180000 millisecondi) per brano per avere una stima.
                                         const stimaDurataMediaMs = 180000; 
                                         tuttiAscolti.push({ fonte: 'YTMusic', artista: nomeArtista, titolo: titolo, album: null, data: dt, ms_played: stimaDurataMediaMs });
                                     }
@@ -434,15 +518,7 @@
 
             const stats = useMemo(() => {
                 if (ascolti.length === 0) return null;
-
-                let filtered = ascolti;
-                if (filterMode === 'year' && selectedYear !== 'all') {
-                    filtered = ascolti.filter(a => a.data.getFullYear().toString() === selectedYear);
-                } else if (filterMode === 'range' && (dateFrom || dateTo)) {
-                    const from = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
-                    const to = dateTo ? new Date(dateTo + 'T23:59:59') : null;
-                    filtered = ascolti.filter(a => (!from || a.data >= from) && (!to || a.data <= to));
-                }
+                const filtered = datiFiltrati;
                 if (filtered.length === 0) return null;
 
                 const ytmCount = filtered.filter(a => a.fonte === 'YTMusic').length;
@@ -462,14 +538,13 @@
 
                 filtered.forEach(a => {
                     artistiCount[a.artista] = (artistiCount[a.artista] || 0) + 1;
-                    const chiaveBrano = `${a.titolo} - ${a.artista}`;
+                    const chiaveBrano = `${a.titolo} -|- ${a.artista}`;
                     braniCount[chiaveBrano] = (braniCount[chiaveBrano] || 0) + 1;
-                    if (a.album) albumCount[`${a.album} - ${a.artista}`] = (albumCount[`${a.album} - ${a.artista}`] || 0) + 1;
+                    if (a.album) albumCount[`${a.album} -|- ${a.artista}`] = (albumCount[`${a.album} -|- ${a.artista}`] || 0) + 1;
 
                     if (a.data < minDate) minDate = a.data;
                     if (a.data > maxDate) maxDate = a.data;
 
-                    // Uso data locale (non UTC) per evitare che ascolti serali finiscano nel giorno sbagliato
                     const y = a.data.getFullYear(), m = String(a.data.getMonth() + 1).padStart(2, '0'), d = String(a.data.getDate()).padStart(2, '0');
                     const dateStr = `${y}-${m}-${d}`;
                     giorniCount[dateStr] = (giorniCount[dateStr] || 0) + 1;
@@ -503,8 +578,7 @@
                     topArtisti: sortObject(artistiCount).slice(0, 10),
                     topBrani: sortObject(braniCount).filter(b => b[1] > 1).slice(0, 10),
                     topAlbum: sortObject(albumCount).filter(b => b[1] > 1).slice(0, 10),
-                    weekdayFull,
-                    maxWeekday,
+                    weekdayFull, maxWeekday,
                     date: {
                         inizio: minDate,
                         fine: maxDate,
@@ -515,7 +589,7 @@
                         fasciaTop: sortObject(fasceCount)[0] ? t.slots[sortObject(fasceCount)[0][0]] : t.na
                     }
                 };
-            }, [ascolti, filterMode, selectedYear, dateFrom, dateTo, lang]);
+            }, [datiFiltrati, lang]);
 
             const anniDisponibili = useMemo(() => {
                 const anni = new Set();
@@ -595,6 +669,8 @@
                                     </p>
                                 </div>
                             </div>
+                            
+                            {}
                             <div className="flex flex-col gap-3 bg-white/[0.04] p-3 rounded-2xl border border-white/10 w-full md:w-auto backdrop-blur-sm">
                                 <div className="flex items-center justify-between md:justify-end gap-2">
                                     <LangSwitch />
@@ -638,6 +714,8 @@
                                 <p className="text-sm text-gray-500 mt-2">{t.noResultsSubtitle}</p>
                             </div>
                         )}
+                        
+                        {}
                         {stats && (
                             <div className="space-y-8">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -663,24 +741,30 @@
                                     </div>
                                 </div>
 
+                                {}
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    {/* ARTISTI */}
                                     <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
                                         <div className="flex items-center gap-3 mb-6">
                                             <IconMic className="text-purple-400 w-6 h-6" />
                                             <h2 className="font-display text-2xl font-bold">{t.topArtists}</h2>
                                         </div>
-                                        <div className="space-y-4">
+                                        <div className="space-y-3">
                                             {stats.topArtisti.map((artista, index) => {
                                                 const maxCount = stats.topArtisti[0][1];
                                                 const width = `${(artista[1] / maxCount) * 100}%`;
                                                 return (
-                                                    <div key={index} className="relative group">
-                                                        <div className="flex justify-between text-sm mb-1 z-10 relative px-2 gap-2">
-                                                            <span className="font-semibold truncate pr-4 text-white min-w-0 flex-1">{index + 1}. {artista[0]}</span>
-                                                            <span className="text-purple-300 font-mono flex-shrink-0">{artista[1]} {t.listens}</span>
+                                                    <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.05] transition-colors border border-transparent hover:border-white/5">
+                                                        <div className="flex justify-between items-center z-10 relative px-3 py-2 gap-3">
+                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0">{index + 1}</span>
+                                                                <EntityImage artist={artista[0]} type="artist" altText={artista[0]} className="w-10 h-10 rounded-full flex-shrink-0 border border-white/10" />
+                                                                <span className="font-bold truncate text-gray-100 min-w-0">{artista[0]}</span>
+                                                            </div>
+                                                            <span className="text-purple-300 font-mono text-sm flex-shrink-0">{artista[1]} <span className="hidden sm:inline">{t.listens}</span></span>
                                                         </div>
-                                                        <div className="h-8 w-full bg-white/5 rounded-md overflow-hidden relative">
-                                                            <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-600/50 to-pink-600/50 rounded-md transition-all duration-1000 group-hover:from-purple-500/80 group-hover:to-pink-500/80" style={{ width }}></div>
+                                                        <div className="absolute top-0 left-0 h-full w-full pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity">
+                                                            <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-1000" style={{ width }}></div>
                                                         </div>
                                                     </div>
                                                 )
@@ -688,30 +772,32 @@
                                         </div>
                                     </div>
 
+                                    {/* BRANI */}
                                     <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
                                         <div className="flex items-center gap-3 mb-6">
                                             <IconMusic className="text-pink-400 w-6 h-6" />
                                             <h2 className="font-display text-2xl font-bold">{t.topTracks}</h2>
                                         </div>
-                                        <div className="space-y-4">
+                                        <div className="space-y-3">
                                             {stats.topBrani.length > 0 ? stats.topBrani.map((brano, index) => {
-                                                const [titolo, artista] = brano[0].split(' - ');
+                                                const [titolo, artista] = brano[0].split(' -|- ');
                                                 const maxCount = stats.topBrani[0][1];
                                                 const width = `${(brano[1] / maxCount) * 100}%`;
                                                 return (
-                                                    <div key={index} className="relative group">
-                                                        <div className="flex justify-between items-center z-10 relative px-2 py-1 gap-2">
-                                                            <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
-                                                                <span className="text-gray-500 font-bold w-4 flex-shrink-0">{index + 1}</span>
+                                                    <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.05] transition-colors border border-transparent hover:border-white/5">
+                                                        <div className="flex justify-between items-center z-10 relative px-3 py-2 gap-3">
+                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0">{index + 1}</span>
+                                                                <EntityImage artist={artista} title={titolo} type="track" altText={titolo} className="w-10 h-10 rounded-lg flex-shrink-0 border border-white/10" />
                                                                 <div className="truncate min-w-0 flex-1">
                                                                     <p className="font-bold truncate text-gray-100">{titolo}</p>
                                                                     <p className="text-xs text-gray-400 truncate">{artista}</p>
                                                                 </div>
                                                             </div>
-                                                            <span className="text-pink-300 font-mono text-sm whitespace-nowrap flex-shrink-0">{brano[1]} {t.listens}</span>
+                                                            <span className="text-pink-300 font-mono text-sm whitespace-nowrap flex-shrink-0">{brano[1]} <span className="hidden sm:inline">{t.listens}</span></span>
                                                         </div>
-                                                        <div className="absolute top-0 left-0 h-full bg-white/5 group-hover:bg-white/10 rounded-lg transition-colors w-full">
-                                                            <div className="h-full bg-pink-500/10 rounded-lg transition-all duration-1000" style={{ width }}></div>
+                                                        <div className="absolute top-0 left-0 h-full w-full pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity">
+                                                            <div className="h-full bg-pink-500 transition-all duration-1000" style={{ width }}></div>
                                                         </div>
                                                     </div>
                                                 )
@@ -719,30 +805,32 @@
                                         </div>
                                     </div>
 
+                                    {/* ALBUM */}
                                     <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
                                         <div className="flex items-center gap-3 mb-6">
                                             <IconDisc className="text-blue-400 w-6 h-6" />
                                             <h2 className="font-display text-2xl font-bold">{t.topAlbums}</h2>
                                         </div>
-                                        <div className="space-y-4">
+                                        <div className="space-y-3">
                                             {stats.topAlbum.length > 0 ? stats.topAlbum.map((album, index) => {
-                                                const [nomeAlbum, artista] = album[0].split(' - ');
+                                                const [nomeAlbum, artista] = album[0].split(' -|- ');
                                                 const maxCount = stats.topAlbum[0][1];
                                                 const width = `${(album[1] / maxCount) * 100}%`;
                                                 return (
-                                                    <div key={index} className="relative group">
-                                                        <div className="flex justify-between items-center z-10 relative px-2 py-1 gap-2">
-                                                            <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
-                                                                <span className="text-gray-500 font-bold w-4 flex-shrink-0">{index + 1}</span>
+                                                    <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.05] transition-colors border border-transparent hover:border-white/5">
+                                                        <div className="flex justify-between items-center z-10 relative px-3 py-2 gap-3">
+                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0">{index + 1}</span>
+                                                                <EntityImage artist={artista} title={nomeAlbum} type="album" altText={nomeAlbum} className="w-10 h-10 rounded-lg flex-shrink-0 border border-white/10" />
                                                                 <div className="truncate min-w-0 flex-1">
                                                                     <p className="font-bold truncate text-gray-100">{nomeAlbum}</p>
                                                                     <p className="text-xs text-gray-400 truncate">{artista}</p>
                                                                 </div>
                                                             </div>
-                                                            <span className="text-blue-300 font-mono text-sm whitespace-nowrap flex-shrink-0">{album[1]} {t.listens}</span>
+                                                            <span className="text-blue-300 font-mono text-sm whitespace-nowrap flex-shrink-0">{album[1]} <span className="hidden sm:inline">{t.listens}</span></span>
                                                         </div>
-                                                        <div className="absolute top-0 left-0 h-full bg-white/5 group-hover:bg-white/10 rounded-lg transition-colors w-full">
-                                                            <div className="h-full bg-blue-500/10 rounded-lg transition-all duration-1000" style={{ width }}></div>
+                                                        <div className="absolute top-0 left-0 h-full w-full pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity">
+                                                            <div className="h-full bg-blue-500 transition-all duration-1000" style={{ width }}></div>
                                                         </div>
                                                     </div>
                                                 )
@@ -751,6 +839,7 @@
                                     </div>
                                 </div>
 
+                                {}
                                 <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-500/20 rounded-3xl p-6 md:p-8">
                                     <h2 className="font-display text-2xl font-bold mb-6 flex items-center gap-3 text-white">
                                         <IconCalendar className="text-indigo-400 w-6 h-6" /> {t.clockTitle}
@@ -780,14 +869,10 @@
                                     <div className="mt-8 border-t border-white/10 pt-6">
                                     <p className="text-gray-400 text-sm mb-4">{t.weeklyDistribution}</p>
                                     
-                                    {/* Ho cambiato h-28 in h-32 per dare un po' più di respiro in verticale */}
                                     <div className="flex items-end justify-between gap-2 h-32">
                                         {stats.weekdayFull.map((w, idx) => (
-                                            /* Tolto 'justify-end' per lasciare che il layout fluido (flex-col) gestisca le altezze */
                                             <div key={idx} className="flex flex-col items-center flex-1 h-full">
                                                 <span className="text-xs text-gray-400 mb-1">{w.count}</span>
-                                                
-                                                {/* NUOVO CONTENITORE: Occupa tutto lo spazio libero al centro e allinea la barra in basso */}
                                                 <div className="w-full flex-1 flex items-end">
                                                     <div 
                                                         className="w-full bg-indigo-500/60 hover:bg-indigo-400/80 rounded-t-md transition-all duration-700" 
@@ -797,7 +882,6 @@
                                                         }}
                                                     ></div>
                                                 </div>
-                                                
                                                 <span className="text-xs text-gray-500 mt-2">{w.nome.slice(0, 3)}</span>
                                             </div>
                                         ))}
