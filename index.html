@@ -321,12 +321,21 @@
         // Senza questo controllo, se iTunes non ha esattamente quel brano/album,
         // il codice prendeva comunque un altro pezzo dello stesso artista: stesso artista
         // giusto, ma copertina "sbagliata" perché di un brano diverso.
+        // Il confronto è tollerante (basato sulle parole condivise) perché piccole differenze
+        // di formattazione tra la tua libreria e il catalogo iTunes sono normali.
         const titleMatches = (queryTitle, resultTitle) => {
             const q = normalizeForMatch(stripTitleQualifiers(queryTitle));
             const r = normalizeForMatch(stripTitleQualifiers(resultTitle));
             if (!q || !r) return false;
             if (q === r) return true;
-            return q.includes(r) || r.includes(q);
+            if (q.includes(r) || r.includes(q)) return true;
+            // Altrimenti basta che la maggior parte delle parole significative
+            // (più di 2 lettere) del titolo cercato compaia anche in quello trovato
+            const qWords = q.split(' ').filter(w => w.length > 2);
+            if (qWords.length === 0) return q === r;
+            const rWords = new Set(r.split(' ').filter(w => w.length > 2));
+            const shared = qWords.filter(w => rWords.has(w)).length;
+            return shared / qWords.length >= 0.5;
         };
 
         // Scarta URL che quasi certamente NON sono foto reali (loghi, firme, stemmi):
@@ -460,12 +469,20 @@
             });
 
             try {
-                // Primo tentativo: artista + titolo ripulito da feat./explicit/deluxe/ecc.
-                let results = await searchITunesResults(`${artist} ${cleanTitle}`, entity);
+                // Primo tentativo: artista + titolo originale (la ricerca testuale di iTunes
+                // se la cava meglio col testo completo che con uno già ripulito)
+                let results = await searchITunesResults(`${artist} ${title}`, entity);
                 let match = findMatch(results);
 
-                // Secondo tentativo: solo il titolo, utile se il nome artista in libreria
-                // differisce leggermente da quello nel catalogo iTunes (es. ordine dei featuring)
+                // Secondo tentativo: titolo ripulito da feat./explicit/deluxe/ecc., utile
+                // quando queste annotazioni confondono la ricerca testuale
+                if (!match) {
+                    results = await searchITunesResults(`${artist} ${cleanTitle}`, entity);
+                    match = findMatch(results);
+                }
+
+                // Terzo tentativo: solo il titolo, utile se il nome artista in libreria
+                // differisce dal catalogo iTunes (es. ordine dei featuring)
                 if (!match) {
                     results = await searchITunesResults(cleanTitle, entity);
                     match = findMatch(results);
