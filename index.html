@@ -314,7 +314,12 @@
             .replace(/[\(\[]\s*clean\s*[\)\]]/gi, '')
             .replace(/[\(\[][^)\]]*deluxe[^)\]]*[\)\]]/gi, '')
             .replace(/[\(\[][^)\]]*remaster[^)\]]*[\)\]]/gi, '')
-            .replace(/-\s*(single|ep)\s*$/gi, '')
+            .replace(/[\(\[][^)\]]*radio edit[^)\]]*[\)\]]/gi, '')
+            .replace(/[\(\[][^)\]]*bonus track[^)\]]*[\)\]]/gi, '')
+            .replace(/[\(\[][^)\]]*anniversary[^)\]]*[\)\]]/gi, '')
+            .replace(/[\(\[]\s*(mono|stereo)\s*[\)\]]/gi, '')
+            .replace(/[\(\[]\s*live\s*[\)\]]/gi, '')
+            .replace(/-\s*(single|ep|radio edit|bonus track)\s*$/gi, '')
             .trim();
 
         // Verifica che anche il TITOLO restituito corrisponda davvero a quello cercato.
@@ -335,7 +340,7 @@
             if (qWords.length === 0) return q === r;
             const rWords = new Set(r.split(' ').filter(w => w.length > 2));
             const shared = qWords.filter(w => rWords.has(w)).length;
-            return shared / qWords.length >= 0.5;
+            return shared / qWords.length >= 0.4;
         };
 
         // Scarta URL che quasi certamente NON sono foto reali (loghi, firme, stemmi):
@@ -348,6 +353,13 @@
         const looksLikeMusicianDescription = (desc) => {
             if (!desc) return false;
             return /sing|rapp|music|band\b|compos|vocal|songwrit|producer|dj\b|hip.?hop|rock|pop\b|duo|collective|orchestra|record label/i.test(desc);
+        };
+
+        // Riconosce descrizioni che indicano chiaramente un'altra professione (non musicista):
+        // usata solo per scartare un omonimo palese, non per essere troppo restrittivi
+        const looksLikeNonMusicianDescription = (desc) => {
+            if (!desc) return false;
+            return /actor\b|actress|footballer|soccer player|basketball player|politician|athlete|wrestler|author\b|novelist|film director|scientist|mathematician|chef\b|painter\b|comedian|entrepreneur|businessman|cricketer|boxer\b/i.test(desc);
         };
 
         // Un solo tentativo di ricerca+riassunto su Wikipedia per una data query
@@ -368,9 +380,9 @@
             // Evitiamo pagine di disambiguazione (non hanno una foto specifica)
             if (summaryData?.type === 'disambiguation') return null;
 
-            // Se la voce ha una descrizione breve e NON parla di musica, è quasi certamente
-            // un omonimo (attore, sportivo, ecc.): meglio scartarla che mostrare la persona sbagliata
-            if (summaryData?.description && !looksLikeMusicianDescription(summaryData.description)) return null;
+            // Scartiamo solo se la descrizione indica chiaramente un'altra professione
+            // (attore, sportivo, ecc.): se la descrizione manca o è ambigua, procediamo comunque
+            if (looksLikeNonMusicianDescription(summaryData?.description)) return null;
 
             // Preferiamo l'immagine originale (qualità migliore del thumbnail piccolo)
             const photoUrl = summaryData?.originalimage?.source || summaryData?.thumbnail?.source || null;
@@ -383,15 +395,20 @@
         const tryWikidataPhoto = async (query) => {
             // Prendiamo più candidati (non solo il primo) per poter scegliere quello
             // la cui descrizione parla davvero di musica, ed evitare omonimi
-            const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&limit=6&type=item`;
+            const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&limit=8&type=item`;
             const searchRes = await fetch(searchUrl);
             if (!searchRes.ok) return null;
             const searchData = await searchRes.json();
             const candidates = searchData?.search || [];
             if (candidates.length === 0) return null;
 
-            // Solo candidati la cui descrizione indica chiaramente un musicista/gruppo musicale
-            const musicCandidate = candidates.find(c => looksLikeMusicianDescription(c.description));
+            // Preferiamo un candidato la cui descrizione parla chiaramente di musica...
+            let musicCandidate = candidates.find(c => looksLikeMusicianDescription(c.description));
+            // ...ma se nessuno la menziona esplicitamente, va bene anche il primo candidato
+            // purché la sua descrizione non indichi chiaramente un'altra professione
+            if (!musicCandidate) {
+                musicCandidate = candidates.find(c => !looksLikeNonMusicianDescription(c.description));
+            }
             if (!musicCandidate) return null;
 
             const claimUrl = `https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=${musicCandidate.id}&property=P18&format=json&origin=*`;
@@ -408,13 +425,18 @@
 
         // Cerca una vera fotografia dell'artista (non una copertina di album, non un logo/firma).
         // Proviamo prima Wikidata (foto "ufficiale" dedicata), poi Wikipedia come ripiego,
-        // con query via via più semplici per artisti/band meno comuni.
+        // con più varianti di query: artisti/band meno comuni a volte emergono solo con
+        // parole chiave diverse ("rapper", "singer", "band"...).
         const fetchArtistPhoto = (artist) => runQueued(async () => {
             const attempts = [
                 () => tryWikidataPhoto(`${artist} musician`),
                 () => tryWikidataPhoto(artist),
                 () => tryWikipediaPhoto(`${artist} musician`),
                 () => tryWikipediaPhoto(artist),
+                () => tryWikidataPhoto(`${artist} singer`),
+                () => tryWikidataPhoto(`${artist} rapper`),
+                () => tryWikipediaPhoto(`${artist} rapper`),
+                () => tryWikipediaPhoto(`${artist} band`),
             ];
 
             for (const attempt of attempts) {
