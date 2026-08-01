@@ -489,28 +489,12 @@
             return looksLikeRealPhoto(fileName) ? photoUrl : null;
         };
 
-        // Cerca una foto artista su Wikidata/Wikipedia e, se non la trova,
-        // recupera la copertina dell'album/brano principale dell'artista da iTunes.
+        // Cerca PRIMA su iTunes per avere una copertina in altissima qualità.
+        // Se fallisce, tenta su Wikidata/Wikipedia con il nuovo filtro anti-firme.
         const fetchArtistPhoto = (artist) => runQueued(async () => {
-            const attempts = [
-                () => tryWikidataPhoto(`${artist} musician`),
-                () => tryWikidataPhoto(artist),
-                () => tryWikipediaPhoto(`${artist} musician`),
-                () => tryWikipediaPhoto(artist),
-            ];
-        
-            // 1. Prova prima su Wikidata e Wikipedia
-            for (const attempt of attempts) {
-                try {
-                    const photo = await attempt();
-                    if (photo) return photo;
-                } catch (e) {
-                    // Silently continue
-                }
-            }
-        
-            // 2. FALLBACK: Se Wikipedia fallisce o dà risultati vuoti,
-            // prende la copertina dell'album/singolo più rilevante dell'artista da iTunes
+            
+            // 1. PRIORITÀ ASSOLUTA: iTunes (Copertina dell'album principale)
+            // Visivamente molto più coerente e preciso per un'app musicale.
             try {
                 const results = await searchITunesResults(artist, 'album');
                 const match = results.find(r => artistMatches(artist, r.artistName));
@@ -518,9 +502,28 @@
                     return match.artworkUrl100.replace('100x100bb', '300x300bb');
                 }
             } catch (e) {
-                console.warn("Errore fallback iTunes per l'artista:", artist, e);
+                console.warn("Errore iTunes per l'artista:", artist, e);
             }
         
+            // 2. ULTIMA SPIAGGIA: Wikidata / Wikipedia
+            const attempts = [
+                () => tryWikidataPhoto(`${artist} musician`),
+                () => tryWikidataPhoto(artist),
+                () => tryWikipediaPhoto(`${artist} musician`),
+                () => tryWikipediaPhoto(artist),
+            ];
+        
+            for (const attempt of attempts) {
+                try {
+                    const photo = await attempt();
+                    if (photo) return photo; // Ora la nuova looksLikeRealPhoto bloccherà i loghi
+                } catch (e) {
+                    // Pausa breve per evitare rate-limit
+                    await wait(200);
+                }
+            }
+        
+            // Se non trova assolutamente nulla, restituisce null (mostrerà lo scheletro vuoto)
             return null;
         });
 
