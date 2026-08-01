@@ -308,6 +308,14 @@
         // su Wikipedia/Wikidata questi sono quasi sempre file .svg
         const looksLikeRealPhoto = (url) => !!url && !/\.svg(\?.*)?$/i.test(url);
 
+        // Riconosce, dalla breve descrizione che Wikipedia/Wikidata associano a una voce,
+        // se si tratta plausibilmente di un musicista/gruppo. Serve a scartare omonimi
+        // (attori, sportivi, politici, ecc.) che altrimenti finirebbero mostrati per errore.
+        const looksLikeMusicianDescription = (desc) => {
+            if (!desc) return false;
+            return /sing|rapp|music|band\b|compos|vocal|songwrit|producer|dj\b|hip.?hop|rock|pop\b|duo|collective|orchestra|record label/i.test(desc);
+        };
+
         // Un solo tentativo di ricerca+riassunto su Wikipedia per una data query
         const tryWikipediaPhoto = async (query) => {
             const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*&srlimit=1`;
@@ -326,6 +334,10 @@
             // Evitiamo pagine di disambiguazione (non hanno una foto specifica)
             if (summaryData?.type === 'disambiguation') return null;
 
+            // Se la voce ha una descrizione breve e NON parla di musica, è quasi certamente
+            // un omonimo (attore, sportivo, ecc.): meglio scartarla che mostrare la persona sbagliata
+            if (summaryData?.description && !looksLikeMusicianDescription(summaryData.description)) return null;
+
             // Preferiamo l'immagine originale (qualità migliore del thumbnail piccolo)
             const photoUrl = summaryData?.originalimage?.source || summaryData?.thumbnail?.source || null;
             return looksLikeRealPhoto(photoUrl) ? photoUrl : null;
@@ -335,14 +347,20 @@
         // ufficiale della persona/band: più affidabile della semplice immagine di testa
         // della pagina Wikipedia, che a volte è un logo o una firma.
         const tryWikidataPhoto = async (query) => {
-            const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&limit=1&type=item`;
+            // Prendiamo più candidati (non solo il primo) per poter scegliere quello
+            // la cui descrizione parla davvero di musica, ed evitare omonimi
+            const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&limit=6&type=item`;
             const searchRes = await fetch(searchUrl);
             if (!searchRes.ok) return null;
             const searchData = await searchRes.json();
-            const id = searchData?.search?.[0]?.id;
-            if (!id) return null;
+            const candidates = searchData?.search || [];
+            if (candidates.length === 0) return null;
 
-            const claimUrl = `https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=${id}&property=P18&format=json&origin=*`;
+            // Solo candidati la cui descrizione indica chiaramente un musicista/gruppo musicale
+            const musicCandidate = candidates.find(c => looksLikeMusicianDescription(c.description));
+            if (!musicCandidate) return null;
+
+            const claimUrl = `https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=${musicCandidate.id}&property=P18&format=json&origin=*`;
             const claimRes = await fetch(claimUrl);
             if (!claimRes.ok) return null;
             const claimData = await claimRes.json();
@@ -359,6 +377,7 @@
         // con query via via più semplici per artisti/band meno comuni.
         const fetchArtistPhoto = (artist) => runQueued(async () => {
             const attempts = [
+                () => tryWikidataPhoto(`${artist} musician`),
                 () => tryWikidataPhoto(artist),
                 () => tryWikipediaPhoto(`${artist} musician`),
                 () => tryWikipediaPhoto(artist),
