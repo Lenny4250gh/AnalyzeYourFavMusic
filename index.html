@@ -775,17 +775,31 @@
                                         </div>
                                     </div>
                                     <div className="mt-8 border-t border-white/10 pt-6">
-                                        <p className="text-gray-400 text-sm mb-4">{t.weeklyDistribution}</p>
-                                        <div className="flex items-end justify-between gap-2 h-28">
-                                            {stats.weekdayFull.map((w, idx) => (
-                                                <div key={idx} className="flex flex-col items-center flex-1 h-full justify-end">
-                                                    <span className="text-xs text-gray-400 mb-1">{w.count}</span>
-                                                    <div className="w-full bg-indigo-500/60 hover:bg-indigo-400/80 rounded-t-md transition-all duration-700" style={{ height: `${(w.count / stats.maxWeekday) * 100}%`, minHeight: w.count > 0 ? '4px' : '0px' }}></div>
-                                                    <span className="text-xs text-gray-500 mt-2">{w.nome.slice(0, 3)}</span>
+                                    <p className="text-gray-400 text-sm mb-4">{t.weeklyDistribution}</p>
+                                    
+                                    {/* Ho cambiato h-28 in h-32 per dare un po' più di respiro in verticale */}
+                                    <div className="flex items-end justify-between gap-2 h-32">
+                                        {stats.weekdayFull.map((w, idx) => (
+                                            /* Tolto 'justify-end' per lasciare che il layout fluido (flex-col) gestisca le altezze */
+                                            <div key={idx} className="flex flex-col items-center flex-1 h-full">
+                                                <span className="text-xs text-gray-400 mb-1">{w.count}</span>
+                                                
+                                                {/* NUOVO CONTENITORE: Occupa tutto lo spazio libero al centro e allinea la barra in basso */}
+                                                <div className="w-full flex-1 flex items-end">
+                                                    <div 
+                                                        className="w-full bg-indigo-500/60 hover:bg-indigo-400/80 rounded-t-md transition-all duration-700" 
+                                                        style={{ 
+                                                            height: `${(w.count / stats.maxWeekday) * 100}%`, 
+                                                            minHeight: w.count > 0 ? '4px' : '0px' 
+                                                        }}
+                                                    ></div>
                                                 </div>
-                                            ))}
-                                        </div>
+                                                
+                                                <span className="text-xs text-gray-500 mt-2">{w.nome.slice(0, 3)}</span>
+                                            </div>
+                                        ))}
                                     </div>
+                                </div>
                                     <div className="mt-6 flex justify-between text-sm text-gray-400 border-t border-white/10 pt-4">
                                         <span>{t.firstListen}: {stats.date.inizio.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US')}</span>
                                         <span>{t.lastListen}: {stats.date.fine.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US')}</span>
