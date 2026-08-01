@@ -304,23 +304,82 @@
             return qWords.every(w => r.includes(w)) || r.includes(q) || q.includes(r);
         };
 
-        // Rimuove le annotazioni tipiche ("feat. ...", "Explicit", "Deluxe", "- Single"...)
-        // che spesso differiscono tra la tua libreria e il catalogo iTunes, e che altrimenti
-        // impediscono un confronto pulito tra i titoli
+        // Rimuove annotazioni di tipo video, edizioni e featuring per una ricerca più pulita
         const stripTitleQualifiers = (s) => (s || '')
-            .replace(/[\(\[][^)\]]*feat\.?[^)\]]*[\)\]]/gi, '')
-            .replace(/[\(\[][^)\]]*with[^)\]]*[\)\]]/gi, '')
-            .replace(/[\(\[]\s*explicit\s*[\)\]]/gi, '')
-            .replace(/[\(\[]\s*clean\s*[\)\]]/gi, '')
-            .replace(/[\(\[][^)\]]*deluxe[^)\]]*[\)\]]/gi, '')
-            .replace(/[\(\[][^)\]]*remaster[^)\]]*[\)\]]/gi, '')
-            .replace(/[\(\[][^)\]]*radio edit[^)\]]*[\)\]]/gi, '')
-            .replace(/[\(\[][^)\]]*bonus track[^)\]]*[\)\]]/gi, '')
-            .replace(/[\(\[][^)\]]*anniversary[^)\]]*[\)\]]/gi, '')
-            .replace(/[\(\[]\s*(mono|stereo)\s*[\)\]]/gi, '')
-            .replace(/[\(\[]\s*live\s*[\)\]]/gi, '')
-            .replace(/-\s*(single|ep|radio edit|bonus track)\s*$/gi, '')
+            .replace(/[\(\[][^)\]]*(feat|with|explicit|clean|deluxe|remaster|radio edit|bonus track|anniversary|mono|stereo|live|official|video|music video|lyric|visualizer|audio|hd|4k)[^)\]]*[\)\]]/gi, '')
+            .replace(/-\s*(single|ep|radio edit|bonus track|official video|music video|lyric video|official audio|visualizer)\s*$/gi, '')
+            .replace(/\b(official video|music video|lyric video|official music video|official audio|visualizer|video ufficiale|clip officiel)\b/gi, '')
+            .replace(/\s+/g, ' ')
             .trim();
+
+        const fetchArtwork = async (artist, title, type) => {
+            const cacheKey = `${type}-${artist}-${title || ''}`;
+            if (imageCache.has(cacheKey)) return imageCache.get(cacheKey);
+
+            if (type === 'artist') {
+                const photo = await fetchArtistPhoto(artist);
+                imageCache.set(cacheKey, photo);
+                return photo;
+            }
+
+            const entity = type === 'album' ? 'album' : 'musicTrack';
+            const cleanTitle = stripTitleQualifiers(title);
+
+            const looksLikeCompilation = (collectionName) => !!collectionName &&
+                /various artists|greatest hits|best of|now (that|playing)|mixtape|compilation|goes pop|megamix|top \d|hits collection|essentials?\b|anthology|playlist/i.test(collectionName);
+
+            const findMatch = (results) => {
+                const candidates = results.filter(r => {
+                    // Escludiamo esplicitamente i video musicali per evitare miniature da videoclip
+                    if (r.kind === 'music-video') return false;
+                    const resultTitle = type === 'album' ? r.collectionName : r.trackName;
+                    return artistMatches(artist, r.artistName) && titleMatches(title, resultTitle);
+                });
+                if (candidates.length === 0) return null;
+                if (candidates.length === 1) return candidates[0];
+
+                const score = (r) => {
+                    let s = 0;
+                    // Diamo priorità ai brani audio ufficiali
+                    if (r.kind === 'song') s += 4;
+                    if (normalizeForMatch(r.artistName) === normalizeForMatch(artist)) s += 2;
+                    const resultTitle = type === 'album' ? r.collectionName : r.trackName;
+                    const qTitle = normalizeForMatch(stripTitleQualifiers(title));
+                    const rTitle = normalizeForMatch(stripTitleQualifiers(resultTitle));
+                    if (qTitle === rTitle) s += 2;
+                    if (looksLikeCompilation(r.collectionName)) s -= 5;
+                    return s;
+                };
+
+                return candidates.slice().sort((a, b) => score(b) - score(a))[0];
+            };
+
+            try {
+                let results = await searchITunesResults(`${artist} ${cleanTitle}`, entity);
+                let match = findMatch(results);
+
+                if (!match) {
+                    results = await searchITunesResults(`${artist} ${title}`, entity);
+                    match = findMatch(results);
+                }
+
+                if (!match) {
+                    results = await searchITunesResults(cleanTitle, entity);
+                    match = findMatch(results);
+                }
+
+                if (match && match.artworkUrl100) {
+                    const imgUrl = match.artworkUrl100.replace('100x100bb', '300x300bb');
+                    imageCache.set(cacheKey, imgUrl);
+                    return imgUrl;
+                }
+            } catch (e) {
+                console.warn("Errore fetch artwork iTunes", e);
+            }
+
+            imageCache.set(cacheKey, null);
+            return null;
+        };
 
         // Verifica che anche il TITOLO restituito corrisponda davvero a quello cercato.
         // Senza questo controllo, se iTunes non ha esattamente quel brano/album,
@@ -466,88 +525,6 @@
                 return res.json();
             });
             return data?.results || [];
-        };
-
-        const fetchArtwork = async (artist, title, type) => {
-            const cacheKey = `${type}-${artist}-${title || ''}`;
-            if (imageCache.has(cacheKey)) return imageCache.get(cacheKey);
-
-            // Per gli artisti vogliamo una vera foto della persona/band, non la copertina di un album o brano
-            if (type === 'artist') {
-                const photo = await fetchArtistPhoto(artist);
-                imageCache.set(cacheKey, photo);
-                return photo;
-            }
-
-            const entity = type === 'album' ? 'album' : 'musicTrack';
-            const cleanTitle = stripTitleQualifiers(title);
-
-            // Riconosce raccolte/compilation ("My Favorite Part: Hip Hop Goes Pop", "Now That's
-            // What I Call...", mixtape, greatest hits, ecc.): la stessa canzone può comparire
-            // anche dentro una raccolta del genere, ma la sua copertina non è quella "vera"
-            // del brano/artista e va evitata quando possibile
-            const looksLikeCompilation = (collectionName) => !!collectionName &&
-                /various artists|greatest hits|best of|now (that|playing)|mixtape|compilation|goes pop|megamix|top \d|hits collection|essentials?\b|anthology|playlist/i.test(collectionName);
-
-            // Un risultato va bene solo se combaciano SIA l'artista SIA il titolo:
-            // solo l'artista giusto non basta, altrimenti si prende la copertina di un
-            // brano diverso dello stesso artista (da qui le immagini "confuse").
-            // Tra più risultati validi, scegliamo quello più "genuino": artista/titolo
-            // che combaciano esattamente e che non è una raccolta/compilation.
-            const findMatch = (results) => {
-                const candidates = results.filter(r => {
-                    const resultTitle = type === 'album' ? r.collectionName : r.trackName;
-                    return artistMatches(artist, r.artistName) && titleMatches(title, resultTitle);
-                });
-                if (candidates.length === 0) return null;
-                if (candidates.length === 1) return candidates[0];
-
-                const score = (r) => {
-                    let s = 0;
-                    if (normalizeForMatch(r.artistName) === normalizeForMatch(artist)) s += 2;
-                    const resultTitle = type === 'album' ? r.collectionName : r.trackName;
-                    const qTitle = normalizeForMatch(stripTitleQualifiers(title));
-                    const rTitle = normalizeForMatch(stripTitleQualifiers(resultTitle));
-                    if (qTitle === rTitle) s += 2;
-                    if (looksLikeCompilation(r.collectionName)) s -= 5;
-                    return s;
-                };
-
-                return candidates.slice().sort((a, b) => score(b) - score(a))[0];
-            };
-
-            try {
-                // Primo tentativo: artista + titolo originale (la ricerca testuale di iTunes
-                // se la cava meglio col testo completo che con uno già ripulito)
-                let results = await searchITunesResults(`${artist} ${title}`, entity);
-                let match = findMatch(results);
-
-                // Secondo tentativo: titolo ripulito da feat./explicit/deluxe/ecc., utile
-                // quando queste annotazioni confondono la ricerca testuale
-                if (!match) {
-                    results = await searchITunesResults(`${artist} ${cleanTitle}`, entity);
-                    match = findMatch(results);
-                }
-
-                // Terzo tentativo: solo il titolo, utile se il nome artista in libreria
-                // differisce dal catalogo iTunes (es. ordine dei featuring)
-                if (!match) {
-                    results = await searchITunesResults(cleanTitle, entity);
-                    match = findMatch(results);
-                }
-
-                if (match && match.artworkUrl100) {
-                    // iTunes restituisce immagini 100x100. Sostituiamo per avere una versione 300x300 di qualità migliore
-                    const imgUrl = match.artworkUrl100.replace('100x100bb', '300x300bb');
-                    imageCache.set(cacheKey, imgUrl);
-                    return imgUrl;
-                }
-            } catch (e) {
-                console.warn("Errore fetch artwork iTunes", e);
-            }
-
-            imageCache.set(cacheKey, null);
-            return null;
         };
 
         // Componente React per gestire il caricamento dell'immagine, lo scheletro e il fallback
