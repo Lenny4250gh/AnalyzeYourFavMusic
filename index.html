@@ -340,7 +340,10 @@
                                 if (titolo && titolo !== 'a video that has been removed' && !titolo.toLowerCase().includes('video non disponibile') && !isUnknown(nomeArtista, titolo)) {
                                     const dt = parseDate(item.time);
                                     if (dt) {
-                                        tuttiAscolti.push({ fonte: 'YTMusic', artista: nomeArtista, titolo: titolo, album: null, data: dt, ms_played: 0 });
+                                        // YouTube Music non fornisce la durata nel file di esportazione.
+                                        // Usiamo una media statistica di 3 minuti (180000 millisecondi) per brano per avere una stima.
+                                        const stimaDurataMediaMs = 180000; 
+                                        tuttiAscolti.push({ fonte: 'YTMusic', artista: nomeArtista, titolo: titolo, album: null, data: dt, ms_played: stimaDurataMediaMs });
                                     }
                                 }
                             });
