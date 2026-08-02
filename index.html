@@ -1160,7 +1160,7 @@
                                     <LangSwitch />
                                 </div>
                                 <div className="flex flex-col gap-3">
-                                    {/* Riga 1: modalità filtro + eventuale selettore anno/intervallo */}
+                                    {/* Riga 1: modalità filtro + eventuale selettore anno/intervallo + reset */}
                                     <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-3">
                                         <div className="flex bg-black/25 rounded-lg p-1 w-full sm:w-auto">
                                             <button onClick={() => setFilterMode('all')} className={`flex-1 px-3 py-2 sm:py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'all' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fAll}</button>
@@ -1182,13 +1182,13 @@
                                                 <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full sm:w-auto bg-black/25 text-white px-3 py-2.5 rounded-lg outline-none border border-white/10 text-base sm:text-sm" />
                                             </div>
                                         )}
+
+                                        <button onClick={resetFiltri} className="w-full sm:w-auto px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors text-white">{t.resetFilters}</button>
                                     </div>
 
-                                    {/* Riga 2: pulsanti azione, sempre nello stesso ordine e raggruppamento */}
+                                    {/* Riga 2: esporta ed elimina/ricarica file, sempre insieme */}
                                     <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
-                                        <button onClick={resetFiltri} className="px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors text-white">{t.resetFilters}</button>
                                         <button onClick={() => esportaCSV(datiFiltrati)} className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors text-white"><IconDownload className="w-4 h-4" />{t.exportCSV}</button>
-                                        <button onClick={openQuiz} disabled={!stats} className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-all text-white"><IconTrophy className="w-4 h-4" />{t.quizBtn}</button>
                                         <button onClick={() => { setAscolti([]); resetFiltri(); }} className="px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors text-white">{t.newFiles}</button>
                                     </div>
                                 </div>
