@@ -74,7 +74,7 @@
             to { opacity: 1; }
         }
         .animate-fadebg {
-            animation: fadeInBg 0.3s ease-out both;
+            animation: fadeInBg 0.25s ease-out both;
             will-change: opacity;
         }
         
@@ -1023,20 +1023,27 @@
             const quizQuestions = useMemo(() => generateQuizQuestions(stats, t, lang), [stats, quizSeed, lang]);
 
             const openQuiz = () => {
+                // Apriamo sempre il modal per dare feedback visivo all'utente
                 setQuizState('intro');
                 setSelectedOption(null);
                 setCurrentQuestionIdx(0);
                 setQuizScore(0);
                 setShowQuiz(true);
             };
-
+            
             const startQuiz = () => {
-                setQuizSeed(s => s + 1);
-                setQuizPhase('playing');
-                setQuizIndex(0);
-                setQuizScore(0);
-                setSelectedOption(null);
-                setAnswered(false);
+                const q = generateQuiz();
+                if (q && q.length > 0) {
+                    setQuizQuestions(q);
+                    setQuizState('playing');
+                    setCurrentQuestionIdx(0);
+                    setSelectedOption(null);
+                    setQuizScore(0);
+                } else {
+                    // Se non ci sono abbastanza dati, notifichiamo l'utente
+                    setQuizQuestions([]);
+                    setQuizState('no_data');
+                }
             };
 
             const answerQuiz = (option) => {
@@ -1160,7 +1167,7 @@
 
             return (
                 <React.Fragment>
-                    {/* Contenitore principale dell'app */}
+                    {/* CONTENITORE PRINCIPALE DELLA PAGINA */}
                     <div className="min-h-screen px-4 sm:px-6 md:px-8 py-6 font-sans selection:bg-purple-500/30 pb-20 animate-fadein">
                         <div className="max-w-7xl mx-auto space-y-8">
                             
@@ -1401,113 +1408,157 @@
                         </div>
                     </div>
 
-                   {showQuiz && (
-                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] animate-fadebg" onClick={() => setShowQuiz(false)}>
-                        <div className="bg-gray-900 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full relative max-h-[85vh] overflow-y-auto animate-fadein" onClick={(e) => e.stopPropagation()}>
-                            
-                            {/* Tasto Chiudi */}
-                            <button onClick={() => setShowQuiz(false)} className="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-400 hover:text-white z-10">
-                                <IconClose className="w-6 h-6" />
-                            </button>
-                
-                            {/* FASE 1: INTRODUZIONE */}
-                            {quizState === 'intro' && (
-                                <div className="text-center py-4">
-                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center mx-auto mb-4 text-purple-400 animate-float">
-                                        <IconTrophy className="w-8 h-8" />
+                   {/* MODAL DEL QUIZ: Sempre in primo piano senza scroll */}
+                    {showQuiz && (
+                        <div 
+                            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] animate-fadebg" 
+                            onClick={() => setShowQuiz(false)}
+                        >
+                            <div 
+                                className="bg-gray-900 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full relative max-h-[85vh] overflow-y-auto animate-fadein" 
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {/* Tasto Chiudi */}
+                                <button 
+                                    onClick={() => setShowQuiz(false)} 
+                                    className="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-400 hover:text-white z-10"
+                                >
+                                    <IconClose className="w-6 h-6" />
+                                </button>
+            
+                                {/* FASE 1: SCHERMATA INIZIALE */}
+                                {quizState === 'intro' && (
+                                    <div className="text-center py-4">
+                                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center mx-auto mb-4 text-purple-400">
+                                            <IconTrophy className="w-8 h-8" />
+                                        </div>
+                                        <h3 className="text-2xl font-bold font-display text-white mb-2">
+                                            {t?.quizTitle || 'Quiz Musicale'}
+                                        </h3>
+                                        <p className="text-gray-400 text-sm mb-6 max-w-sm mx-auto">
+                                            {t?.quizSubtitle || 'Metti alla prova la tua conoscenza sulla musica che hai ascoltato!'}
+                                        </p>
+                                        <button 
+                                            onClick={startQuiz} 
+                                            className="w-full py-3.5 px-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-bold text-white transition-all shadow-lg shadow-purple-500/25"
+                                        >
+                                            {t?.quizStartBtn || 'Inizia il Quiz'}
+                                        </button>
                                     </div>
-                                    <h3 className="text-2xl font-bold font-display text-white mb-2">
-                                        {t?.quizTitle || 'Quiz Musicale'}
-                                    </h3>
-                                    <p className="text-gray-400 text-sm mb-6 max-w-sm mx-auto">
-                                        {t?.quizSubtitle || 'Metti alla prova la tua conoscenza sui tuoi brani ed artisti preferiti!'}
-                                    </p>
-                                    <button onClick={startQuiz} className="w-full py-3.5 px-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-bold text-white transition-all shadow-lg shadow-purple-500/25">
-                                        {t?.quizStartBtn || 'Inizia il Quiz'}
-                                    </button>
-                                </div>
-                            )}
-                
-                            {/* FASE 2: GIOCO IN CORSO */}
-                            {quizState === 'playing' && quizQuestions && quizQuestions.length > 0 && (
-                                <div>
-                                    <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
-                                        <span>Domanda {currentQuestionIdx + 1} di {quizQuestions.length}</span>
-                                        <span>Punteggio: {quizScore}</span>
+                                )}
+            
+                                {/* FASE SE NON CI SONO ABBASTANZA DATI */}
+                                {quizState === 'no_data' && (
+                                    <div className="text-center py-4">
+                                        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-4 text-amber-400">
+                                            <IconAlertCircle className="w-8 h-8" />
+                                        </div>
+                                        <h3 className="text-xl font-bold font-display text-white mb-2">Dati Insufficienti</h3>
+                                        <p className="text-gray-400 text-sm mb-6 max-w-sm mx-auto">
+                                            Per poter generare le domande del quiz devi prima caricare la tua cronologia d'ascolto (servono almeno 4 artisti/brani).
+                                        </p>
+                                        <button 
+                                            onClick={() => setShowQuiz(false)} 
+                                            className="w-full py-3 px-6 bg-white/10 hover:bg-white/20 rounded-xl font-semibold text-white transition-colors"
+                                        >
+                                            OK, ho capito
+                                        </button>
                                     </div>
-                                    <div className="w-full bg-white/10 h-1.5 rounded-full mb-6 overflow-hidden">
-                                        <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-full transition-all duration-300" style={{ width: `${((currentQuestionIdx + 1) / quizQuestions.length) * 100}%` }}></div>
-                                    </div>
-                
-                                    <h4 className="text-lg font-bold text-white mb-5">
-                                        {quizQuestions[currentQuestionIdx]?.question}
-                                    </h4>
-                
-                                    <div className="space-y-3">
-                                        {quizQuestions[currentQuestionIdx]?.options?.map((option, idx) => {
-                                            let btnStyle = "bg-white/5 hover:bg-white/10 border-white/10 text-gray-200";
-                                            if (selectedOption !== null) {
-                                                if (idx === quizQuestions[currentQuestionIdx]?.correctAnswer) {
-                                                    btnStyle = "bg-emerald-500/20 border-emerald-500/50 text-emerald-300 font-semibold";
-                                                } else if (idx === selectedOption) {
-                                                    btnStyle = "bg-rose-500/20 border-rose-500/50 text-rose-300";
-                                                } else {
-                                                    btnStyle = "bg-white/5 border-transparent text-gray-500 opacity-50";
+                                )}
+            
+                                {/* FASE 2: GIOCO IN CORSO */}
+                                {quizState === 'playing' && quizQuestions && quizQuestions.length > 0 && (
+                                    <div>
+                                        <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+                                            <span>Domanda {currentQuestionIdx + 1} di {quizQuestions.length}</span>
+                                            <span>Punteggio: {quizScore}</span>
+                                        </div>
+                                        <div className="w-full bg-white/10 h-1.5 rounded-full mb-6 overflow-hidden">
+                                            <div 
+                                                className="bg-gradient-to-r from-purple-500 to-pink-500 h-full transition-all duration-300" 
+                                                style={{ width: `${((currentQuestionIdx + 1) / quizQuestions.length) * 100}%` }}
+                                            ></div>
+                                        </div>
+            
+                                        <h4 className="text-lg font-bold text-white mb-5">
+                                            {quizQuestions[currentQuestionIdx]?.question}
+                                        </h4>
+            
+                                        <div className="space-y-3">
+                                            {quizQuestions[currentQuestionIdx]?.options?.map((option, idx) => {
+                                                let btnStyle = "bg-white/5 hover:bg-white/10 border-white/10 text-gray-200";
+                                                if (selectedOption !== null) {
+                                                    if (idx === quizQuestions[currentQuestionIdx]?.correctAnswer) {
+                                                        btnStyle = "bg-emerald-500/20 border-emerald-500/50 text-emerald-300 font-semibold";
+                                                    } else if (idx === selectedOption) {
+                                                        btnStyle = "bg-rose-500/20 border-rose-500/50 text-rose-300";
+                                                    } else {
+                                                        btnStyle = "bg-white/5 border-transparent text-gray-500 opacity-50";
+                                                    }
                                                 }
-                                            }
-                                            return (
-                                                <button key={idx} disabled={selectedOption !== null} onClick={() => handleAnswer(idx)} className={`w-full p-4 rounded-xl border text-left text-sm transition-all flex items-center justify-between ${btnStyle}`}>
-                                                    <span>{option}</span>
-                                                    {selectedOption !== null && idx === quizQuestions[currentQuestionIdx]?.correctAnswer && <IconCheck className="w-5 h-5 text-emerald-400 shrink-0 ml-2" />}
-                                                    {selectedOption !== null && idx === selectedOption && idx !== quizQuestions[currentQuestionIdx]?.correctAnswer && <IconX className="w-5 h-5 text-rose-400 shrink-0 ml-2" />}
-                                                </button>
-                                            );
-                                        })}
+                                                return (
+                                                    <button 
+                                                        key={idx} 
+                                                        disabled={selectedOption !== null} 
+                                                        onClick={() => handleAnswer(idx)} 
+                                                        className={`w-full p-4 rounded-xl border text-left text-sm transition-all flex items-center justify-between ${btnStyle}`}
+                                                    >
+                                                        <span>{option}</span>
+                                                        {selectedOption !== null && idx === quizQuestions[currentQuestionIdx]?.correctAnswer && <IconCheck className="w-5 h-5 text-emerald-400 shrink-0 ml-2" />}
+                                                        {selectedOption !== null && idx === selectedOption && idx !== quizQuestions[currentQuestionIdx]?.correctAnswer && <IconX className="w-5 h-5 text-rose-400 shrink-0 ml-2" />}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
-                
-                            {/* FASE 3: RISULTATO FINALE */}
-                            {quizState === 'finished' && (
-                                <div className="text-center py-4">
-                                    <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center mx-auto mb-4 text-purple-400">
-                                        <IconTrophy className="w-10 h-10" />
+                                )}
+            
+                                {/* FASE 3: RISULTATO FINALE */}
+                                {quizState === 'finished' && (
+                                    <div className="text-center py-4">
+                                        <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center mx-auto mb-4 text-purple-400">
+                                            <IconTrophy className="w-10 h-10" />
+                                        </div>
+                                        <h3 className="text-2xl font-bold font-display text-white mb-1">
+                                            {t?.quizFinishTitle || 'Quiz Completato!'}
+                                        </h3>
+                                        <p className="text-gray-300 text-sm mb-2">
+                                            {typeof t?.quizFinishSubtitle === 'function' 
+                                                ? t.quizFinishSubtitle(quizScore, quizQuestions?.length || 0) 
+                                                : `Punteggio: ${quizScore} / ${quizQuestions?.length || 0}`}
+                                        </p>
+                                        <p className="text-sm font-semibold text-purple-200 mb-7">
+                                            {(quizQuestions?.length > 0) && (
+                                                (quizScore / quizQuestions.length) >= 0.8 
+                                                    ? (t?.quizFinishGreat || 'Eccellente!') 
+                                                    : ((quizScore / quizQuestions.length) >= 0.5 
+                                                        ? (t?.quizFinishGood || 'Buon lavoro!') 
+                                                        : (t?.quizFinishMeh || 'Puoi fare di meglio!'))
+                                            )}
+                                        </p>
+                                        <div className="flex flex-col sm:flex-row gap-3">
+                                            <button 
+                                                onClick={startQuiz} 
+                                                className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-bold text-white transition-all"
+                                            >
+                                                {t?.quizPlayAgain || 'Rigioca'}
+                                            </button>
+                                            <button 
+                                                onClick={() => setShowQuiz(false)} 
+                                                className="flex-1 px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold text-white transition-colors"
+                                            >
+                                                {t?.quizClose || 'Chiudi'}
+                                            </button>
+                                        </div>
                                     </div>
-                                    <h3 className="text-2xl font-bold font-display text-white mb-1">
-                                        {t?.quizFinishTitle || 'Quiz Completato!'}
-                                    </h3>
-                                    <p className="text-gray-300 text-sm mb-2">
-                                        {typeof t?.quizFinishSubtitle === 'function' 
-                                            ? t.quizFinishSubtitle(quizScore, quizQuestions?.length || 0) 
-                                            : `Hai totalizzato ${quizScore} punti!`}
-                                    </p>
-                                    <p className="text-sm font-semibold text-purple-200 mb-7">
-                                        {(quizQuestions?.length > 0) && (
-                                            (quizScore / quizQuestions.length) >= 0.8 
-                                                ? (t?.quizFinishGreat || 'Eccellente!') 
-                                                : ((quizScore / quizQuestions.length) >= 0.5 
-                                                    ? (t?.quizFinishGood || 'Buon lavoro!') 
-                                                    : (t?.quizFinishMeh || 'Puoi fare di meglio!'))
-                                        )}
-                                    </p>
-                                    <div className="flex flex-col sm:flex-row gap-3">
-                                        <button onClick={startQuiz} className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-bold text-white transition-all">
-                                            {t?.quizPlayAgain || 'Rigioca'}
-                                        </button>
-                                        <button onClick={() => setShowQuiz(false)} className="flex-1 px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold text-white transition-colors">
-                                            {t?.quizClose || 'Chiudi'}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
                 </React.Fragment>
             );
         }
-
+        
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
