@@ -25,6 +25,9 @@
     <!-- JSZip per leggere i file .zip direttamente nel browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
+    <!-- html2canvas per esportare la card finale del Wrapped come immagine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
@@ -93,7 +96,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useMemo, useCallback, useEffect } = React;
+        const { useState, useMemo, useCallback, useEffect, useRef } = React;
 
         // --- ICONE SVG ---
         const IconUpload = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M12 12v9"></path><path d="m16 16-4-4-4 4"></path></svg>;
@@ -228,6 +231,40 @@
                 qMinutesTitle: 'Quante ore di musica hai ascoltato (circa)?',
                 qArtistsUniqueTitle: 'Quanti artisti diversi hai ascoltato?',
                 qCompareTitle: 'Chi hai ascoltato di più?',
+                wrappedCardTitle: 'Il tuo Wrapped',
+                wrappedCardSubtitle: 'Rivivi il tuo anno in musica, in stile storie',
+                wrappedCardCta: 'Guarda ora',
+                wrappedCoverTitle: 'Il Tuo Wrapped',
+                wrappedCoverSubtitle: (f, tt) => `Dal ${f} al ${tt}`,
+                wrappedTapHint: 'Tocca per iniziare →',
+                wrappedStreamsTitle: 'Streaming totali',
+                wrappedStreamsSub: 'volte hai premuto play quest\'anno',
+                wrappedMinutesTitle: 'Minuti ascoltati',
+                wrappedMinutesSub: (h, d) => `Circa ${h} ore: come ${d} giorni interi di sola musica 🎧`,
+                wrappedDiversityTitle: 'La tua curiosità musicale',
+                wrappedDiversitySub: (a, b) => `${a} artisti diversi e ${b} brani diversi esplorati`,
+                wrappedTopArtistLabel: 'Il tuo artista #1',
+                wrappedTopArtistSub: (n) => `${n} ascolti`,
+                wrappedTopArtistsListTitle: 'I tuoi Top 5 artisti',
+                wrappedTopTrackLabel: 'Il tuo brano #1',
+                wrappedTopTracksListTitle: 'I tuoi Top 5 brani',
+                wrappedHabitsTitle: 'Le tue abitudini',
+                wrappedHabitsWeekday: 'Giorno preferito',
+                wrappedHabitsTimeSlot: 'Fascia preferita',
+                wrappedHabitsMonth: 'Mese top',
+                wrappedRecapTitle: 'Il tuo riassunto',
+                wrappedRecapArtist: 'Artista #1',
+                wrappedRecapTrack: 'Brano #1',
+                wrappedRecapStreams: 'Streaming',
+                wrappedRecapMinutes: 'Minuti',
+                wrappedRecapMinutesListen: 'Minuti di ascolto',
+                wrappedRecapGenre: 'Genere più ascoltato',
+                wrappedRecapTopArtists: 'Artisti più ascoltati',
+                wrappedRecapTopTracks: 'Brani più ascoltati',
+                wrappedRecapLink: 'wrapyourfavmusic.github.io',
+                wrappedDownload: 'Scarica immagine',
+                wrappedDownloading: 'Generazione...',
+                wrappedBtn: 'Guarda il tuo Wrapped',
             },
             en: {
                 brand: 'WrapYourFavMusic',
@@ -327,6 +364,40 @@
                 qMinutesTitle: 'About how many hours of music have you listened to?',
                 qArtistsUniqueTitle: 'How many unique artists have you listened to?',
                 qCompareTitle: 'Who did you listen to more?',
+                wrappedCardTitle: 'Your Wrapped',
+                wrappedCardSubtitle: 'Relive your year in music, story-style',
+                wrappedCardCta: 'Watch now',
+                wrappedCoverTitle: 'Your Wrapped',
+                wrappedCoverSubtitle: (f, tt) => `From ${f} to ${tt}`,
+                wrappedTapHint: 'Tap to start →',
+                wrappedStreamsTitle: 'Total streams',
+                wrappedStreamsSub: 'times you hit play this year',
+                wrappedMinutesTitle: 'Minutes listened',
+                wrappedMinutesSub: (h, d) => `About ${h} hours: like ${d} whole days of nonstop music 🎧`,
+                wrappedDiversityTitle: 'Your musical curiosity',
+                wrappedDiversitySub: (a, b) => `${a} different artists and ${b} different tracks explored`,
+                wrappedTopArtistLabel: 'Your #1 artist',
+                wrappedTopArtistSub: (n) => `${n} plays`,
+                wrappedTopArtistsListTitle: 'Your Top 5 artists',
+                wrappedTopTrackLabel: 'Your #1 track',
+                wrappedTopTracksListTitle: 'Your Top 5 tracks',
+                wrappedHabitsTitle: 'Your habits',
+                wrappedHabitsWeekday: 'Favorite day',
+                wrappedHabitsTimeSlot: 'Favorite time',
+                wrappedHabitsMonth: 'Top month',
+                wrappedRecapTitle: 'Your recap',
+                wrappedRecapArtist: 'Top Artist',
+                wrappedRecapTrack: 'Top Track',
+                wrappedRecapStreams: 'Streams',
+                wrappedRecapMinutes: 'Minutes',
+                wrappedRecapMinutesListen: 'Minutes listened',
+                wrappedRecapGenre: 'Top genre',
+                wrappedRecapTopArtists: 'Most played artists',
+                wrappedRecapTopTracks: 'Most played tracks',
+                wrappedRecapLink: 'wrapyourfavmusic.github.io',
+                wrappedDownload: 'Download image',
+                wrappedDownloading: 'Generating...',
+                wrappedBtn: 'View your Wrapped',
             }
         };
 
@@ -384,6 +455,30 @@
         };
 
         const imageCache = new Map();
+        const dataUrlCache = new Map(); // artista -> Promise<dataUrl|null>, condivisa tra prefetch e componente per evitare fetch duplicati
+
+        const getArtistPhotoDataUrl = (artist) => {
+            if (dataUrlCache.has(artist)) return dataUrlCache.get(artist);
+            const promise = (async () => {
+                try {
+                    const url = await fetchArtwork(artist, undefined, 'artist');
+                    if (!url) return null;
+                    const res = await fetch(url);
+                    if (!res.ok) return null;
+                    const blob = await res.blob();
+                    return await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.onerror = () => resolve(null);
+                        reader.readAsDataURL(blob);
+                    });
+                } catch (e) {
+                    return null;
+                }
+            })();
+            dataUrlCache.set(artist, promise);
+            return promise;
+        };
         const MAX_CONCURRENT_IMAGE_REQUESTS = 4;
         let activeImageRequests = 0;
         const imageRequestQueue = [];
@@ -646,6 +741,38 @@
 
         const shuffleArray = (arr) => arr.map(v => [Math.random(), v]).sort((a, b) => a[0] - b[0]).map(v => v[1]);
 
+        const RecapArtistPhoto = ({ artist, altText, className }) => {
+            const [src, setSrc] = useState(null);
+            const [status, setStatus] = useState('loading'); // loading | ready | none
+
+            useEffect(() => {
+                let cancelled = false;
+                setStatus('loading');
+                setSrc(null);
+
+                (async () => {
+                    const url = await fetchArtwork(artist, undefined, 'artist');
+                    if (cancelled) return;
+                    if (!url) { setStatus('none'); return; }
+                    setSrc(url);
+                    setStatus('ready');
+                    // In background, prova a convertirla in data URL: se riesce, la sostituisce (serve per l'export in PNG)
+                    const dataUrl = await getArtistPhotoDataUrl(artist);
+                    if (!cancelled && dataUrl) setSrc(dataUrl);
+                })();
+
+                return () => { cancelled = true; };
+            }, [artist]);
+
+            if (status === 'loading') {
+                return <div className={`animate-pulse bg-black/10 ${className}`}></div>;
+            }
+            if (status !== 'ready' || !src) {
+                return null;
+            }
+            return <img src={src} alt={altText} className={`object-cover ${className}`} onError={() => setStatus('none')} />;
+        };
+
         const generateQuizQuestions = (stats, t, lang) => {
             if (!stats) return [];
             const questions = [];
@@ -768,6 +895,10 @@
             const [answered, setAnswered] = useState(false);
             const [quizHistory, setQuizHistory] = useState({});
             const [postLoadChoiceMade, setPostLoadChoiceMade] = useState(false);
+            const [showWrapped, setShowWrapped] = useState(false);
+            const [wrappedIndex, setWrappedIndex] = useState(0);
+            const [downloadingCard, setDownloadingCard] = useState(false);
+            const wrappedCardRef = useRef(null);
 
             useEffect(() => {
                 document.documentElement.lang = lang;
@@ -1022,6 +1153,35 @@
                 };
             }, [datiFiltrati, lang]);
 
+            const [topGenre, setTopGenre] = useState(null);
+            useEffect(() => {
+                let cancelled = false;
+                const topArtistName = stats?.topArtisti?.[0]?.[0];
+                if (!topArtistName) { setTopGenre(null); return; }
+                setTopGenre(null);
+                (async () => {
+                    try {
+                        let results = await searchITunesResults(topArtistName, 'musicArtist');
+                        let found = results.find(r => r.primaryGenreName)?.primaryGenreName;
+                        if (!found) {
+                            results = await searchITunesResults(topArtistName, 'song');
+                            found = results.find(r => normalizeForMatch(r.artistName) === normalizeForMatch(topArtistName) && r.primaryGenreName)?.primaryGenreName;
+                        }
+                        if (!cancelled) setTopGenre(found || null);
+                    } catch (e) {
+                        if (!cancelled) setTopGenre(null);
+                    }
+                })();
+                return () => { cancelled = true; };
+            }, [stats]);
+
+            useEffect(() => {
+                const topArtistName = stats?.topArtisti?.[0]?.[0];
+                if (!topArtistName) return;
+                // Precarica e converte la foto dell'artista #1 non appena i dati sono pronti (Promise condivisa, no doppioni)
+                getArtistPhotoDataUrl(topArtistName);
+            }, [stats]);
+
             const anniDisponibili = useMemo(() => {
                 const anni = new Set();
                 ascolti.forEach(a => anni.add(a.data.getFullYear()));
@@ -1098,6 +1258,300 @@
             };
 
             const closeQuiz = () => setShowQuiz(false);
+
+            const nfWrapped = (n) => Math.round(n).toLocaleString(lang === 'it' ? 'it-IT' : 'en-US');
+
+            const wrappedSlides = useMemo(() => {
+                if (!stats) return [];
+                const slides = [];
+                const dateFmt = (d) => d.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+
+                slides.push({
+                    gradient: 'from-purple-600 via-fuchsia-600 to-pink-600',
+                    content: (
+                        <div className="flex flex-col items-center justify-center gap-6">
+                            <div className="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center animate-float">
+                                <IconMusic className="w-10 h-10 text-white" />
+                            </div>
+                            <h2 className="font-display text-4xl sm:text-5xl font-black text-white leading-tight">{t.wrappedCoverTitle}</h2>
+                            <p className="text-white/80 text-sm sm:text-base">{t.wrappedCoverSubtitle(dateFmt(stats.date.inizio), dateFmt(stats.date.fine))}</p>
+                            <p className="text-white/60 text-xs mt-10 animate-pulse">{t.wrappedTapHint}</p>
+                        </div>
+                    )
+                });
+
+                slides.push({
+                    gradient: 'from-rose-600 via-red-500 to-orange-500',
+                    content: (
+                        <div className="flex flex-col items-center gap-4">
+                            <IconPlay className="w-10 h-10 text-white/80" />
+                            <p className="font-display text-7xl sm:text-8xl font-black text-white">{nfWrapped(stats.totali)}</p>
+                            <p className="text-white text-lg font-bold">{t.wrappedStreamsTitle}</p>
+                            <p className="text-white/70 text-sm">{t.wrappedStreamsSub}</p>
+                        </div>
+                    )
+                });
+
+                const hoursW = Math.round(stats.minutiTotali / 60);
+                const daysW = Math.floor(stats.minutiTotali / 1440);
+                slides.push({
+                    gradient: 'from-indigo-600 via-blue-600 to-cyan-500',
+                    content: (
+                        <div className="flex flex-col items-center gap-4">
+                            <IconClock className="w-10 h-10 text-white/80" />
+                            <p className="font-display text-7xl sm:text-8xl font-black text-white">{nfWrapped(stats.minutiTotali)}</p>
+                            <p className="text-white text-lg font-bold">{t.wrappedMinutesTitle}</p>
+                            <p className="text-white/70 text-sm max-w-xs">{t.wrappedMinutesSub(nfWrapped(hoursW), nfWrapped(daysW))}</p>
+                        </div>
+                    )
+                });
+
+                slides.push({
+                    gradient: 'from-emerald-600 via-teal-500 to-cyan-500',
+                    content: (
+                        <div className="flex flex-col items-center gap-4">
+                            <IconMic className="w-10 h-10 text-white/80" />
+                            <div className="flex items-end gap-6">
+                                <p className="font-display text-6xl font-black text-white">{nfWrapped(stats.artistiUnici)}</p>
+                                <span className="text-white/60 text-2xl font-black pb-1">+</span>
+                                <p className="font-display text-6xl font-black text-white">{nfWrapped(stats.braniUnici)}</p>
+                            </div>
+                            <p className="text-white text-lg font-bold">{t.wrappedDiversityTitle}</p>
+                            <p className="text-white/70 text-sm max-w-xs">{t.wrappedDiversitySub(nfWrapped(stats.artistiUnici), nfWrapped(stats.braniUnici))}</p>
+                        </div>
+                    )
+                });
+
+                if (stats.topArtisti.length > 0) {
+                    const [artistName, artistCount] = stats.topArtisti[0];
+                    slides.push({
+                        gradient: 'from-amber-500 via-orange-500 to-red-500',
+                        content: (
+                            <div className="flex flex-col items-center gap-4">
+                                <IconTrophy className="w-8 h-8 text-white/90" />
+                                <p className="text-white/80 text-sm uppercase tracking-wider font-semibold">{t.wrappedTopArtistLabel}</p>
+                                <div className="w-36 h-36 rounded-full overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center">
+                                    <EntityImage artist={artistName} type="artist" altText={artistName} className="w-full h-full rounded-full" />
+                                </div>
+                                <p className="font-display text-3xl sm:text-4xl font-black text-white text-center px-4 break-words">{artistName}</p>
+                                <p className="text-white/80 text-sm">{t.wrappedTopArtistSub(nfWrapped(artistCount))}</p>
+                            </div>
+                        )
+                    });
+                }
+
+                if (stats.topArtisti.length >= 3) {
+                    slides.push({
+                        gradient: 'from-fuchsia-600 via-purple-600 to-indigo-600',
+                        content: (
+                            <div className="flex flex-col items-center gap-5 w-full">
+                                <p className="text-white text-xl font-bold mb-2">{t.wrappedTopArtistsListTitle}</p>
+                                <div className="w-full max-w-xs flex flex-col gap-3">
+                                    {stats.topArtisti.slice(0, 5).map(([name, count], idx) => (
+                                        <div key={name} className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-2.5">
+                                            <span className="font-display text-xl font-black text-white/70 w-5">{idx + 1}</span>
+                                            <span className="flex-1 text-white font-semibold text-sm text-left truncate">{name}</span>
+                                            <span className="text-white/60 text-xs">{nfWrapped(count)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    });
+                }
+
+                if (stats.topBrani.length > 0) {
+                    const [keyT, trackCount] = stats.topBrani[0];
+                    const [trackTitle, trackArtist] = keyT.split(' -|- ');
+                    slides.push({
+                        gradient: 'from-pink-600 via-rose-500 to-red-500',
+                        content: (
+                            <div className="flex flex-col items-center gap-4">
+                                <IconMusic className="w-8 h-8 text-white/90" />
+                                <p className="text-white/80 text-sm uppercase tracking-wider font-semibold">{t.wrappedTopTrackLabel}</p>
+                                <div className="w-36 h-36 rounded-2xl overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center">
+                                    <EntityImage artist={trackArtist} title={trackTitle} type="track" altText={trackTitle} className="w-full h-full" />
+                                </div>
+                                <p className="font-display text-2xl sm:text-3xl font-black text-white text-center px-4 break-words">{trackTitle}</p>
+                                <p className="text-white/80 text-sm">{trackArtist}</p>
+                                <p className="text-white/60 text-xs">{t.wrappedTopArtistSub(nfWrapped(trackCount))}</p>
+                            </div>
+                        )
+                    });
+                }
+
+                if (stats.topBrani.length >= 3) {
+                    slides.push({
+                        gradient: 'from-cyan-600 via-sky-600 to-blue-600',
+                        content: (
+                            <div className="flex flex-col items-center gap-5 w-full">
+                                <p className="text-white text-xl font-bold mb-2">{t.wrappedTopTracksListTitle}</p>
+                                <div className="w-full max-w-xs flex flex-col gap-3">
+                                    {stats.topBrani.slice(0, 5).map(([keyT, count], idx) => {
+                                        const [title, artist] = keyT.split(' -|- ');
+                                        return (
+                                            <div key={keyT} className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-2.5">
+                                                <span className="font-display text-xl font-black text-white/70 w-5">{idx + 1}</span>
+                                                <span className="flex-1 min-w-0 text-left">
+                                                    <span className="block text-white font-semibold text-sm truncate">{title}</span>
+                                                    <span className="block text-white/60 text-xs truncate">{artist}</span>
+                                                </span>
+                                                <span className="text-white/60 text-xs flex-shrink-0">{nfWrapped(count)}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )
+                    });
+                }
+
+                slides.push({
+                    gradient: 'from-lime-600 via-green-600 to-emerald-600',
+                    content: (
+                        <div className="flex flex-col items-center gap-5 w-full">
+                            <p className="text-white text-xl font-bold mb-1">{t.wrappedHabitsTitle}</p>
+                            <div className="w-full max-w-xs flex flex-col gap-3">
+                                <div className="bg-white/10 rounded-xl px-4 py-3 text-left">
+                                    <p className="text-white/60 text-xs uppercase tracking-wide">{t.wrappedHabitsWeekday}</p>
+                                    <p className="text-white font-display text-xl font-black">{stats.date.giornoSettimanaTop}</p>
+                                </div>
+                                <div className="bg-white/10 rounded-xl px-4 py-3 text-left">
+                                    <p className="text-white/60 text-xs uppercase tracking-wide">{t.wrappedHabitsTimeSlot}</p>
+                                    <p className="text-white font-display text-xl font-black">{stats.date.fasciaTop}</p>
+                                </div>
+                                <div className="bg-white/10 rounded-xl px-4 py-3 text-left">
+                                    <p className="text-white/60 text-xs uppercase tracking-wide">{t.wrappedHabitsMonth}</p>
+                                    <p className="text-white font-display text-xl font-black">{stats.date.meseTop}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                });
+
+                const topArtistNameW = stats.topArtisti[0] ? stats.topArtisti[0][0] : t.na;
+                const topTrackKeyW = stats.topBrani[0] ? stats.topBrani[0][0] : null;
+                const topTrackTitleW = topTrackKeyW ? topTrackKeyW.split(' -|- ')[0] : t.na;
+                slides.push({
+                    gradient: 'from-neutral-100 to-neutral-100',
+                    isRecap: true,
+                    content: (
+                        <div className="w-full h-full flex items-center justify-center">
+                            <div ref={wrappedCardRef} className="relative flex flex-col w-full max-w-[320px] bg-[#f4f2ec] text-black rounded-2xl overflow-hidden">
+                                <div
+                                    className="absolute inset-0 opacity-[0.06] pointer-events-none"
+                                    style={{ backgroundImage: 'repeating-linear-gradient(135deg, #000 0px, #000 2px, transparent 2px, transparent 16px)' }}
+                                ></div>
+
+                                <div className="relative flex flex-col px-5 pt-5">
+                                    <div className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-black/10 mb-5 flex-shrink-0 flex items-center justify-center">
+                                        {topArtistNameW && topArtistNameW !== t.na ? (
+                                            <RecapArtistPhoto artist={topArtistNameW} altText={topArtistNameW} className="w-full h-full grayscale" />
+                                        ) : (
+                                            <IconMusic className="w-10 h-10 text-black/30" />
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-4 text-left mb-6">
+                                        <div className="flex-1 min-w-0 overflow-hidden">
+                                            <p className="text-[10px] font-bold uppercase tracking-wide text-black/50 mb-2 whitespace-nowrap">{t.wrappedRecapTopArtists}</p>
+                                            <div className="flex flex-col gap-1.5">
+                                                {stats.topArtisti.slice(0, 5).map(([name], idx) => (
+                                                    <div key={name} className="flex items-baseline gap-1.5 overflow-hidden">
+                                                        <span className="text-black/40 text-xs font-bold flex-shrink-0">{idx + 1}</span>
+                                                        <span className="text-xs sm:text-sm font-bold whitespace-nowrap overflow-hidden text-ellipsis">{name}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0 overflow-hidden">
+                                            <p className="text-[10px] font-bold uppercase tracking-wide text-black/50 mb-2 whitespace-nowrap">{t.wrappedRecapTopTracks}</p>
+                                            <div className="flex flex-col gap-1.5">
+                                                {stats.topBrani.slice(0, 5).map(([keyT]) => keyT.split(' -|- ')[0]).map((title, idx) => (
+                                                    <div key={`${title}-${idx}`} className="flex items-baseline gap-1.5 overflow-hidden">
+                                                        <span className="text-black/40 text-xs font-bold flex-shrink-0">{idx + 1}</span>
+                                                        <span className="text-xs sm:text-sm font-bold whitespace-nowrap overflow-hidden text-ellipsis">{title}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-4 text-left pb-5">
+                                        <div className="flex-1 min-w-0 overflow-hidden">
+                                            <p className="text-[10px] font-bold uppercase tracking-wide text-black/50 mb-1 whitespace-nowrap">{t.wrappedRecapMinutesListen}</p>
+                                            <p className="font-display text-2xl font-black whitespace-nowrap overflow-hidden text-ellipsis">{nfWrapped(stats.minutiTotali)}</p>
+                                        </div>
+                                        <div className="flex-1 min-w-0 overflow-hidden">
+                                            <p className="text-[10px] font-bold uppercase tracking-wide text-black/50 mb-1 whitespace-nowrap">{t.wrappedRecapGenre}</p>
+                                            <p className="font-display text-lg font-black whitespace-nowrap overflow-hidden text-ellipsis">{topGenre || t.na}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="relative border-t border-black/10 px-5 py-3 flex items-center gap-2 flex-shrink-0">
+                                    <div className="w-7 h-7 rounded-full bg-black flex items-center justify-center flex-shrink-0">
+                                        <IconMusic className="w-4 h-4 text-white" />
+                                    </div>
+                                    <span className="font-display font-black text-[11px] tracking-wide whitespace-nowrap overflow-hidden text-ellipsis">{t.wrappedRecapLink}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                });
+
+                return slides;
+            }, [stats, lang]);
+
+            const openWrapped = () => {
+                setWrappedIndex(0);
+                setShowWrapped(true);
+            };
+            const closeWrapped = () => setShowWrapped(false);
+            const nextWrappedSlide = () => {
+                setWrappedIndex(i => Math.min(i + 1, wrappedSlides.length - 1));
+            };
+            const prevWrappedSlide = () => {
+                setWrappedIndex(i => Math.max(i - 1, 0));
+            };
+            const waitForImagesLoaded = (container, timeoutMs = 4000) => {
+                const imgs = Array.from(container.querySelectorAll('img'));
+                if (imgs.length === 0) return Promise.resolve();
+                const perImage = imgs.map(img => {
+                    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+                    return new Promise(resolve => {
+                        img.addEventListener('load', resolve, { once: true });
+                        img.addEventListener('error', resolve, { once: true });
+                    });
+                });
+                const timeout = new Promise(resolve => setTimeout(resolve, timeoutMs));
+                return Promise.race([Promise.all(perImage), timeout]);
+            };
+
+            const downloadWrappedCard = async () => {
+                if (!wrappedCardRef.current || !window.html2canvas) return;
+                setDownloadingCard(true);
+                try {
+                    const topArtistName = stats?.topArtisti?.[0]?.[0];
+                    if (topArtistName) {
+                        await getArtistPhotoDataUrl(topArtistName);
+                        await new Promise(r => setTimeout(r, 60)); // dà tempo a React di aggiornare il DOM con la data URL
+                    }
+                    await waitForImagesLoaded(wrappedCardRef.current);
+                    if (document.fonts && document.fonts.ready) {
+                        await document.fonts.ready;
+                    }
+                    const canvas = await window.html2canvas(wrappedCardRef.current, { backgroundColor: null, scale: 2, useCORS: true });
+                    const link = document.createElement('a');
+                    link.download = 'wrapped.png';
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                } catch (e) {
+                    console.warn('Errore esportazione immagine wrapped', e);
+                } finally {
+                    setDownloadingCard(false);
+                }
+            };
 
             const QuizImageWrapper = ({ artist, title, type, altText, isArtistRound }) => {
                 const [src, setSrc] = useState(null);
@@ -1372,6 +1826,19 @@
                             
                             {stats && (
                                 <div className="space-y-6 sm:space-y-8">
+                                   <button onClick={openWrapped} className="w-full text-left bg-gradient-to-r from-purple-600/30 via-fuchsia-600/30 to-pink-600/30 hover:from-purple-600/40 hover:via-fuchsia-600/40 hover:to-pink-600/40 border border-white/[0.15] hover:border-fuchsia-300/40 rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex items-center justify-between gap-4 hover:-translate-y-1 transition-all duration-300 group">
+                                        <div className="flex items-center gap-4 min-w-0">
+                                            <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/10 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-white/20">
+                                                <IconMusic className="w-6 h-6 text-fuchsia-300" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-display text-base sm:text-lg font-bold text-white truncate">{t.wrappedCardTitle}</p>
+                                                <p className="text-xs sm:text-sm text-gray-300 truncate">{t.wrappedCardSubtitle}</p>
+                                            </div>
+                                        </div>
+                                        <span className="flex-shrink-0 hidden sm:inline-flex items-center gap-1.5 px-4 py-2 bg-white text-gray-900 rounded-lg text-sm font-bold transition-all duration-300 group-hover:scale-105">{t.wrappedCardCta}</span>
+                                    </button>
+
                                    <button onClick={openQuiz} className="w-full text-left bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.15] hover:border-yellow-300/40 rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex items-center justify-between gap-4 hover:-translate-y-1 transition-all duration-300 group">
                                         <div className="flex items-center gap-4 min-w-0">
                                             <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/10 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-white/20">
@@ -1529,6 +1996,58 @@
                             </footer>
                         </div>
                     </div>
+
+                    {/* Modal del Wrapped a storie, stile Spotify */}
+                    {showWrapped && wrappedSlides.length > 0 && (
+                        <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-3 sm:p-6 animate-fadebg">
+                            <div
+                                className="relative w-full max-w-sm h-full sm:h-[85vh] sm:max-h-[820px] rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden shadow-2xl select-none cursor-pointer transform-gpu"
+                                onClick={nextWrappedSlide}
+                            >
+                                {/* Barra di avanzamento in stile Storie */}
+                                <div className="absolute top-3 left-3 right-3 z-30 flex gap-1.5">
+                                    {wrappedSlides.map((_, i) => (
+                                        <div key={i} className="flex-1 h-1 rounded-full bg-white/25 overflow-hidden">
+                                            <div className={`h-full bg-white ${i <= wrappedIndex ? 'w-full' : 'w-0'}`}></div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Chiudi */}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); closeWrapped(); }}
+                                    className="absolute top-7 right-3 z-30 bg-black/30 hover:bg-black/50 p-2 rounded-full text-white/80 hover:text-white transition-colors"
+                                >
+                                    <IconX className="w-5 h-5" />
+                                </button>
+
+                                {/* Zona di tap sinistra per tornare indietro */}
+                                <div
+                                    className="absolute inset-y-0 left-0 w-1/3 z-20"
+                                    onClick={(e) => { e.stopPropagation(); prevWrappedSlide(); }}
+                                ></div>
+
+                                {/* Contenuto della slide corrente */}
+                                <div
+                                    key={wrappedIndex}
+                                    className={`absolute inset-0 flex flex-col items-center justify-center text-center p-8 sm:p-10 bg-gradient-to-br ${wrappedSlides[wrappedIndex].gradient} animate-fadein overflow-hidden`}
+                                >
+                                    {wrappedSlides[wrappedIndex].content}
+                                </div>
+                            </div>
+
+                            {wrappedIndex === wrappedSlides.length - 1 && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); downloadWrappedCard(); }}
+                                    disabled={downloadingCard}
+                                    className="mt-4 sm:mt-5 flex items-center gap-2 px-6 py-3 bg-white text-black rounded-full font-bold active:scale-95 transition-transform transform-gpu disabled:opacity-60"
+                                >
+                                    <IconDownload className="w-5 h-5" />
+                                    {downloadingCard ? t.wrappedDownloading : t.wrappedDownload}
+                                </button>
+                            )}
+                        </div>
+                    )}
 
                     {/* Modal del Quiz OTTIMIZZATO PER FPS */}
                     {showQuiz && (
