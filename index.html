@@ -1228,9 +1228,9 @@
                         
                         {stats && (
                             <div className="space-y-6 sm:space-y-8">
-                                <button onClick={openQuiz} className="w-full text-left bg-gradient-to-r from-purple-600/25 via-pink-600/20 to-orange-500/20 border border-purple-400/30 rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex items-center justify-between gap-4 hover:border-purple-400/60 hover:from-purple-600/35 hover:via-pink-600/30 transition-all group">
+                               <button onClick={openQuiz} className="w-full text-left bg-gradient-to-r from-purple-600/25 via-pink-600/20 to-orange-500/20 border border-purple-400/30 rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex items-center justify-between gap-4 hover:border-purple-400/60 hover:from-purple-600/35 hover:via-pink-600/30 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300 group">
                                     <div className="flex items-center gap-4 min-w-0">
-                                        <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-105 transition-transform">
+                                        <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/10 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-white/20">
                                             <IconTrophy className="w-6 h-6 text-yellow-300" />
                                         </div>
                                         <div className="min-w-0">
@@ -1238,7 +1238,7 @@
                                             <p className="text-xs sm:text-sm text-gray-300 truncate">{t.quizCardSubtitle}</p>
                                         </div>
                                     </div>
-                                    <span className="flex-shrink-0 hidden sm:inline-flex items-center gap-1.5 px-4 py-2 bg-white text-gray-900 rounded-lg text-sm font-bold group-hover:bg-purple-100 transition-colors">{t.quizCardCta}</span>
+                                    <span className="flex-shrink-0 hidden sm:inline-flex items-center gap-1.5 px-4 py-2 bg-white text-gray-900 rounded-lg text-sm font-bold transition-all duration-300 group-hover:bg-purple-100 group-hover:scale-105 group-hover:shadow-md">{t.quizCardCta}</span>
                                 </button>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
