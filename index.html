@@ -49,7 +49,6 @@
                 radial-gradient(ellipse 60% 40% at 50% 100%, rgba(99, 102, 241, 0.15), transparent);
             background-attachment: fixed;
         }
-        /* Transizioni più morbide e coerenti su tutti gli elementi interattivi */
         button, a, input, select, .transition-colors, .transition-all {
             transition-duration: 250ms;
             transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -66,9 +65,8 @@
         }
         .animate-fadein {
             animation: fadeInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
-            will-change: opacity, transform; /* Rimuove il lag dell'animazione */
+            will-change: opacity, transform;
         }
-        
         @keyframes fadeInBg {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -77,7 +75,6 @@
             animation: fadeInBg 0.25s ease-out both;
             will-change: opacity;
         }
-        
         .font-display { font-family: 'Outfit', 'Inter', system-ui, sans-serif; }
         .animate-spin-slow { animation: spin 2.2s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
@@ -748,14 +745,10 @@
             const [dateTo, setDateTo] = useState('');
             const [showGuide, setShowGuide] = useState(false);
             const [showQuiz, setShowQuiz] = useState(false);
-            const [quizState, setQuizState] = useState('intro'); // 'intro' | 'playing' | 'no_data' | 'finished'
-            const [quizQuestions, setQuizQuestions] = useState([]);
-            const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
-            const [selectedOption, setSelectedOption] = useState(null);
-            const [quizScore, setQuizScore] = useState(0);
             const [quizSeed, setQuizSeed] = useState(0);
-            const [quizPhase, setQuizPhase] = useState('intro'); // intro | playing | finished
+            const [quizPhase, setQuizPhase] = useState('intro'); // intro | playing | finished | no_data
             const [quizIndex, setQuizIndex] = useState(0);
+            const [quizScore, setQuizScore] = useState(0);
             const [selectedOption, setSelectedOption] = useState(null);
             const [answered, setAnswered] = useState(false);
 
@@ -763,7 +756,6 @@
                 document.documentElement.lang = lang;
             }, [lang]);
 
-            // Funzione per elaborare sia file singoli che estrarre file da archivi .ZIP
             const processFiles = async (files) => {
                 setIsProcessing(true);
                 setError('');
@@ -774,7 +766,6 @@
 
                     for (const file of files) {
                         if (file.name.endsWith('.zip')) {
-                            // Lettura automatica ZIP via JSZip
                             const zip = await JSZip.loadAsync(file);
                             for (const relativePath in zip.files) {
                                 const zipEntry = zip.files[relativePath];
@@ -890,16 +881,12 @@
             const handleDrop = useCallback((e) => {
                 e.preventDefault();
                 processFiles(Array.from(e.dataTransfer.files));
-                // Evita che il focus resti "agganciato" alla drop zone dopo il drop
                 if (document.activeElement) document.activeElement.blur();
                 window.focus();
             }, [lang]);
 
             const handleFileInput = (e) => {
                 processFiles(Array.from(e.target.files));
-                // Rilascia subito il focus dall'input (che sta per essere smontato da React),
-                // altrimenti su alcuni browser la rotellina del mouse smette di far scrollare
-                // la pagina finché non si clicca manualmente da qualche parte.
                 e.target.blur();
                 window.focus();
             };
@@ -1026,129 +1013,36 @@
 
             const quizQuestions = useMemo(() => generateQuizQuestions(stats, t, lang), [stats, quizSeed, lang]);
 
-            // Generatore di domande sicuro (Fallback automatici se mancano dati)
-            const generateQuiz = () => {
-                if (!stats) return [];
-            
-                const questions = [];
-                const topArtists = stats.topArtists || stats.topArtisti || [];
-                const topTracks = stats.topTracks || stats.topBrani || [];
-                const monthly = stats.monthlyListening || [];
-            
-                // Domanda 1: Artista TOP
-                if (topArtists.length >= 1) {
-                    const correct = typeof topArtists[0] === 'string' ? topArtists[0] : (topArtists[0].name || topArtists[0][0]);
-                    const others = topArtists.slice(1, 10).map(a => typeof a === 'string' ? a : (a.name || a[0]));
-                    const fallback = ["Taylor Swift", "The Weeknd", "Drake", "Bad Bunny", "Coldplay", "Kanye West"];
-                    const pool = Array.from(new Set([...others, ...fallback])).filter(n => n && n !== correct);
-                    const wrong = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
-                    const options = [correct, ...wrong].sort(() => 0.5 - Math.random());
-            
-                    questions.push({
-                        question: "Qual è stato il tuo artista più ascoltato?",
-                        options: options,
-                        correctAnswer: options.indexOf(correct)
-                    });
-                }
-            
-                // Domanda 2: Brano TOP
-                if (topTracks.length >= 1) {
-                    const t0 = topTracks[0];
-                    const correctTrack = typeof t0 === 'string' ? t0 : (t0.name || t0.title || t0[0] || "Brano");
-                    const correctArtist = typeof t0 === 'object' ? (t0.artist || t0.artistName || t0[1] || "") : "";
-                    const correctStr = correctArtist ? `${correctTrack} - ${correctArtist}` : correctTrack;
-            
-                    const others = topTracks.slice(1, 10).map(t => {
-                        if (typeof t === 'string') return t;
-                        const a = t.artist || t.artistName || t[1] || "";
-                        const n = t.name || t.title || t[0];
-                        return a ? `${n} - ${a}` : n;
-                    });
-                    const fallbackTracks = ["Blinding Lights - The Weeknd", "Shape of You - Ed Sheeran", "As It Was - Harry Styles"];
-                    const pool = Array.from(new Set([...others, ...fallbackTracks])).filter(t => t && t !== correctStr);
-                    const wrong = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
-                    const options = [correctStr, ...wrong].sort(() => 0.5 - Math.random());
-            
-                    questions.push({
-                        question: "Qual è il brano che hai riprodotto più volte?",
-                        options: options,
-                        correctAnswer: options.indexOf(correctStr)
-                    });
-                }
-            
-                // Domanda 3: Minuti ascoltati
-                if (stats.totalMinutes || stats.minutiTotali) {
-                    const mins = Math.round(stats.totalMinutes || stats.minutiTotali || 0);
-                    if (mins > 0) {
-                        const correctStr = `${mins.toLocaleString()} minuti`;
-                        const wrong1 = `${Math.round(mins * 0.5).toLocaleString()} minuti`;
-                        const wrong2 = `${Math.round(mins * 1.5).toLocaleString()} minuti`;
-                        const wrong3 = `${Math.round(mins * 2.1).toLocaleString()} minuti`;
-                        const options = [correctStr, wrong1, wrong2, wrong3].sort(() => 0.5 - Math.random());
-            
-                        questions.push({
-                            question: "Quanti minuti totali di musica hai ascoltato?",
-                            options: options,
-                            correctAnswer: options.indexOf(correctStr)
-                        });
-                    }
-                }
-            
-                return questions;
-            };
-            
-            // Apre il modal senza far crashare nulla
             const openQuiz = () => {
-                setQuizState('intro');
-                setSelectedOption(null);
-                setCurrentQuestionIdx(0);
-                setQuizScore(0);
                 setShowQuiz(true);
+                setQuizPhase('intro');
+                setQuizIndex(0);
+                setQuizScore(0);
+                setSelectedOption(null);
+                setAnswered(false);
             };
-            
-            // Avvia le domande del quiz
+
             const startQuiz = () => {
-                const q = generateQuiz();
-                if (q && q.length > 0) {
-                    setQuizQuestions(q);
-                    setQuizState('playing');
-                    setCurrentQuestionIdx(0);
-                    setSelectedOption(null);
+                if (quizQuestions && quizQuestions.length > 0) {
+                    setQuizSeed(s => s + 1);
+                    setQuizPhase('playing');
+                    setQuizIndex(0);
                     setQuizScore(0);
+                    setSelectedOption(null);
+                    setAnswered(false);
                 } else {
-                    setQuizState('no_data');
+                    setQuizPhase('no_data');
                 }
             };
-            
-            // Gestisce la risposta selezionata dall'utente (Risolve l'errore che faceva sparire la schermata)
-            const handleAnswer = (optionIdx) => {
-                if (selectedOption !== null) return; // evita doppi click
-                setSelectedOption(optionIdx);
-            
-                const currentQ = quizQuestions[currentQuestionIdx];
-                let newScore = quizScore;
-                if (currentQ && optionIdx === currentQ.correctAnswer) {
-                    newScore = quizScore + 1;
-                    setQuizScore(newScore);
-                }
-            
-                // Passa alla prossima domanda dopo 1.2 secondi
-                setTimeout(() => {
-                    if (currentQuestionIdx + 1 < quizQuestions.length) {
-                        setCurrentQuestionIdx(prev => prev + 1);
-                        setSelectedOption(null);
-                    } else {
-                        setQuizState('finished');
-                    }
-                }, 1200);
-            };
-            
+
             const answerQuiz = (option) => {
                 if (answered) return;
                 setSelectedOption(option);
                 setAnswered(true);
                 const current = quizQuestions[quizIndex];
-                if (current && option === current.correct) setQuizScore(s => s + 1);
+                if (current && option === current.correct) {
+                    setQuizScore(s => s + 1);
+                }
             };
 
             const nextQuizQuestion = () => {
@@ -1172,108 +1066,105 @@
 
             if (ascolti.length === 0) {
                 return (
-                    <div className="min-h-screen text-white flex flex-col items-center justify-center p-6 relative" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
-                        <div className="absolute top-6 right-6 flex items-center gap-3">
-                            <button onClick={() => setShowGuide(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 rounded-lg text-xs font-semibold text-purple-200 transition-all">
-                                <IconHelp className="w-4 h-4" /> <span className="hidden sm:inline">{t.guideBtn}</span>
-                            </button>
-                            <LangSwitch />
-                        </div>
-
-                        <div className="max-w-2xl w-full bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 sm:p-10 text-center shadow-2xl shadow-purple-950/40 mt-14 sm:mt-0">
-                            <div className="flex justify-center mb-6">
-                                <div className="relative animate-float">
-                                    <div className="absolute inset-0 bg-purple-500/30 blur-2xl rounded-full"></div>
-                                    <Logo className="w-16 h-16 sm:w-20 sm:h-20 relative" />
-                                </div>
+                    <React.Fragment>
+                        <div className="min-h-screen text-white flex flex-col items-center justify-center p-6 relative" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+                            <div className="absolute top-6 right-6 flex items-center gap-3">
+                                <button onClick={() => setShowGuide(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 rounded-lg text-xs font-semibold text-purple-200 transition-all">
+                                    <IconHelp className="w-4 h-4" /> <span className="hidden sm:inline">{t.guideBtn}</span>
+                                </button>
+                                <LangSwitch />
                             </div>
-                            <p className="uppercase tracking-[0.3em] text-[0.65rem] sm:text-xs font-bold text-purple-300/80 mb-3">{t.brand}</p>
-                            
-                            {/* Titolo schermata iniziale ridimensionato per mobile */}
-                            <h1 className="font-display text-3xl min-[375px]:text-4xl md:text-5xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-300 via-pink-400 to-orange-300 tracking-tight">
-                                {t.landingTitle}
-                            </h1>
-                            <p className="text-gray-300 text-base sm:text-lg mb-8 leading-relaxed">
-                                {t.landingSubtitle}
-                            </p>
 
-                            <div className="border-2 border-dashed border-white/20 rounded-2xl p-8 sm:p-10 bg-white/[0.03] hover:bg-white/[0.07] hover:border-purple-400/40 transition-all cursor-pointer relative group">
-                                <input type="file" multiple accept=".json,.csv,.zip" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={handleFileInput} />
-                                {isProcessing ? (
-                                    <div className="flex flex-col items-center">
-                                        <IconRefresh className="w-10 h-10 text-purple-400 animate-spin-slow mb-4" />
-                                        <p className="font-semibold">{t.processing}</p>
+                            <div className="max-w-2xl w-full bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 sm:p-10 text-center shadow-2xl shadow-purple-950/40 mt-14 sm:mt-0">
+                                <div className="flex justify-center mb-6">
+                                    <div className="relative animate-float">
+                                        <div className="absolute inset-0 bg-purple-500/30 blur-2xl rounded-full"></div>
+                                        <Logo className="w-16 h-16 sm:w-20 sm:h-20 relative" />
                                     </div>
-                                ) : (
-                                    <div className="flex flex-col items-center">
-                                        <div className="flex items-center gap-2 mb-4 text-gray-400 group-hover:text-purple-400 transition-colors">
-                                            <IconUpload className="w-8 h-8 sm:w-10 sm:h-10" />
-                                            <IconZip className="w-8 h-8 sm:w-10 sm:h-10" />
+                                </div>
+                                <p className="uppercase tracking-[0.3em] text-[0.65rem] sm:text-xs font-bold text-purple-300/80 mb-3">{t.brand}</p>
+                                
+                                <h1 className="font-display text-3xl min-[375px]:text-4xl md:text-5xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-300 via-pink-400 to-orange-300 tracking-tight">
+                                    {t.landingTitle}
+                                </h1>
+                                <p className="text-gray-300 text-base sm:text-lg mb-8 leading-relaxed">
+                                    {t.landingSubtitle}
+                                </p>
+
+                                <div className="border-2 border-dashed border-white/20 rounded-2xl p-8 sm:p-10 bg-white/[0.03] hover:bg-white/[0.07] hover:border-purple-400/40 transition-all cursor-pointer relative group">
+                                    <input type="file" multiple accept=".json,.csv,.zip" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={handleFileInput} />
+                                    {isProcessing ? (
+                                        <div className="flex flex-col items-center">
+                                            <IconRefresh className="w-10 h-10 text-purple-400 animate-spin-slow mb-4" />
+                                            <p className="font-semibold">{t.processing}</p>
                                         </div>
-                                        <p className="font-semibold text-base sm:text-lg mb-2">{t.dropTitle}</p>
-                                        <p className="text-xs sm:text-sm text-gray-400">{t.dropSubtitle}</p>
+                                    ) : (
+                                        <div className="flex flex-col items-center">
+                                            <div className="flex items-center gap-2 mb-4 text-gray-400 group-hover:text-purple-400 transition-colors">
+                                                <IconUpload className="w-8 h-8 sm:w-10 sm:h-10" />
+                                                <IconZip className="w-8 h-8 sm:w-10 sm:h-10" />
+                                            </div>
+                                            <p className="font-semibold text-base sm:text-lg mb-2">{t.dropTitle}</p>
+                                            <p className="text-xs sm:text-sm text-gray-400">{t.dropSubtitle}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {error && (
+                                    <div className="mt-6 flex items-center justify-center gap-2 text-red-400 bg-red-400/10 p-3 rounded-lg text-sm">
+                                        <IconAlert className="w-5 h-5 flex-shrink-0" />
+                                        <p>{error}</p>
                                     </div>
                                 )}
                             </div>
 
-                            {error && (
-                                <div className="mt-6 flex items-center justify-center gap-2 text-red-400 bg-red-400/10 p-3 rounded-lg text-sm">
-                                    <IconAlert className="w-5 h-5 flex-shrink-0" />
-                                    <p>{error}</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {showGuide && (
-                            <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
-                                <div className="bg-gray-900 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full relative max-h-[85vh] overflow-y-auto animate-fadein" onClick={(e) => e.stopPropagation()}>
-                                    <button onClick={() => setShowGuide(false)} className="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-400 hover:text-white z-10"><IconClose className="w-6 h-6" /></button>
-                                    <h3 className="font-display text-xl sm:text-2xl font-bold text-white flex items-start gap-2 mb-6 pr-8">
-                                        <IconHelp className="text-purple-400 flex-shrink-0 w-6 h-6 mt-0.5" /> {t.guideTitle}
-                                    </h3>
-                                    <div className="space-y-4 text-sm text-gray-300">
-                                        <div className="flex gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
-                                            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold flex items-center justify-center mt-0.5">1</span>
-                                            <div className="space-y-3 flex-1">
-                                                <p className="leading-relaxed">{t.guideSpotifyStep}</p>
-                                                <a href="https://www.spotify.com/account/privacy/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-lg transition-colors">
-                                                    <IconSpotify className="w-4 h-4" /> {t.openSpotifyPrivacy}
-                                                </a>
+                            {showGuide && (
+                                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
+                                    <div className="bg-gray-900 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full relative max-h-[85vh] overflow-y-auto animate-fadein" onClick={(e) => e.stopPropagation()}>
+                                        <button onClick={() => setShowGuide(false)} className="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-400 hover:text-white z-10"><IconClose className="w-6 h-6" /></button>
+                                        <h3 className="font-display text-xl sm:text-2xl font-bold text-white flex items-start gap-2 mb-6 pr-8">
+                                            <IconHelp className="text-purple-400 flex-shrink-0 w-6 h-6 mt-0.5" /> {t.guideTitle}
+                                        </h3>
+                                        <div className="space-y-4 text-sm text-gray-300">
+                                            <div className="flex gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+                                                <div className="space-y-3 flex-1">
+                                                    <p className="leading-relaxed">{t.guideSpotifyStep}</p>
+                                                    <a href="https://www.spotify.com/account/privacy/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-lg transition-colors">
+                                                        <IconSpotify className="w-4 h-4" /> {t.openSpotifyPrivacy}
+                                                    </a>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="flex gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
-                                            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-red-500/20 text-red-300 text-xs font-bold flex items-center justify-center mt-0.5">2</span>
-                                            <div className="space-y-3 flex-1">
-                                                <p className="leading-relaxed">{t.guideYTMStep}</p>
-                                                <a href="https://takeout.google.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-red-600 hover:bg-red-500 text-white font-semibold px-4 py-2 rounded-lg transition-colors">
-                                                    {t.openGoogleTakeout}
-                                                </a>
+                                            <div className="flex gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-red-500/20 text-red-300 text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+                                                <div className="space-y-3 flex-1">
+                                                    <p className="leading-relaxed">{t.guideYTMStep}</p>
+                                                    <a href="https://takeout.google.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-red-600 hover:bg-red-500 text-white font-semibold px-4 py-2 rounded-lg transition-colors">
+                                                        {t.openGoogleTakeout}
+                                                    </a>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="flex gap-3 p-4 bg-purple-500/10 rounded-xl border border-purple-500/20">
-                                            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold flex items-center justify-center mt-0.5">3</span>
-                                            <p className="text-purple-200 font-medium leading-relaxed flex-1">{t.guideZipNote}</p>
+                                            <div className="flex gap-3 p-4 bg-purple-500/10 rounded-xl border border-purple-500/20">
+                                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold flex items-center justify-center mt-0.5">3</span>
+                                                <p className="text-purple-200 font-medium leading-relaxed flex-1">{t.guideZipNote}</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                    </div>
+                            )}
+                        </div>
+                    </React.Fragment>
                 );
             }
 
             return (
                 <React.Fragment>
-                    {/* CONTENITORE PRINCIPALE DELLA PAGINA */}
                     <div className="min-h-screen px-4 sm:px-6 md:px-8 py-6 font-sans selection:bg-purple-500/30 pb-20 animate-fadein">
                         <div className="max-w-7xl mx-auto space-y-8">
                             
-                            {/* HEADER PRINCIPALE: Risolto overflow e margini per mobile */}
                             <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-6">
-                                
                                 <div className="flex items-center gap-3 sm:gap-4 w-full">
                                     <Logo className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 flex-shrink-0" />
-                                    {/* min-w-0 e flex-1 impediscono al testo di spingere fuori il contenitore su mobile */}
                                     <div className="flex-1 min-w-0">
                                         <h1 className="font-display text-[1.4rem] min-[375px]:text-[1.7rem] sm:text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-400 to-orange-300 leading-tight tracking-tight sm:tracking-normal truncate sm:overflow-visible">
                                             {t.brand}
@@ -1284,7 +1175,7 @@
                                             {filterMode === 'year' && (selectedYear === 'all' ? t.pickYear : t.showingYear(selectedYear))}
                                             {filterMode === 'range' && (dateFrom || dateTo) && t.showingRange(
                                                 dateFrom ? new Date(dateFrom + 'T00:00:00').toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US') : t.rangeStart,
-                                                dateTo ? new Date(dateTo + 'T00:00:00').toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US') : t.rangeToday
+                                                dateTo ? new Date(dateTo + 'T23:59:59').toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US') : t.rangeToday
                                             )}
                                             {filterMode === 'range' && !dateFrom && !dateTo && t.pickRange}
                                         </p>
@@ -1297,21 +1188,20 @@
                                         <LangSwitch />
                                     </div>
                                     <div className="flex flex-col gap-3">
-                                        {/* Riga 1: modalità filtro + eventuale selettore anno/intervallo + reset */}
                                         <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-3">
                                             <div className="flex bg-black/25 rounded-lg p-1 w-full sm:w-auto">
                                                 <button onClick={() => setFilterMode('all')} className={`flex-1 px-3 py-2 sm:py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'all' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fAll}</button>
                                                 <button onClick={() => setFilterMode('year')} className={`flex-1 px-3 py-2 sm:py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'year' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fYear}</button>
                                                 <button onClick={() => setFilterMode('range')} className={`flex-1 px-3 py-2 sm:py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'range' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fRange}</button>
                                             </div>
-    
+
                                             {filterMode === 'year' && (
                                                 <select className="w-full sm:w-auto bg-black/25 text-white font-semibold outline-none cursor-pointer px-4 py-2.5 rounded-lg text-base sm:text-sm border border-white/10 animate-fadein" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
                                                     <option value="all" className="bg-gray-900">{t.selectYear}</option>
                                                     {anniDisponibili.map(anno => <option key={anno} value={anno} className="bg-gray-900">{anno}</option>)}
                                                 </select>
                                             )}
-    
+
                                             {filterMode === 'range' && (
                                                 <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto text-sm animate-fadein">
                                                     <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full sm:w-auto bg-black/25 text-white px-3 py-2.5 rounded-lg outline-none border border-white/10 text-base sm:text-sm" />
@@ -1319,10 +1209,8 @@
                                                     <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full sm:w-auto bg-black/25 text-white px-3 py-2.5 rounded-lg outline-none border border-white/10 text-base sm:text-sm" />
                                                 </div>
                                             )}
-    
                                         </div>
-    
-                                        {/* Riga 2: esporta ed elimina/ricarica file, sempre insieme */}
+
                                         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
                                             <button onClick={() => esportaCSV(datiFiltrati)} className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors text-white"><IconDownload className="w-4 h-4" />{t.exportCSV}</button>
                                             <button onClick={() => { setAscolti([]); resetFiltri(); }} className="px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors text-white">{t.newFiles}</button>
@@ -1333,7 +1221,7 @@
                                     )}
                                 </div>
                             </header>
-    
+
                             {!stats && (
                                 <div className="bg-white/[0.04] border border-white/10 rounded-3xl p-8 sm:p-10 text-center text-gray-300">
                                     <IconAlert className="w-10 h-10 mx-auto mb-4 text-yellow-400" />
@@ -1356,7 +1244,7 @@
                                         </div>
                                         <span className="flex-shrink-0 hidden sm:inline-flex items-center gap-1.5 px-4 py-2 bg-white text-gray-900 rounded-lg text-sm font-bold transition-all duration-300 group-hover:bg-purple-100 group-hover:scale-105 group-hover:shadow-md">{t.quizCardCta}</span>
                                     </button>
-    
+
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                         <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-5 sm:p-6 flex flex-col hover:bg-white/[0.08] hover:border-pink-400/30 transition-all">
                                             <div className="flex items-center gap-3 mb-3 sm:mb-4 text-gray-400"><IconPlay className="w-5 h-5 sm:w-6 sm:h-6 text-pink-400" /><h3 className="font-semibold text-xs sm:text-sm uppercase tracking-wider">{t.cardStreams}</h3></div>
@@ -1379,9 +1267,8 @@
                                             <p className="text-xs sm:text-sm text-gray-500">{t.cardTracksSub}</p>
                                         </div>
                                     </div>
-    
+
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-                                        {/* ARTISTI */}
                                         <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-5 sm:p-8 backdrop-blur-sm">
                                             <div className="flex items-center gap-3 mb-5 sm:mb-6">
                                                 <IconMic className="text-purple-400 w-5 h-5 sm:w-6 sm:h-6" />
@@ -1409,8 +1296,7 @@
                                                 })}
                                             </div>
                                         </div>
-    
-                                        {/* BRANI */}
+
                                         <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-5 sm:p-8 backdrop-blur-sm">
                                             <div className="flex items-center gap-3 mb-5 sm:mb-6">
                                                 <IconMusic className="text-pink-400 w-5 h-5 sm:w-6 sm:h-6" />
@@ -1443,7 +1329,7 @@
                                             </div>
                                         </div>
                                     </div>
-    
+
                                     <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-500/20 rounded-3xl p-5 sm:p-8">
                                         <h2 className="font-display text-xl sm:text-2xl font-bold mb-5 sm:mb-6 flex items-center gap-3 text-white">
                                             <IconCalendar className="text-indigo-400 w-5 h-5 sm:w-6 sm:h-6" /> {t.clockTitle}
@@ -1471,26 +1357,25 @@
                                             </div>
                                         </div>
                                         <div className="mt-6 sm:mt-8 border-t border-white/10 pt-5 sm:pt-6">
-                                        <p className="text-gray-400 text-xs sm:text-sm mb-4">{t.weeklyDistribution}</p>
-                                        
-                                        <div className="flex items-end justify-between gap-1.5 sm:gap-2 h-28 sm:h-32">
-                                            {stats.weekdayFull.map((w, idx) => (
-                                                <div key={idx} className="flex flex-col items-center flex-1 h-full">
-                                                    <span className="text-[10px] sm:text-xs text-gray-400 mb-1">{w.count}</span>
-                                                    <div className="w-full flex-1 flex items-end">
-                                                        <div 
-                                                            className="w-full bg-indigo-500/60 hover:bg-indigo-400/80 rounded-t-md transition-all duration-700" 
-                                                            style={{ 
-                                                                height: `${(w.count / stats.maxWeekday) * 100}%`, 
-                                                                minHeight: w.count > 0 ? '4px' : '0px' 
-                                                            }}
-                                                        ></div>
+                                            <p className="text-gray-400 text-xs sm:text-sm mb-4">{t.weeklyDistribution}</p>
+                                            <div className="flex items-end justify-between gap-1.5 sm:gap-2 h-28 sm:h-32">
+                                                {stats.weekdayFull.map((w, idx) => (
+                                                    <div key={idx} className="flex flex-col items-center flex-1 h-full">
+                                                        <span className="text-[10px] sm:text-xs text-gray-400 mb-1">{w.count}</span>
+                                                        <div className="w-full flex-1 flex items-end">
+                                                            <div 
+                                                                className="w-full bg-indigo-500/60 hover:bg-indigo-400/80 rounded-t-md transition-all duration-700" 
+                                                                style={{ 
+                                                                    height: `${(w.count / stats.maxWeekday) * 100}%`, 
+                                                                    minHeight: w.count > 0 ? '4px' : '0px' 
+                                                                }}
+                                                            ></div>
+                                                        </div>
+                                                        <span className="text-[10px] sm:text-xs text-gray-500 mt-2">{w.nome.slice(0, 3)}</span>
                                                     </div>
-                                                    <span className="text-[10px] sm:text-xs text-gray-500 mt-2">{w.nome.slice(0, 3)}</span>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
                                         <div className="mt-5 sm:mt-6 flex flex-col sm:flex-row justify-between gap-2 text-xs sm:text-sm text-gray-400 border-t border-white/10 pt-4">
                                             <span>{t.firstListen}: {stats.date.inizio.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US')}</span>
                                             <span>{t.lastListen}: {stats.date.fine.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US')}</span>
@@ -1498,137 +1383,114 @@
                                     </div>
                                 </div>
                             )}
-    
+
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
                                 <p>WrapYourFavMusic <span className="opacity-75">v1.2.0 (Quiz)</span></p>
                             </footer>
                         </div>
                     </div>
 
-                   {showQuiz && (
-                        <div 
-                            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] animate-fadebg" 
-                            onClick={() => setShowQuiz(false)}
-                        >
-                            <div 
-                                className="bg-gray-900 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full relative max-h-[85vh] overflow-y-auto animate-fadein" 
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <button 
-                                    onClick={() => setShowQuiz(false)} 
-                                    className="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-400 hover:text-white z-10"
-                                >
+                    {/* Modal del Quiz SPOSTATO FUORI per garantire il posizionamento fixed sullo schermo */}
+                    {showQuiz && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] animate-fadebg" onClick={closeQuiz}>
+                            <div className="bg-gray-900 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full relative max-h-[85vh] overflow-y-auto animate-fadein" onClick={(e) => e.stopPropagation()}>
+                                <button onClick={closeQuiz} className="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-400 hover:text-white z-10">
                                     <IconClose className="w-6 h-6" />
                                 </button>
-                    
-                                {/* SCHERMATA 1: INTRODUZIONE */}
-                                {quizState === 'intro' && (
-                                    <div className="text-center py-4">
-                                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center mx-auto mb-4 text-purple-400">
-                                            <IconTrophy className="w-8 h-8" />
+
+                                {quizPhase === 'intro' && (
+                                    <div className="text-center pt-2">
+                                        <div className="flex justify-center mb-5">
+                                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-900/40">
+                                                <IconTrophy className="w-8 h-8 text-white" />
+                                            </div>
                                         </div>
-                                        <h3 className="text-2xl font-bold font-display text-white mb-2">Quiz Musicale</h3>
-                                        <p className="text-gray-400 text-sm mb-6 max-w-sm mx-auto">
-                                            Metti alla prova la tua conoscenza sulla musica che hai ascoltato!
-                                        </p>
-                                        <button 
-                                            onClick={startQuiz} 
-                                            className="w-full py-3.5 px-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-bold text-white transition-all shadow-lg shadow-purple-500/25"
-                                        >
-                                            Inizia il Quiz
+                                        <h3 className="font-display text-xl sm:text-2xl font-bold text-white mb-3 pr-4">{t.quizTitle}</h3>
+                                        <p className="text-gray-300 text-sm leading-relaxed mb-7">{t.quizIntro}</p>
+                                        <button onClick={startQuiz} className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-bold text-white transition-all">
+                                            {t.quizStart}
                                         </button>
                                     </div>
                                 )}
-                    
-                                {/* SCHERMATA SE I DATI NON SONO STATI ANCORA CARICATI */}
-                                {quizState === 'no_data' && (
-                                    <div className="text-center py-4">
-                                        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-4 text-amber-400">
-                                            <IconAlertCircle className="w-8 h-8" />
+
+                                {quizPhase === 'no_data' && (
+                                    <div className="text-center pt-2">
+                                        <div className="flex justify-center mb-5">
+                                            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                                                <IconAlert className="w-8 h-8" />
+                                            </div>
                                         </div>
-                                        <h3 className="text-xl font-bold font-display text-white mb-2">Carica prima i tuoi dati</h3>
-                                        <p className="text-gray-400 text-sm mb-6 max-w-sm mx-auto">
-                                            Per poter generare le domande del quiz devi prima importare il tuo file JSON d'ascolto (Spotify o YouTube Music).
-                                        </p>
-                                        <button 
-                                            onClick={() => setShowQuiz(false)} 
-                                            className="w-full py-3 px-6 bg-white/10 hover:bg-white/20 rounded-xl font-semibold text-white transition-colors"
-                                        >
-                                            Ho capito
+                                        <h3 className="font-display text-xl sm:text-2xl font-bold text-white mb-2">Dati Insufficienti</h3>
+                                        <p className="text-gray-300 text-sm mb-6">{t.quizNotEnoughData}</p>
+                                        <button onClick={closeQuiz} className="w-full py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold text-white transition-colors">
+                                            {t.quizClose}
                                         </button>
                                     </div>
                                 )}
-                    
-                                {/* SCHERMATA 2: DOMANDE DEL QUIZ */}
-                                {quizState === 'playing' && quizQuestions && quizQuestions.length > 0 && (
-                                    <div>
-                                        <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
-                                            <span>Domanda {currentQuestionIdx + 1} di {quizQuestions.length}</span>
-                                            <span>Punteggio: {quizScore}</span>
+
+                                {quizPhase === 'playing' && quizQuestions[quizIndex] && (
+                                    <div className="pt-2">
+                                        <div className="flex items-center justify-between mb-4 gap-3">
+                                            <span className="text-xs font-semibold text-purple-300">{t.quizQuestionOf(quizIndex + 1, quizQuestions.length)}</span>
+                                            <span className="text-xs font-semibold text-gray-300 bg-white/10 px-2.5 py-1 rounded-full">{t.quizScoreLabel}: {quizScore}</span>
                                         </div>
-                                        <div className="w-full bg-white/10 h-1.5 rounded-full mb-6 overflow-hidden">
-                                            <div 
-                                                className="bg-gradient-to-r from-purple-500 to-pink-500 h-full transition-all duration-300" 
-                                                style={{ width: `${((currentQuestionIdx + 1) / quizQuestions.length) * 100}%` }}
-                                            ></div>
+                                        <div className="w-full h-1.5 bg-white/10 rounded-full mb-6 overflow-hidden">
+                                            <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500" style={{ width: `${((quizIndex + (answered ? 1 : 0)) / quizQuestions.length) * 100}%` }}></div>
                                         </div>
-                    
-                                        <h4 className="text-lg font-bold text-white mb-5">
-                                            {quizQuestions[currentQuestionIdx]?.question}
-                                        </h4>
-                    
-                                        <div className="space-y-3">
-                                            {quizQuestions[currentQuestionIdx]?.options?.map((option, idx) => {
-                                                let btnStyle = "bg-white/5 hover:bg-white/10 border-white/10 text-gray-200";
-                                                if (selectedOption !== null) {
-                                                    if (idx === quizQuestions[currentQuestionIdx]?.correctAnswer) {
-                                                        btnStyle = "bg-emerald-500/20 border-emerald-500/50 text-emerald-300 font-semibold";
-                                                    } else if (idx === selectedOption) {
-                                                        btnStyle = "bg-rose-500/20 border-rose-500/50 text-rose-300";
-                                                    } else {
-                                                        btnStyle = "bg-white/5 border-transparent text-gray-500 opacity-50";
-                                                    }
+
+                                        <h3 className="font-display text-lg sm:text-xl font-bold text-white mb-5 pr-4">{quizQuestions[quizIndex].question}</h3>
+
+                                        <div className="space-y-2.5 mb-4">
+                                            {quizQuestions[quizIndex].options.map((option, idx) => {
+                                                const current = quizQuestions[quizIndex];
+                                                let cls = 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-purple-400/40 cursor-pointer text-gray-100';
+                                                if (answered) {
+                                                    if (option === current.correct) cls = 'bg-emerald-500/15 border-emerald-400/60 text-emerald-200';
+                                                    else if (option === selectedOption) cls = 'bg-red-500/15 border-red-400/60 text-red-200';
+                                                    else cls = 'bg-white/5 border-white/10 text-gray-400 opacity-60';
                                                 }
                                                 return (
-                                                    <button 
-                                                        key={idx} 
-                                                        disabled={selectedOption !== null} 
-                                                        onClick={() => handleAnswer(idx)} 
-                                                        className={`w-full p-4 rounded-xl border text-left text-sm transition-all flex items-center justify-between ${btnStyle}`}
-                                                    >
-                                                        <span>{option}</span>
-                                                        {selectedOption !== null && idx === quizQuestions[currentQuestionIdx]?.correctAnswer && <IconCheck className="w-5 h-5 text-emerald-400 shrink-0 ml-2" />}
-                                                        {selectedOption !== null && idx === selectedOption && idx !== quizQuestions[currentQuestionIdx]?.correctAnswer && <IconX className="w-5 h-5 text-rose-400 shrink-0 ml-2" />}
+                                                    <button key={idx} onClick={() => answerQuiz(option)} disabled={answered} className={`w-full flex items-center justify-between gap-3 text-left px-4 py-3 rounded-xl border font-semibold text-sm sm:text-base transition-colors ${cls}`}>
+                                                        <span className="truncate">{option}</span>
+                                                        {answered && option === current.correct && <IconCheck className="w-5 h-5 flex-shrink-0" />}
+                                                        {answered && option === selectedOption && option !== current.correct && <IconX className="w-5 h-5 flex-shrink-0" />}
                                                     </button>
                                                 );
                                             })}
                                         </div>
+
+                                        {answered && (
+                                            <div className="mb-5">
+                                                {selectedOption === quizQuestions[quizIndex].correct ? (
+                                                    <p className="text-emerald-300 font-semibold text-sm">{t.quizCorrect}</p>
+                                                ) : (
+                                                    <p className="text-red-300 font-semibold text-sm">{t.quizWrong} — {t.quizCorrectWas(quizQuestions[quizIndex].correct)}</p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <button onClick={nextQuizQuestion} disabled={!answered} className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl font-bold text-white transition-all">
+                                            {quizIndex + 1 < quizQuestions.length ? t.quizNext : t.quizSeeResult}
+                                        </button>
                                     </div>
                                 )}
-                    
-                                {/* SCHERMATA 3: RISULTATO FINALE */}
-                                {quizState === 'finished' && (
-                                    <div className="text-center py-4">
-                                        <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center mx-auto mb-4 text-purple-400">
-                                            <IconTrophy className="w-10 h-10" />
+
+                                {quizPhase === 'finished' && (
+                                    <div className="text-center pt-2">
+                                        <div className="flex justify-center mb-5">
+                                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-900/40">
+                                                <IconTrophy className="w-8 h-8 text-white" />
+                                            </div>
                                         </div>
-                                        <h3 className="text-2xl font-bold font-display text-white mb-1">Quiz Completato!</h3>
-                                        <p className="text-gray-300 text-sm mb-6">
-                                            Punteggio finale: <span className="font-bold text-purple-400">{quizScore}</span> su {quizQuestions.length}
+                                        <h3 className="font-display text-xl sm:text-2xl font-bold text-white mb-2">{t.quizFinishTitle}</h3>
+                                        <p className="font-display text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-400 to-orange-300 my-4">{quizScore} / {quizQuestions.length}</p>
+                                        <p className="text-gray-300 text-sm mb-2">{t.quizFinishSubtitle(quizScore, quizQuestions.length)}</p>
+                                        <p className="text-sm font-semibold text-purple-200 mb-7">
+                                            {quizQuestions.length > 0 && (quizScore / quizQuestions.length) >= 0.8 ? t.quizFinishGreat : (quizQuestions.length > 0 && (quizScore / quizQuestions.length) >= 0.5 ? t.quizFinishGood : t.quizFinishMeh)}
                                         </p>
                                         <div className="flex flex-col sm:flex-row gap-3">
-                                            <button 
-                                                onClick={startQuiz} 
-                                                className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-bold text-white transition-all"
-                                            >
-                                                Rigioca
-                                            </button>
-                                            <button 
-                                                onClick={() => setShowQuiz(false)} 
-                                                className="flex-1 px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold text-white transition-colors"
-                                            >
-                                                Chiudi
-                                            </button>
+                                            <button onClick={startQuiz} className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-bold text-white transition-all">{t.quizPlayAgain}</button>
+                                            <button onClick={closeQuiz} className="flex-1 px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold text-white transition-colors">{t.quizClose}</button>
                                         </div>
                                     </div>
                                 )}
@@ -1638,7 +1500,7 @@
                 </React.Fragment>
             );
         }
-        
+
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
