@@ -1022,15 +1022,101 @@
 
             const quizQuestions = useMemo(() => generateQuizQuestions(stats, t, lang), [stats, quizSeed, lang]);
 
+            // Generatore di quiz a prova di errore (con fallback)
+            const generateQuiz = () => {
+                if (!stats) return [];
+            
+                const questions = [];
+                const topArtists = stats.topArtists || [];
+                const topTracks = stats.topTracks || [];
+                const monthly = stats.monthlyListening || [];
+            
+                // 1. Domanda: Artista #1
+                if (topArtists.length >= 1) {
+                    const correct = topArtists[0].name;
+                    const others = topArtists.slice(1, 10).map(a => a.name);
+                    const fallback = ["Taylor Swift", "The Weeknd", "Drake", "Bad Bunny", "Kanye West", "Coldplay", "Imagine Dragons"];
+                    const pool = Array.from(new Set([...others, ...fallback])).filter(n => n !== correct);
+                    const wrong = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
+                    const options = [correct, ...wrong].sort(() => 0.5 - Math.random());
+            
+                    questions.push({
+                        question: "Qual è stato il tuo artista più ascoltato in assoluto?",
+                        options: options,
+                        correctAnswer: options.indexOf(correct)
+                    });
+                }
+            
+                // 2. Domanda: Brano #1
+                if (topTracks.length >= 1) {
+                    const t0 = topTracks[0];
+                    const correctTrack = t0.name || t0.title || "Brano sconosciuto";
+                    const correctArtist = t0.artist || t0.artistName || "";
+                    const correctStr = correctArtist ? `${correctTrack} - ${correctArtist}` : correctTrack;
+            
+                    const others = topTracks.slice(1, 10).map(t => {
+                        const a = t.artist || t.artistName || "";
+                        const n = t.name || t.title;
+                        return a ? `${n} - ${a}` : n;
+                    });
+                    const fallbackTracks = ["Blinding Lights - The Weeknd", "Shape of You - Ed Sheeran", "As It Was - Harry Styles", "Starboy - The Weeknd"];
+                    const pool = Array.from(new Set([...others, ...fallbackTracks])).filter(t => t !== correctStr);
+                    const wrong = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
+                    const options = [correctStr, ...wrong].sort(() => 0.5 - Math.random());
+            
+                    questions.push({
+                        question: "Qual è il brano che hai riprodotto più volte?",
+                        options: options,
+                        correctAnswer: options.indexOf(correctStr)
+                    });
+                }
+            
+                // 3. Domanda: Minuti totali
+                if (stats.totalMinutes && stats.totalMinutes > 0) {
+                    const mins = Math.round(stats.totalMinutes);
+                    const correctStr = `${mins.toLocaleString()} minuti`;
+                    const wrong1 = `${Math.round(mins * 0.6).toLocaleString()} minuti`;
+                    const wrong2 = `${Math.round(mins * 1.4).toLocaleString()} minuti`;
+                    const wrong3 = `${Math.round(mins * 1.9).toLocaleString()} minuti`;
+                    const options = [correctStr, wrong1, wrong2, wrong3].sort(() => 0.5 - Math.random());
+            
+                    questions.push({
+                        question: "Quanti minuti totali di musica hai ascoltato?",
+                        options: options,
+                        correctAnswer: options.indexOf(correctStr)
+                    });
+                }
+            
+                // 4. Domanda: Mese TOP
+                if (monthly.length > 0) {
+                    const sorted = [...monthly].sort((a, b) => (b.minutes || b.ms || 0) - (a.minutes || a.ms || 0));
+                    if (sorted[0] && sorted[0].month) {
+                        const correctMonth = sorted[0].month;
+                        const allMonths = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+                        const wrong = allMonths.filter(m => m !== correctMonth).sort(() => 0.5 - Math.random()).slice(0, 3);
+                        const options = [correctMonth, ...wrong].sort(() => 0.5 - Math.random());
+            
+                        questions.push({
+                            question: "In quale mese dell'anno hai ascoltato più musica?",
+                            options: options,
+                            correctAnswer: options.indexOf(correctMonth)
+                        });
+                    }
+                }
+            
+                return questions;
+            };
+            
+            // Apre sempre la finestra quando si clicca il tasto Quiz
             const openQuiz = () => {
-                // Apriamo sempre il modal per dare feedback visivo all'utente
+                setShowQuiz(true);
                 setQuizState('intro');
                 setSelectedOption(null);
                 setCurrentQuestionIdx(0);
                 setQuizScore(0);
-                setShowQuiz(true);
             };
             
+            // Avvia il Quiz o mostra l'avviso se i dati non sono pronti
             const startQuiz = () => {
                 const q = generateQuiz();
                 if (q && q.length > 0) {
@@ -1040,12 +1126,10 @@
                     setSelectedOption(null);
                     setQuizScore(0);
                 } else {
-                    // Se non ci sono abbastanza dati, notifichiamo l'utente
-                    setQuizQuestions([]);
                     setQuizState('no_data');
                 }
             };
-
+            
             const answerQuiz = (option) => {
                 if (answered) return;
                 setSelectedOption(option);
