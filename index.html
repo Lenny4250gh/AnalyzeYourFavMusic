@@ -7,22 +7,25 @@
     <meta name="description" content="Analyze your Spotify and YouTube Music listening history — completely offline, in your browser.">
     <meta name="theme-color" content="#0f0f13">
 
-    <!-- Favicon: vinyl/wave mark, inline SVG so the file stays fully self-contained -->
+    <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23a855f7'/%3E%3Cstop offset='100%25' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='%230f0f13'/%3E%3Ccircle cx='32' cy='32' r='22' fill='url(%23g)'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%230f0f13'/%3E%3Ccircle cx='32' cy='32' r='2.5' fill='url(%23g)'/%3E%3C/svg%3E">
 
-    <!-- Google Fonts: Outfit per i titoli, Inter per il corpo del testo -->
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Tailwind CSS per lo stile -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- React e ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 
-    <!-- Babel per far funzionare React nel browser senza installazioni -->
+    <!-- JSZip per leggere i file .zip direttamente nel browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
@@ -73,7 +76,10 @@
         const IconRefresh = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>;
         const IconAlert = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>;
         const IconDownload = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>;
-        const IconImage = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>;
+        const IconZip = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2Z"></path><path d="M10 4v16"></path><path d="M10 8h2"></path><path d="M10 12h2"></path><path d="M10 16h2"></path></svg>;
+        const IconHelp = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>;
+        const IconClose = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+        const IconSpotify = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.376 0 0 5.376 0 12s5.376 12 12 12 12-5.376 12-12S18.624 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.48.66.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141 4.38-1.32 9.84-.66 13.44 1.56.42.24.54.84.301 1.261zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.18-1.38-.72-.18-.6.18-1.2.72-1.38 4.26-1.26 11.28-1.02 15.72 1.62.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>;
 
         const Logo = ({ className }) => (
             <svg className={className} viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
@@ -94,12 +100,12 @@
             it: {
                 brand: 'AnalyzeYourFavMusic',
                 landingTitle: 'Il Tuo Wrapped, Sempre',
-                landingSubtitle: "Combina i dati di Spotify e YouTube Music in un'unica dashboard, elaborata localmente e mai caricata online.",
-                dropTitle: 'Trascina qui i tuoi file JSON o CSV',
-                dropSubtitle: 'oppure clicca per sfogliare',
-                processing: 'Elaborazione in corso...',
+                landingSubtitle: "Combina i dati di Spotify e YouTube Music in un'unica dashboard. Supporta file ZIP, JSON e CSV senza estrarre nulla!",
+                dropTitle: 'Trascina qui i tuoi file ZIP, JSON o CSV',
+                dropSubtitle: 'Supporta direttamente i pacchetti ZIP di Spotify e Takeout',
+                processing: 'Elaborazione file in corso...',
                 errNoData: 'Nessun dato musicale valido trovato nei file.',
-                errReading: 'Errore nella lettura dei file. Assicurati che siano JSON o CSV validi.',
+                errReading: 'Errore nella lettura dei file. Assicurati che siano ZIP, JSON o CSV validi.',
                 headerSubtitle: 'Analisi unificata: Spotify + YouTube Music',
                 showingAll: 'Mostrando: tutta la cronologia',
                 showingYear: (y) => `Mostrando: anno ${y}`,
@@ -144,16 +150,23 @@
                 days: ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'],
                 slots: ['Notte (0-6)', 'Mattina (6-12)', 'Pomeriggio (12-18)', 'Sera (18-24)'],
                 na: 'N/D',
+                guideBtn: 'Come scaricare i dati',
+                guideTitle: 'Come ottenere i tuoi dati in 2 minuti',
+                guideSpotifyStep: '1. Vai su Spotify Impostazioni Privacy e richiedi il download "Dati estesi sugli ascolti".',
+                guideYTMStep: '2. Vai su Google Takeout e seleziona solo "YouTube e YouTube Music" (cronologia).',
+                guideZipNote: '3. Appena ti arriva l\'email con il file .zip, TRASCINALO DIRETTAMENTE QUI SENZA ESTRARLO!',
+                openSpotifyPrivacy: 'Apri Privacy Spotify',
+                openGoogleTakeout: 'Apri Google Takeout',
             },
             en: {
                 brand: 'AnalyzeYourFavMusic',
                 landingTitle: 'Your Wrapped, Anytime',
-                landingSubtitle: 'Combine your Spotify and YouTube Music data into a single dashboard, processed locally and never uploaded anywhere.',
-                dropTitle: 'Drag your JSON or CSV files here',
-                dropSubtitle: 'or click to browse',
-                processing: 'Processing...',
+                landingSubtitle: 'Combine Spotify and YouTube Music data into a single dashboard. Supports ZIP, JSON, and CSV files directly!',
+                dropTitle: 'Drag your ZIP, JSON, or CSV files here',
+                dropSubtitle: 'Directly supports raw ZIP packages from Spotify and Takeout',
+                processing: 'Processing files...',
                 errNoData: 'No valid music data found in the files.',
-                errReading: 'Error reading the files. Make sure they are valid JSON or CSV.',
+                errReading: 'Error reading files. Ensure they are valid ZIP, JSON, or CSV files.',
                 headerSubtitle: 'Unified analysis: Spotify + YouTube Music',
                 showingAll: 'Showing: entire history',
                 showingYear: (y) => `Showing: year ${y}`,
@@ -198,6 +211,13 @@
                 days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
                 slots: ['Night (0-6)', 'Morning (6-12)', 'Afternoon (12-18)', 'Evening (18-24)'],
                 na: 'N/A',
+                guideBtn: 'How to get data',
+                guideTitle: 'How to get your data in 2 minutes',
+                guideSpotifyStep: '1. Go to Spotify Privacy Settings and request "Extended Streaming History".',
+                guideYTMStep: '2. Go to Google Takeout and select only "YouTube and YouTube Music" (history).',
+                guideZipNote: '3. As soon as you receive the email with the .zip file, DRAG IT HERE DIRECTLY WITHOUT UNZIPPING!',
+                openSpotifyPrivacy: 'Open Spotify Privacy',
+                openGoogleTakeout: 'Open Google Takeout',
             }
         };
 
@@ -254,12 +274,7 @@
             return arr;
         };
 
-        // Caching delle immagini per evitare richieste multiple per lo stesso artista/brano
         const imageCache = new Map();
-
-        // Coda con concorrenza limitata: se partono troppe richieste insieme verso Wikipedia/iTunes
-        // capita che alcune vadano in errore o in rate-limit e la foto non si carichi mai.
-        // Qui limitiamo a poche richieste "in volo" alla volta e le altre aspettano il loro turno.
         const MAX_CONCURRENT_IMAGE_REQUESTS = 4;
         let activeImageRequests = 0;
         const imageRequestQueue = [];
@@ -283,28 +298,22 @@
 
         const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
-        // Normalizza una stringa per confronti "tolleranti" (minuscolo, senza accenti/punteggiatura)
         const normalizeForMatch = (s) => (s || '')
             .toLowerCase()
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .replace(/[^a-z0-9]+/g, ' ')
             .trim();
 
-        // Verifica che il nome artista restituito dall'API corrisponda davvero a quello cercato,
-        // per evitare di mostrare immagini "scollegate" quando iTunes restituisce un match sbagliato
         const artistMatches = (queryArtist, resultArtist) => {
             const q = normalizeForMatch(queryArtist);
             const r = normalizeForMatch(resultArtist);
             if (!q || !r) return false;
             if (q === r) return true;
-            // Confronto parola per parola: basta che le parole principali dell'artista cercato
-            // siano contenute nel nome restituito (gestisce feat., collaborazioni, ecc.)
             const qWords = q.split(' ').filter(w => w.length > 1);
             if (qWords.length === 0) return false;
             return qWords.every(w => r.includes(w)) || r.includes(q) || q.includes(r);
         };
 
-        // Rimuove annotazioni di tipo video, edizioni e featuring per una ricerca più pulita
         const stripTitleQualifiers = (s) => (s || '')
             .replace(/[\(\[][^)\]]*(feat|with|explicit|clean|deluxe|remaster|radio edit|bonus track|anniversary|mono|stereo|live|official|video|music video|lyric|visualizer|audio|hd|4k)[^)\]]*[\)\]]/gi, '')
             .replace(/-\s*(single|ep|radio edit|bonus track|official video|music video|lyric video|official audio|visualizer)\s*$/gi, '')
@@ -330,7 +339,6 @@
 
             const findMatch = (results) => {
                 const candidates = results.filter(r => {
-                    // Escludiamo esplicitamente i video musicali per evitare miniature da videoclip
                     if (r.kind === 'music-video') return false;
                     const resultTitle = type === 'album' ? r.collectionName : r.trackName;
                     return artistMatches(artist, r.artistName) && titleMatches(title, resultTitle);
@@ -340,7 +348,6 @@
 
                 const score = (r) => {
                     let s = 0;
-                    // Diamo priorità ai brani audio ufficiali
                     if (r.kind === 'song') s += 4;
                     if (normalizeForMatch(r.artistName) === normalizeForMatch(artist)) s += 2;
                     const resultTitle = type === 'album' ? r.collectionName : r.trackName;
@@ -381,20 +388,12 @@
             return null;
         };
 
-        // Verifica che anche il TITOLO restituito corrisponda davvero a quello cercato.
-        // Senza questo controllo, se iTunes non ha esattamente quel brano/album,
-        // il codice prendeva comunque un altro pezzo dello stesso artista: stesso artista
-        // giusto, ma copertina "sbagliata" perché di un brano diverso.
-        // Il confronto è tollerante (basato sulle parole condivise) perché piccole differenze
-        // di formattazione tra la tua libreria e il catalogo iTunes sono normali.
         const titleMatches = (queryTitle, resultTitle) => {
             const q = normalizeForMatch(stripTitleQualifiers(queryTitle));
             const r = normalizeForMatch(stripTitleQualifiers(resultTitle));
             if (!q || !r) return false;
             if (q === r) return true;
             if (q.includes(r) || r.includes(q)) return true;
-            // Altrimenti basta che la maggior parte delle parole significative
-            // (più di 2 lettere) del titolo cercato compaia anche in quello trovato
             const qWords = q.split(' ').filter(w => w.length > 2);
             if (qWords.length === 0) return q === r;
             const rWords = new Set(r.split(' ').filter(w => w.length > 2));
@@ -402,26 +401,18 @@
             return shared / qWords.length >= 0.4;
         };
 
-        // Scarta URL che quasi certamente NON sono foto reali (loghi, firme, stemmi):
-        // su Wikipedia/Wikidata questi sono quasi sempre file .svg
         const looksLikeRealPhoto = (url) => !!url && !/\.svg(\?.*)?$/i.test(url);
 
-        // Riconosce, dalla breve descrizione che Wikipedia/Wikidata associano a una voce,
-        // se si tratta plausibilmente di un musicista/gruppo. Serve a scartare omonimi
-        // (attori, sportivi, politici, ecc.) che altrimenti finirebbero mostrati per errore.
         const looksLikeMusicianDescription = (desc) => {
             if (!desc) return false;
             return /sing|rapp|music|band\b|compos|vocal|songwrit|producer|dj\b|hip.?hop|rock|pop\b|duo|collective|orchestra|record label/i.test(desc);
         };
 
-        // Riconosce descrizioni che indicano chiaramente un'altra professione (non musicista):
-        // usata solo per scartare un omonimo palese, non per essere troppo restrittivi
         const looksLikeNonMusicianDescription = (desc) => {
             if (!desc) return false;
             return /actor\b|actress|footballer|soccer player|basketball player|politician|athlete|wrestler|author\b|novelist|film director|scientist|mathematician|chef\b|painter\b|comedian|entrepreneur|businessman|cricketer|boxer\b/i.test(desc);
         };
 
-        // Un solo tentativo di ricerca+riassunto su Wikipedia per una data query
         const tryWikipediaPhoto = async (query) => {
             const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*&srlimit=1`;
             const searchRes = await fetch(searchUrl);
@@ -430,30 +421,19 @@
             const pageTitle = searchData?.query?.search?.[0]?.title;
             if (!pageTitle) return null;
 
-            // La REST API vuole gli underscore al posto degli spazi per essere affidabile
             const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(pageTitle.replace(/ /g, '_'))}`;
             const summaryRes = await fetch(summaryUrl);
             if (!summaryRes.ok) return null;
             const summaryData = await summaryRes.json();
 
-            // Evitiamo pagine di disambiguazione (non hanno una foto specifica)
             if (summaryData?.type === 'disambiguation') return null;
-
-            // Scartiamo solo se la descrizione indica chiaramente un'altra professione
-            // (attore, sportivo, ecc.): se la descrizione manca o è ambigua, procediamo comunque
             if (looksLikeNonMusicianDescription(summaryData?.description)) return null;
 
-            // Preferiamo l'immagine originale (qualità migliore del thumbnail piccolo)
             const photoUrl = summaryData?.originalimage?.source || summaryData?.thumbnail?.source || null;
             return looksLikeRealPhoto(photoUrl) ? photoUrl : null;
         };
 
-        // Wikidata ha una proprietà dedicata (P18 "image") pensata proprio per la foto
-        // ufficiale della persona/band: più affidabile della semplice immagine di testa
-        // della pagina Wikipedia, che a volte è un logo o una firma.
         const tryWikidataPhoto = async (query) => {
-            // Prendiamo più candidati (non solo il primo) per poter scegliere quello
-            // la cui descrizione parla davvero di musica, ed evitare omonimi
             const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&limit=8&type=item`;
             const searchRes = await fetch(searchUrl);
             if (!searchRes.ok) return null;
@@ -461,10 +441,7 @@
             const candidates = searchData?.search || [];
             if (candidates.length === 0) return null;
 
-            // Preferiamo un candidato la cui descrizione parla chiaramente di musica...
             let musicCandidate = candidates.find(c => looksLikeMusicianDescription(c.description));
-            // ...ma se nessuno la menziona esplicitamente, va bene anche il primo candidato
-            // purché la sua descrizione non indichi chiaramente un'altra professione
             if (!musicCandidate) {
                 musicCandidate = candidates.find(c => !looksLikeNonMusicianDescription(c.description));
             }
@@ -477,15 +454,10 @@
             const fileName = claimData?.claims?.P18?.[0]?.mainsnak?.datavalue?.value;
             if (!fileName) return null;
 
-            // Special:FilePath fa da redirect diretto al file su Wikimedia Commons
             const photoUrl = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName.replace(/ /g, '_'))}?width=300`;
             return looksLikeRealPhoto(fileName) ? photoUrl : null;
         };
 
-        // Cerca una vera fotografia dell'artista (non una copertina di album, non un logo/firma).
-        // Proviamo prima Wikidata (foto "ufficiale" dedicata), poi Wikipedia come ripiego,
-        // con più varianti di query: artisti/band meno comuni a volte emergono solo con
-        // parole chiave diverse ("rapper", "singer", "band"...).
         const fetchArtistPhoto = (artist) => runQueued(async () => {
             const attempts = [
                 () => tryWikidataPhoto(`${artist} musician`),
@@ -503,7 +475,6 @@
                     const photo = await attempt();
                     if (photo) return photo;
                 } catch (e) {
-                    // Piccola pausa e un ultimo tentativo, utile in caso di rate-limit momentaneo
                     await wait(400);
                     try {
                         const retryPhoto = await attempt();
@@ -516,8 +487,6 @@
             return null;
         });
 
-        // Esegue una ricerca iTunes e restituisce i risultati grezzi (accodata per non
-        // sovraccaricare l'API insieme alle altre richieste)
         const searchITunesResults = async (term, entity) => {
             const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=${entity}&limit=15`;
             const data = await runQueued(async () => {
@@ -527,7 +496,6 @@
             return data?.results || [];
         };
 
-        // Componente React per gestire il caricamento dell'immagine, lo scheletro e il fallback
         const EntityImage = ({ artist, title, type, altText, className }) => {
             const [src, setSrc] = useState(null);
             const [loading, setLoading] = useState(true);
@@ -553,7 +521,6 @@
             }
 
             if (!src || error) {
-                // Se la foto non carica o c'è un errore, non viene mostrato nulla (si toglie)
                 return null;
             }
 
@@ -579,23 +546,41 @@
             const [selectedYear, setSelectedYear] = useState('all');
             const [dateFrom, setDateFrom] = useState('');
             const [dateTo, setDateTo] = useState('');
+            const [showGuide, setShowGuide] = useState(false);
 
             useEffect(() => {
                 document.documentElement.lang = lang;
             }, [lang]);
 
+            // Funzione per elaborare sia file singoli che estrarre file da archivi .ZIP
             const processFiles = async (files) => {
                 setIsProcessing(true);
                 setError('');
                 let tuttiAscolti = [];
 
                 try {
-                    for (let i = 0; i < files.length; i++) {
-                        const file = files[i];
-                        
-                        if (file.name.endsWith('.csv')) {
+                    const filesToParse = [];
+
+                    for (const file of files) {
+                        if (file.name.endsWith('.zip')) {
+                            // Lettura automatica ZIP via JSZip
+                            const zip = await JSZip.loadAsync(file);
+                            for (const relativePath in zip.files) {
+                                const zipEntry = zip.files[relativePath];
+                                if (!zipEntry.dir && (relativePath.endsWith('.json') || relativePath.endsWith('.csv'))) {
+                                    const content = await zipEntry.async('string');
+                                    filesToParse.push({ name: relativePath, text: content });
+                                }
+                            }
+                        } else if (file.name.endsWith('.json') || file.name.endsWith('.csv')) {
                             const text = await file.text();
-                            const lines = text.split('\n');
+                            filesToParse.push({ name: file.name, text: text });
+                        }
+                    }
+
+                    for (const itemFile of filesToParse) {
+                        if (itemFile.name.endsWith('.csv')) {
+                            const lines = itemFile.text.split('\n');
                             for (let j = 1; j < lines.length; j++) {
                                 const line = lines[j].trim();
                                 if (!line) continue;
@@ -617,61 +602,65 @@
                             continue;
                         }
 
-                        if (!file.name.endsWith('.json')) continue;
+                        if (itemFile.name.endsWith('.json')) {
+                            let data;
+                            try {
+                                data = JSON.parse(itemFile.text);
+                            } catch (e) {
+                                continue;
+                            }
 
-                        const text = await file.text();
-                        const data = JSON.parse(text);
-
-                        if (Array.isArray(data) && data.length > 0 && data[0].header === 'YouTube Music') {
-                            data.forEach(item => {
-                                if (item.header !== 'YouTube Music') return;
-                                let nomeArtista = 'Artista Sconosciuto';
-                                const subtitles = item.subtitles || [];
-                                if (subtitles.length > 0) {
-                                    nomeArtista = subtitles[0].name || nomeArtista;
-                                    if (nomeArtista.endsWith(' - Topic')) nomeArtista = nomeArtista.replace(' - Topic', '');
-                                }
-                                nomeArtista = nomeArtista.trim();
-
-                                let titolo = (item.title || '').trim();
-                                const prefissi = ['Hai guardato ', 'Watched ', 'Hai ascoltato ', 'Listened to '];
-                                for (let prefisso of prefissi) {
-                                    if (titolo.startsWith(prefisso)) {
-                                        titolo = titolo.replace(prefisso, '').trim();
-                                        break;
+                            if (Array.isArray(data) && data.length > 0 && data[0].header === 'YouTube Music') {
+                                data.forEach(item => {
+                                    if (item.header !== 'YouTube Music') return;
+                                    let nomeArtista = 'Artista Sconosciuto';
+                                    const subtitles = item.subtitles || [];
+                                    if (subtitles.length > 0) {
+                                        nomeArtista = subtitles[0].name || nomeArtista;
+                                        if (nomeArtista.endsWith(' - Topic')) nomeArtista = nomeArtista.replace(' - Topic', '');
                                     }
-                                }
+                                    nomeArtista = nomeArtista.trim();
 
-                                if (titolo && titolo !== 'a video that has been removed' && !titolo.toLowerCase().includes('video non disponibile') && !isUnknown(nomeArtista, titolo)) {
-                                    const dt = parseDate(item.time);
-                                    if (dt) {
-                                        const stimaDurataMediaMs = 180000; 
-                                        tuttiAscolti.push({ fonte: 'YTMusic', artista: nomeArtista, titolo: titolo, album: null, data: dt, ms_played: stimaDurataMediaMs });
-                                    }
-                                }
-                            });
-                        } else {
-                            const items = data.items ? data.items : (Array.isArray(data) ? data : []);
-                            items.forEach(item => {
-                                const artista = item.artistName || item.master_metadata_album_artist_name;
-                                const brano = item.trackName || item.master_metadata_track_name;
-                                const msPlayed = item.msPlayed || item.ms_played || 0;
-                                const album = item.master_metadata_album_album_name || null;
-
-                                if (artista && brano && msPlayed > 30000) {
-                                    const artClean = artista.trim();
-                                    const titClean = brano.trim();
-                                    const albumClean = album ? album.trim() : null;
-
-                                    if (!isUnknown(artClean, titClean)) {
-                                        const dataStr = item.endTime || item.ts;
-                                        const dt = parseDate(dataStr);
-                                        if (dt) {
-                                            tuttiAscolti.push({ fonte: 'Spotify', artista: artClean, titolo: titClean, album: albumClean, data: dt, ms_played: msPlayed });
+                                    let titolo = (item.title || '').trim();
+                                    const prefissi = ['Hai guardato ', 'Watched ', 'Hai ascoltato ', 'Listened to '];
+                                    for (let prefisso of prefissi) {
+                                        if (titolo.startsWith(prefisso)) {
+                                            titolo = titolo.replace(prefisso, '').trim();
+                                            break;
                                         }
                                     }
-                                }
-                            });
+
+                                    if (titolo && titolo !== 'a video that has been removed' && !titolo.toLowerCase().includes('video non disponibile') && !isUnknown(nomeArtista, titolo)) {
+                                        const dt = parseDate(item.time);
+                                        if (dt) {
+                                            const stimaDurataMediaMs = 180000; 
+                                            tuttiAscolti.push({ fonte: 'YTMusic', artista: nomeArtista, titolo: titolo, album: null, data: dt, ms_played: stimaDurataMediaMs });
+                                        }
+                                    }
+                                });
+                            } else {
+                                const items = data.items ? data.items : (Array.isArray(data) ? data : []);
+                                items.forEach(item => {
+                                    const artista = item.artistName || item.master_metadata_album_artist_name;
+                                    const brano = item.trackName || item.master_metadata_track_name;
+                                    const msPlayed = item.msPlayed || item.ms_played || 0;
+                                    const album = item.master_metadata_album_album_name || null;
+
+                                    if (artista && brano && msPlayed > 30000) {
+                                        const artClean = artista.trim();
+                                        const titClean = brano.trim();
+                                        const albumClean = album ? album.trim() : null;
+
+                                        if (!isUnknown(artClean, titClean)) {
+                                            const dataStr = item.endTime || item.ts;
+                                            const dt = parseDate(dataStr);
+                                            if (dt) {
+                                                tuttiAscolti.push({ fonte: 'Spotify', artista: artClean, titolo: titClean, album: albumClean, data: dt, ms_played: msPlayed });
+                                            }
+                                        }
+                                    }
+                                });
+                            }
                         }
                     }
 
@@ -826,7 +815,13 @@
             if (ascolti.length === 0) {
                 return (
                     <div className="min-h-screen text-white flex flex-col items-center justify-center p-6 relative" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
-                        <div className="absolute top-6 right-6"><LangSwitch /></div>
+                        <div className="absolute top-6 right-6 flex items-center gap-3">
+                            <button onClick={() => setShowGuide(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 rounded-lg text-xs font-semibold text-purple-200 transition-all">
+                                <IconHelp className="w-4 h-4" /> {t.guideBtn}
+                            </button>
+                            <LangSwitch />
+                        </div>
+
                         <div className="max-w-2xl w-full bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-[2rem] p-10 text-center shadow-2xl shadow-purple-950/40">
                             <div className="flex justify-center mb-6">
                                 <div className="relative animate-float">
@@ -843,7 +838,7 @@
                             </p>
 
                             <div className="border-2 border-dashed border-white/20 rounded-2xl p-10 bg-white/[0.03] hover:bg-white/[0.07] hover:border-purple-400/40 transition-all cursor-pointer relative group">
-                                <input type="file" multiple accept=".json,.csv" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={handleFileInput} />
+                                <input type="file" multiple accept=".json,.csv,.zip" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={handleFileInput} />
                                 {isProcessing ? (
                                     <div className="flex flex-col items-center">
                                         <IconRefresh className="w-10 h-10 text-purple-400 animate-spin-slow mb-4" />
@@ -851,12 +846,16 @@
                                     </div>
                                 ) : (
                                     <div className="flex flex-col items-center">
-                                        <IconUpload className="w-12 h-12 text-gray-400 group-hover:text-purple-400 transition-colors mb-4" />
+                                        <div className="flex items-center gap-2 mb-4 text-gray-400 group-hover:text-purple-400 transition-colors">
+                                            <IconUpload className="w-10 h-10" />
+                                            <IconZip className="w-10 h-10" />
+                                        </div>
                                         <p className="font-semibold text-lg mb-2">{t.dropTitle}</p>
                                         <p className="text-sm text-gray-400">{t.dropSubtitle}</p>
                                     </div>
                                 )}
                             </div>
+
                             {error && (
                                 <div className="mt-6 flex items-center justify-center gap-2 text-red-400 bg-red-400/10 p-3 rounded-lg">
                                     <IconAlert className="w-5 h-5" />
@@ -864,6 +863,35 @@
                                 </div>
                             )}
                         </div>
+
+                        {/* Modal Guida Automatica */}
+                        {showGuide && (
+                            <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+                                <div className="bg-gray-900 border border-white/10 rounded-3xl p-8 max-w-lg w-full relative space-y-6">
+                                    <button onClick={() => setShowGuide(false)} className="absolute top-6 right-6 text-gray-400 hover:text-white"><IconClose className="w-6 h-6" /></button>
+                                    <h3 className="font-display text-2xl font-bold text-white flex items-center gap-2">
+                                        <IconHelp className="text-purple-400" /> {t.guideTitle}
+                                    </h3>
+                                    <div className="space-y-4 text-sm text-gray-300">
+                                        <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-2">
+                                            <p>{t.guideSpotifyStep}</p>
+                                            <a href="https://www.spotify.com/account/privacy/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                                                <IconSpotify className="w-4 h-4" /> {t.openSpotifyPrivacy}
+                                            </a>
+                                        </div>
+                                        <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-2">
+                                            <p>{t.guideYTMStep}</p>
+                                            <a href="https://takeout.google.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-red-600 hover:bg-red-500 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                                                {t.openGoogleTakeout}
+                                            </a>
+                                        </div>
+                                        <p className="text-purple-300 font-medium text-xs bg-purple-500/10 p-3 rounded-lg border border-purple-500/20">
+                                            {t.guideZipNote}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
             }
@@ -889,7 +917,6 @@
                                 </div>
                             </div>
                             
-                            {}
                             <div className="flex flex-col gap-3 bg-white/[0.04] p-3 rounded-2xl border border-white/10 w-full md:w-auto backdrop-blur-sm">
                                 <div className="flex items-center justify-between md:justify-end gap-2">
                                     <LangSwitch />
@@ -934,7 +961,6 @@
                             </div>
                         )}
                         
-                        {}
                         {stats && (
                             <div className="space-y-8">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -960,7 +986,6 @@
                                     </div>
                                 </div>
 
-                                {}
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                     {/* ARTISTI */}
                                     <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
@@ -1023,10 +1048,8 @@
                                             }) : <p className="text-gray-400 text-center py-10">{t.notEnoughTracks}</p>}
                                         </div>
                                     </div>
-
                                 </div>
 
-                                {}
                                 <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-500/20 rounded-3xl p-6 md:p-8">
                                     <h2 className="font-display text-2xl font-bold mb-6 flex items-center gap-3 text-white">
                                         <IconCalendar className="text-indigo-400 w-6 h-6" /> {t.clockTitle}
@@ -1082,9 +1105,8 @@
                             </div>
                         )}
 
-                        {/* Footer con versione del sito */}
                         <footer className="mt-12 pb-6 text-center text-xs text-gray-500">
-                            <p>AnalyzeYourFavMusic <span className="opacity-75">v1.0.0</span></p>
+                            <p>AnalyzeYourFavMusic <span className="opacity-75">v1.1.0 (ZIP Direct Support)</span></p>
                         </footer>
                     </div>
                 </div>
