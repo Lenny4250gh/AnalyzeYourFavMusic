@@ -866,30 +866,36 @@
                             )}
                         </div>
 
-                        {/* Modal Guida Automatica */}
                         {showGuide && (
-                            <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-                                <div className="bg-gray-900 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full relative space-y-6">
-                                    <button onClick={() => setShowGuide(false)} className="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-400 hover:text-white"><IconClose className="w-6 h-6" /></button>
-                                    <h3 className="font-display text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                            <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50" onClick={() => setShowGuide(false)}>
+                                <div className="bg-gray-900 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full relative max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                                    <button onClick={() => setShowGuide(false)} className="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-400 hover:text-white z-10"><IconClose className="w-6 h-6" /></button>
+                                    <h3 className="font-display text-xl sm:text-2xl font-bold text-white flex items-center gap-2 mb-6 pr-8">
                                         <IconHelp className="text-purple-400 flex-shrink-0" /> {t.guideTitle}
                                     </h3>
                                     <div className="space-y-4 text-sm text-gray-300">
-                                        <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-3">
-                                            <p className="leading-relaxed">{t.guideSpotifyStep}</p>
-                                            <a href="https://www.spotify.com/account/privacy/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-lg transition-colors">
-                                                <IconSpotify className="w-4 h-4" /> {t.openSpotifyPrivacy}
-                                            </a>
+                                        <div className="flex gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                                            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+                                            <div className="space-y-3 flex-1">
+                                                <p className="leading-relaxed">{t.guideSpotifyStep}</p>
+                                                <a href="https://www.spotify.com/account/privacy/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-lg transition-colors">
+                                                    <IconSpotify className="w-4 h-4" /> {t.openSpotifyPrivacy}
+                                                </a>
+                                            </div>
                                         </div>
-                                        <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-3">
-                                            <p className="leading-relaxed">{t.guideYTMStep}</p>
-                                            <a href="https://takeout.google.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-red-600 hover:bg-red-500 text-white font-semibold px-4 py-2 rounded-lg transition-colors">
-                                                {t.openGoogleTakeout}
-                                            </a>
+                                        <div className="flex gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                                            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-red-500/20 text-red-300 text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+                                            <div className="space-y-3 flex-1">
+                                                <p className="leading-relaxed">{t.guideYTMStep}</p>
+                                                <a href="https://takeout.google.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-red-600 hover:bg-red-500 text-white font-semibold px-4 py-2 rounded-lg transition-colors">
+                                                    {t.openGoogleTakeout}
+                                                </a>
+                                            </div>
                                         </div>
-                                        <p className="text-purple-300 font-medium text-xs bg-purple-500/10 p-3 rounded-lg border border-purple-500/20 leading-relaxed">
-                                            {t.guideZipNote}
-                                        </p>
+                                        <div className="flex gap-3 p-4 bg-purple-500/10 rounded-xl border border-purple-500/20">
+                                            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold flex items-center justify-center mt-0.5">3</span>
+                                            <p className="text-purple-200 font-medium leading-relaxed flex-1">{t.guideZipNote}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
