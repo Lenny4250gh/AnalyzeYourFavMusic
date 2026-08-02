@@ -34,6 +34,7 @@
         html, body {
             max-width: 100%;
             overflow-x: hidden;
+            overscroll-behavior: none;
         }
         body {
             margin: 0;
@@ -726,6 +727,26 @@
             useEffect(() => {
                 document.documentElement.lang = lang;
             }, [lang]);
+
+            useEffect(() => {
+                const modalOpen = showGuide || showQuiz;
+                if (modalOpen) {
+                    const scrollY = window.scrollY;
+                    document.body.style.position = 'fixed';
+                    document.body.style.top = `-${scrollY}px`;
+                    document.body.style.left = '0';
+                    document.body.style.right = '0';
+                    document.body.style.width = '100%';
+                    return () => {
+                        document.body.style.position = '';
+                        document.body.style.top = '';
+                        document.body.style.left = '';
+                        document.body.style.right = '';
+                        document.body.style.width = '';
+                        window.scrollTo(0, scrollY);
+                    };
+                }
+            }, [showGuide, showQuiz]);
 
             // Funzione per elaborare sia file singoli che estrarre file da archivi .ZIP
             const processFiles = async (files) => {
