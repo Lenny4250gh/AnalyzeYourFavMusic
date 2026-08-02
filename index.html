@@ -807,22 +807,22 @@
 
             const LangSwitch = ({ className }) => (
                 <div className={`flex bg-black/30 rounded-lg p-1 border border-white/10 ${className || ''}`}>
-                    <button onClick={() => setLang('it')} className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wide transition-colors ${lang === 'it' ? 'bg-white/15 text-white' : 'text-gray-500 hover:text-gray-300'}`}>IT</button>
-                    <button onClick={() => setLang('en')} className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wide transition-colors ${lang === 'en' ? 'bg-white/15 text-white' : 'text-gray-500 hover:text-gray-300'}`}>EN</button>
+                    <button onClick={() => setLang('it')} className={`px-3 py-2 md:px-2.5 md:py-1 rounded-md text-sm md:text-xs font-bold tracking-wide transition-colors ${lang === 'it' ? 'bg-white/15 text-white' : 'text-gray-500 hover:text-gray-300'}`}>IT</button>
+                    <button onClick={() => setLang('en')} className={`px-3 py-2 md:px-2.5 md:py-1 rounded-md text-sm md:text-xs font-bold tracking-wide transition-colors ${lang === 'en' ? 'bg-white/15 text-white' : 'text-gray-500 hover:text-gray-300'}`}>EN</button>
                 </div>
             );
 
             if (ascolti.length === 0) {
                 return (
-                    <div className="min-h-screen text-white flex flex-col items-center justify-center p-6 relative" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
-                        <div className="absolute top-6 right-6 flex items-center gap-3">
-                            <button onClick={() => setShowGuide(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 rounded-lg text-xs font-semibold text-purple-200 transition-all">
-                                <IconHelp className="w-4 h-4" /> {t.guideBtn}
+                    <div className="min-h-screen text-white flex flex-col items-center justify-center p-4 md:p-6 relative" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+                        <div className="absolute top-4 right-4 md:top-6 md:right-6 flex items-center gap-2 md:gap-3 z-10">
+                            <button onClick={() => setShowGuide(true)} className="flex items-center gap-2 px-4 py-2.5 md:px-3 md:py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 rounded-lg text-sm md:text-xs font-semibold text-purple-200 transition-all shadow-md">
+                                <IconHelp className="w-5 h-5 md:w-4 md:h-4" /> <span className="hidden sm:inline">{t.guideBtn}</span>
                             </button>
                             <LangSwitch />
                         </div>
 
-                        <div className="max-w-2xl w-full bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-[2rem] p-10 text-center shadow-2xl shadow-purple-950/40">
+                        <div className="max-w-2xl w-full bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 md:p-10 text-center shadow-2xl shadow-purple-950/40 mt-14 md:mt-0">
                             <div className="flex justify-center mb-6">
                                 <div className="relative animate-float">
                                     <div className="absolute inset-0 bg-purple-500/30 blur-2xl rounded-full"></div>
@@ -833,11 +833,11 @@
                             <h1 className="font-display text-4xl md:text-5xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-300 via-pink-400 to-orange-300">
                                 {t.landingTitle}
                             </h1>
-                            <p className="text-gray-300 text-lg mb-8 leading-relaxed">
+                            <p className="text-gray-300 text-base md:text-lg mb-8 leading-relaxed">
                                 {t.landingSubtitle}
                             </p>
 
-                            <div className="border-2 border-dashed border-white/20 rounded-2xl p-10 bg-white/[0.03] hover:bg-white/[0.07] hover:border-purple-400/40 transition-all cursor-pointer relative group">
+                            <div className="border-2 border-dashed border-white/20 rounded-2xl p-8 md:p-10 bg-white/[0.03] hover:bg-white/[0.07] hover:border-purple-400/40 transition-all cursor-pointer relative group">
                                 <input type="file" multiple accept=".json,.csv,.zip" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={handleFileInput} />
                                 {isProcessing ? (
                                     <div className="flex flex-col items-center">
@@ -867,25 +867,25 @@
                         {/* Modal Guida Automatica */}
                         {showGuide && (
                             <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-                                <div className="bg-gray-900 border border-white/10 rounded-3xl p-8 max-w-lg w-full relative space-y-6">
-                                    <button onClick={() => setShowGuide(false)} className="absolute top-6 right-6 text-gray-400 hover:text-white"><IconClose className="w-6 h-6" /></button>
-                                    <h3 className="font-display text-2xl font-bold text-white flex items-center gap-2">
-                                        <IconHelp className="text-purple-400" /> {t.guideTitle}
+                                <div className="bg-gray-900 border border-white/10 rounded-3xl p-6 md:p-8 max-w-lg w-full relative space-y-6 max-h-[90vh] overflow-y-auto">
+                                    <button onClick={() => setShowGuide(false)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white bg-white/5 rounded-full"><IconClose className="w-6 h-6" /></button>
+                                    <h3 className="font-display text-2xl font-bold text-white flex items-center gap-2 mt-4 md:mt-0">
+                                        <IconHelp className="text-purple-400 shrink-0" /> <span className="leading-tight">{t.guideTitle}</span>
                                     </h3>
-                                    <div className="space-y-4 text-sm text-gray-300">
-                                        <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-2">
+                                    <div className="space-y-4 text-sm md:text-base text-gray-300">
+                                        <div className="p-4 md:p-5 bg-white/5 rounded-xl border border-white/5 space-y-3">
                                             <p>{t.guideSpotifyStep}</p>
-                                            <a href="https://www.spotify.com/account/privacy/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors">
-                                                <IconSpotify className="w-4 h-4" /> {t.openSpotifyPrivacy}
+                                            <a href="https://www.spotify.com/account/privacy/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-full sm:w-auto gap-2 text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-3 sm:px-3 sm:py-2 rounded-lg transition-colors shadow-sm">
+                                                <IconSpotify className="w-5 h-5 sm:w-4 sm:h-4" /> {t.openSpotifyPrivacy}
                                             </a>
                                         </div>
-                                        <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-2">
+                                        <div className="p-4 md:p-5 bg-white/5 rounded-xl border border-white/5 space-y-3">
                                             <p>{t.guideYTMStep}</p>
-                                            <a href="https://takeout.google.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-red-600 hover:bg-red-500 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                                            <a href="https://takeout.google.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-full sm:w-auto gap-2 text-sm bg-red-600 hover:bg-red-500 text-white font-semibold px-4 py-3 sm:px-3 sm:py-2 rounded-lg transition-colors shadow-sm">
                                                 {t.openGoogleTakeout}
                                             </a>
                                         </div>
-                                        <p className="text-purple-300 font-medium text-xs bg-purple-500/10 p-3 rounded-lg border border-purple-500/20">
+                                        <p className="text-purple-300 font-medium text-sm bg-purple-500/10 p-4 rounded-xl border border-purple-500/20 leading-relaxed">
                                             {t.guideZipNote}
                                         </p>
                                     </div>
@@ -917,38 +917,41 @@
                                 </div>
                             </div>
                             
-                            <div className="flex flex-col gap-3 bg-white/[0.04] p-3 rounded-2xl border border-white/10 w-full md:w-auto backdrop-blur-sm">
-                                <div className="flex items-center justify-between md:justify-end gap-2">
+                            <div className="flex flex-col gap-4 bg-white/[0.04] p-4 md:p-3 rounded-2xl border border-white/10 w-full lg:w-auto backdrop-blur-sm">
+                                <div className="flex items-center justify-between lg:justify-end gap-2">
+                                    <span className="text-gray-400 text-sm lg:hidden font-medium">Impostazioni</span>
                                     <LangSwitch />
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <div className="flex bg-black/25 rounded-lg p-1">
-                                        <button onClick={() => setFilterMode('all')} className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'all' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fAll}</button>
-                                        <button onClick={() => setFilterMode('year')} className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'year' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fYear}</button>
-                                        <button onClick={() => setFilterMode('range')} className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'range' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fRange}</button>
+                                <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
+                                    <div className="flex bg-black/25 rounded-lg p-1 w-full sm:w-auto">
+                                        <button onClick={() => setFilterMode('all')} className={`flex-1 sm:flex-none px-4 py-2.5 md:px-3 md:py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'all' ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>{t.fAll}</button>
+                                        <button onClick={() => setFilterMode('year')} className={`flex-1 sm:flex-none px-4 py-2.5 md:px-3 md:py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'year' ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>{t.fYear}</button>
+                                        <button onClick={() => setFilterMode('range')} className={`flex-1 sm:flex-none px-4 py-2.5 md:px-3 md:py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'range' ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>{t.fRange}</button>
                                     </div>
 
                                     {filterMode === 'year' && (
-                                        <select className="bg-black/25 text-white font-semibold outline-none cursor-pointer px-3 py-2 rounded-lg text-sm border border-white/10 max-w-full" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+                                        <select className="w-full sm:w-auto bg-black/25 text-white font-semibold outline-none cursor-pointer px-4 py-3 sm:px-3 sm:py-2 rounded-lg text-base sm:text-sm border border-white/10" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
                                             <option value="all" className="bg-gray-900">{t.selectYear}</option>
                                             {anniDisponibili.map(anno => <option key={anno} value={anno} className="bg-gray-900">{anno}</option>)}
                                         </select>
                                     )}
 
                                     {filterMode === 'range' && (
-                                        <div className="flex flex-wrap items-center gap-2 text-sm">
-                                            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="bg-black/25 text-white px-2 py-2 rounded-lg outline-none border border-white/10 min-w-0" />
-                                            <span className="text-gray-400">→</span>
-                                            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="bg-black/25 text-white px-2 py-2 rounded-lg outline-none border border-white/10 min-w-0" />
+                                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-2 text-base sm:text-sm w-full sm:w-auto">
+                                            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full sm:w-auto bg-black/25 text-white px-4 py-3 sm:px-3 sm:py-2 rounded-lg outline-none border border-white/10 text-base sm:text-sm" />
+                                            <span className="text-gray-400 hidden sm:inline">→</span>
+                                            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full sm:w-auto bg-black/25 text-white px-4 py-3 sm:px-3 sm:py-2 rounded-lg outline-none border border-white/10 text-base sm:text-sm" />
                                         </div>
                                     )}
 
-                                    <button onClick={resetFiltri} className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors text-white">{t.resetFilters}</button>
-                                    <button onClick={() => esportaCSV(datiFiltrati)} className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors text-white"><IconDownload className="w-4 h-4" />{t.exportCSV}</button>
-                                    <button onClick={() => { setAscolti([]); resetFiltri(); }} className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors text-white">{t.newFiles}</button>
+                                    <div className="grid grid-cols-2 sm:flex sm:flex-row flex-wrap items-stretch sm:items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto">
+                                        <button onClick={resetFiltri} className="px-4 py-3 sm:px-3 sm:py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors text-white w-full sm:w-auto text-center">{t.resetFilters}</button>
+                                        <button onClick={() => esportaCSV(datiFiltrati)} className="flex items-center justify-center gap-2 px-4 py-3 sm:px-3 sm:py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors text-white w-full sm:w-auto text-center"><IconDownload className="w-4 h-4 shrink-0" />{t.exportCSV}</button>
+                                        <button onClick={() => { setAscolti([]); resetFiltri(); }} className="col-span-2 sm:col-span-1 px-4 py-3 sm:px-3 sm:py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors text-white w-full sm:w-auto text-center">{t.newFiles}</button>
+                                    </div>
                                 </div>
                                 {filterMode === 'range' && dateFrom && dateTo && dateFrom > dateTo && (
-                                    <p className="text-red-400 text-xs">{t.rangeError}</p>
+                                    <p className="text-red-400 text-sm mt-1">{t.rangeError}</p>
                                 )}
                             </div>
                         </header>
@@ -999,11 +1002,11 @@
                                                 const width = `${(artista[1] / maxCount) * 100}%`;
                                                 return (
                                                     <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.05] transition-colors border border-transparent hover:border-white/5">
-                                                        <div className="flex justify-between items-center z-10 relative px-3 py-2 gap-3">
-                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                        <div className="flex justify-between items-center z-10 relative px-4 py-3 md:px-3 md:py-2 gap-3">
+                                                            <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
                                                                 <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0">{index + 1}</span>
-                                                                <EntityImage artist={artista[0]} type="artist" altText={artista[0]} className="w-10 h-10 rounded-full flex-shrink-0 border border-white/10" />
-                                                                <span className="font-bold truncate text-gray-100 min-w-0">{artista[0]}</span>
+                                                                <EntityImage artist={artista[0]} type="artist" altText={artista[0]} className="w-12 h-12 md:w-10 md:h-10 rounded-full flex-shrink-0 border border-white/10" />
+                                                                <span className="font-bold truncate text-gray-100 text-base md:text-base min-w-0">{artista[0]}</span>
                                                             </div>
                                                             <span className="text-purple-300 font-mono text-sm flex-shrink-0">{artista[1]} <span className="hidden sm:inline">{t.listens}</span></span>
                                                         </div>
@@ -1029,13 +1032,13 @@
                                                 const width = `${(brano[1] / maxCount) * 100}%`;
                                                 return (
                                                     <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.05] transition-colors border border-transparent hover:border-white/5">
-                                                        <div className="flex justify-between items-center z-10 relative px-3 py-2 gap-3">
-                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                        <div className="flex justify-between items-center z-10 relative px-4 py-3 md:px-3 md:py-2 gap-3">
+                                                            <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
                                                                 <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0">{index + 1}</span>
-                                                                <EntityImage artist={artista} title={titolo} type="track" altText={titolo} className="w-10 h-10 rounded-lg flex-shrink-0 border border-white/10" />
+                                                                <EntityImage artist={artista} title={titolo} type="track" altText={titolo} className="w-12 h-12 md:w-10 md:h-10 rounded-lg flex-shrink-0 border border-white/10" />
                                                                 <div className="truncate min-w-0 flex-1">
-                                                                    <p className="font-bold truncate text-gray-100">{titolo}</p>
-                                                                    <p className="text-xs text-gray-400 truncate">{artista}</p>
+                                                                    <p className="font-bold truncate text-gray-100 text-base md:text-base">{titolo}</p>
+                                                                    <p className="text-sm md:text-xs text-gray-400 truncate mt-0.5">{artista}</p>
                                                                 </div>
                                                             </div>
                                                             <span className="text-pink-300 font-mono text-sm whitespace-nowrap flex-shrink-0">{brano[1]} <span className="hidden sm:inline">{t.listens}</span></span>
