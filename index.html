@@ -47,7 +47,8 @@
                 radial-gradient(ellipse 80% 50% at 15% -10%, rgba(168, 85, 247, 0.25), transparent),
                 radial-gradient(ellipse 60% 40% at 90% 10%, rgba(236, 72, 153, 0.18), transparent),
                 radial-gradient(ellipse 60% 40% at 50% 100%, rgba(99, 102, 241, 0.15), transparent);
-            background-attachment: fixed;
+            background-repeat: no-repeat;
+            /* Rimosso background-attachment: fixed: forzava un repaint costoso del gradiente ad ogni frame di scroll, specialmente insieme ai blur */
         }
         button, a, input, select, .transition-colors, .transition-all {
             transition-duration: 250ms;
@@ -189,6 +190,12 @@
                 guideZipNote: 'Appena ti arriva l\'email con il file .zip, TRASCINALO DIRETTAMENTE QUI SENZA ESTRARLO!',
                 openSpotifyPrivacy: 'Apri Privacy Spotify',
                 openGoogleTakeout: 'Apri Google Takeout',
+                choiceTitle: 'Dati caricati!',
+                choiceSubtitle: 'Cosa vuoi fare adesso?',
+                choiceViewData: 'Vedi i miei dati',
+                choiceViewDataSub: 'Esplora statistiche, classifiche e grafici',
+                choiceStartQuiz: 'Fai subito il quiz',
+                choiceStartQuizSub: 'Mettiti alla prova senza vedere prima i dati',
                 quizBtn: 'Gioca',
                 quizCardTitle: 'Quanto conosci i tuoi ascolti?',
                 quizCardSubtitle: 'Mettiti alla prova con un quiz basato sui tuoi dati reali',
@@ -202,6 +209,7 @@
                 quizWrong: 'Risposta sbagliata',
                 quizCorrectWas: (c) => `La risposta corretta era: ${c}`,
                 quizNext: 'Prossima domanda',
+                quizPrev: 'Domanda precedente',
                 quizSeeResult: 'Vedi il risultato',
                 quizFinishTitle: 'Quiz completato!',
                 quizFinishSubtitle: (score, total) => `Hai indovinato ${score} risposte su ${total}.`,
@@ -281,6 +289,12 @@
                 guideZipNote: 'As soon as you receive the email with the .zip file, DRAG IT HERE DIRECTLY WITHOUT UNZIPPING!',
                 openSpotifyPrivacy: 'Open Spotify Privacy',
                 openGoogleTakeout: 'Open Google Takeout',
+                choiceTitle: 'Data loaded!',
+                choiceSubtitle: 'What would you like to do now?',
+                choiceViewData: 'View my data',
+                choiceViewDataSub: 'Explore stats, rankings and charts',
+                choiceStartQuiz: 'Take the quiz now',
+                choiceStartQuizSub: 'Test yourself before seeing the data',
                 quizBtn: 'Play',
                 quizCardTitle: 'How well do you know your listening?',
                 quizCardSubtitle: 'Test yourself with a quiz based on your real data',
@@ -294,6 +308,7 @@
                 quizWrong: 'Wrong answer',
                 quizCorrectWas: (c) => `The correct answer was: ${c}`,
                 quizNext: 'Next question',
+                quizPrev: 'Previous question',
                 quizSeeResult: 'See result',
                 quizFinishTitle: 'Quiz complete!',
                 quizFinishSubtitle: (score, total) => `You got ${score} out of ${total} right.`,
@@ -751,6 +766,8 @@
             const [quizScore, setQuizScore] = useState(0);
             const [selectedOption, setSelectedOption] = useState(null);
             const [answered, setAnswered] = useState(false);
+            const [quizHistory, setQuizHistory] = useState({});
+            const [postLoadChoiceMade, setPostLoadChoiceMade] = useState(false);
 
             useEffect(() => {
                 document.documentElement.lang = lang;
@@ -1030,6 +1047,7 @@
                     setQuizScore(0);
                     setSelectedOption(null);
                     setAnswered(false);
+                    setQuizHistory({});
                 } else {
                     setQuizPhase('no_data');
                 }
@@ -1040,18 +1058,42 @@
                 setSelectedOption(option);
                 setAnswered(true);
                 const current = quizQuestions[quizIndex];
-                if (current && option === current.correct) {
+                const isCorrect = !!(current && option === current.correct);
+                if (isCorrect) {
                     setQuizScore(s => s + 1);
                 }
+                setQuizHistory(h => ({ ...h, [quizIndex]: { option, isCorrect } }));
             };
 
             const nextQuizQuestion = () => {
                 if (quizIndex + 1 < quizQuestions.length) {
-                    setQuizIndex(i => i + 1);
-                    setSelectedOption(null);
-                    setAnswered(false);
+                    const nextIndex = quizIndex + 1;
+                    setQuizIndex(nextIndex);
+                    const prevAnswer = quizHistory[nextIndex];
+                    if (prevAnswer) {
+                        setSelectedOption(prevAnswer.option);
+                        setAnswered(true);
+                    } else {
+                        setSelectedOption(null);
+                        setAnswered(false);
+                    }
                 } else {
                     setQuizPhase('finished');
+                }
+            };
+
+            const prevQuizQuestion = () => {
+                if (quizIndex > 0) {
+                    const prevIndex = quizIndex - 1;
+                    setQuizIndex(prevIndex);
+                    const prevAnswer = quizHistory[prevIndex];
+                    if (prevAnswer) {
+                        setSelectedOption(prevAnswer.option);
+                        setAnswered(true);
+                    } else {
+                        setSelectedOption(null);
+                        setAnswered(false);
+                    }
                 }
             };
 
@@ -1204,6 +1246,57 @@
                 );
             }
 
+            if (ascolti.length > 0 && !postLoadChoiceMade) {
+                return (
+                    <React.Fragment>
+                        <div className="min-h-screen text-white flex flex-col items-center justify-center p-6 relative">
+                            <div className="absolute top-6 right-6 flex items-center gap-3">
+                                <LangSwitch />
+                            </div>
+
+                            <div className="max-w-2xl w-full text-center animate-fadein">
+                                <div className="flex justify-center mb-6">
+                                    <div className="relative animate-float">
+                                        <div className="absolute inset-0 bg-purple-500/30 blur-2xl rounded-full"></div>
+                                        <Logo className="w-16 h-16 sm:w-20 sm:h-20 relative" />
+                                    </div>
+                                </div>
+                                <h1 className="font-display text-3xl min-[375px]:text-4xl md:text-5xl font-extrabold mb-3 bg-clip-text text-transparent bg-gradient-to-r from-purple-300 via-pink-400 to-orange-300 tracking-tight">
+                                    {t.choiceTitle}
+                                </h1>
+                                <p className="text-gray-300 text-base sm:text-lg mb-10">
+                                    {t.choiceSubtitle}
+                                </p>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    <button
+                                        onClick={() => setPostLoadChoiceMade(true)}
+                                        className="group text-left bg-white/[0.06] hover:bg-white/[0.1] backdrop-blur-xl border border-white/10 hover:border-purple-400/40 rounded-3xl p-6 sm:p-8 transition-all active:scale-[0.98]"
+                                    >
+                                        <div className="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center mb-4 group-hover:bg-purple-500/30 transition-colors">
+                                            <IconDisc className="w-6 h-6 text-purple-300" />
+                                        </div>
+                                        <p className="font-display font-bold text-lg sm:text-xl text-white mb-1">{t.choiceViewData}</p>
+                                        <p className="text-gray-400 text-sm">{t.choiceViewDataSub}</p>
+                                    </button>
+
+                                    <button
+                                        onClick={() => { setPostLoadChoiceMade(true); openQuiz(); }}
+                                        className="group text-left bg-white/[0.06] hover:bg-white/[0.1] backdrop-blur-xl border border-white/10 hover:border-pink-400/40 rounded-3xl p-6 sm:p-8 transition-all active:scale-[0.98]"
+                                    >
+                                        <div className="w-12 h-12 rounded-2xl bg-pink-500/20 flex items-center justify-center mb-4 group-hover:bg-pink-500/30 transition-colors">
+                                            <IconTrophy className="w-6 h-6 text-pink-300" />
+                                        </div>
+                                        <p className="font-display font-bold text-lg sm:text-xl text-white mb-1">{t.choiceStartQuiz}</p>
+                                        <p className="text-gray-400 text-sm">{t.choiceStartQuizSub}</p>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </React.Fragment>
+                );
+            }
+
             return (
                 <React.Fragment>
                     <div className="min-h-screen px-4 sm:px-6 md:px-8 py-6 font-sans selection:bg-purple-500/30 pb-20 animate-fadein">
@@ -1260,7 +1353,7 @@
 
                                         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
                                             <button onClick={() => esportaCSV(datiFiltrati)} className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors text-white"><IconDownload className="w-4 h-4" />{t.exportCSV}</button>
-                                            <button onClick={() => { setAscolti([]); resetFiltri(); }} className="px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors text-white">{t.newFiles}</button>
+                                            <button onClick={() => { setAscolti([]); resetFiltri(); setPostLoadChoiceMade(false); }} className="px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors text-white">{t.newFiles}</button>
                                         </div>
                                     </div>
                                     {filterMode === 'range' && dateFrom && dateTo && dateFrom > dateTo && (
@@ -1439,8 +1532,8 @@
 
                     {/* Modal del Quiz OTTIMIZZATO PER FPS */}
                     {showQuiz && (
-                        // 1. Rimosso backdrop-blur-xl per salvare FPS. Usato uno sfondo scuro solido al 95%
-                        <div className="fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[9999] animate-fadebg" onClick={closeQuiz}>
+                        // Sfondo scuro solido e immediato (nessun fade sull'opacità, niente blur costoso) così i dati sottostanti non sono mai visibili
+                        <div className="fixed inset-0 bg-[#0b0b0f] flex items-center justify-center p-4 z-[9999]" onClick={closeQuiz}>
                             {/* 2. Rimosse le ombre pesanti, usato background semplice e transform-gpu per accelerazione hardware */}
                             <div className="bg-gray-900 border border-white/10 rounded-[2rem] p-6 sm:p-10 max-w-3xl w-full relative max-h-[90vh] overflow-y-auto animate-fadein transform-gpu" onClick={(e) => e.stopPropagation()}>
                                 <button onClick={closeQuiz} className="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-400 hover:text-white z-10 bg-black/40 p-2 rounded-full transition-colors">
@@ -1561,13 +1654,22 @@
                                                 )}
                                             </div>
                                             
-                                            <button 
-                                                onClick={nextQuizQuestion} 
-                                                disabled={!answered} 
-                                                className={`w-full sm:w-auto px-8 py-4 rounded-full font-bold text-black transition-transform transform-gpu duration-200 ${answered ? 'bg-white active:scale-95' : 'bg-white/10 text-white/30 cursor-not-allowed'}`}
-                                            >
-                                                {quizIndex + 1 < quizQuestions.length ? t.quizNext : t.quizSeeResult}
-                                            </button>
+                                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                                                <button 
+                                                    onClick={prevQuizQuestion} 
+                                                    disabled={quizIndex === 0} 
+                                                    className={`px-6 py-4 rounded-full font-bold transition-transform transform-gpu duration-200 ${quizIndex === 0 ? 'bg-white/10 text-white/30 cursor-not-allowed' : 'bg-white/10 hover:bg-white/20 text-white active:scale-95'}`}
+                                                >
+                                                    {t.quizPrev}
+                                                </button>
+                                                <button 
+                                                    onClick={nextQuizQuestion} 
+                                                    disabled={!answered} 
+                                                    className={`flex-1 sm:flex-none px-8 py-4 rounded-full font-bold text-black transition-transform transform-gpu duration-200 ${answered ? 'bg-white active:scale-95' : 'bg-white/10 text-white/30 cursor-not-allowed'}`}
+                                                >
+                                                    {quizIndex + 1 < quizQuestions.length ? t.quizNext : t.quizSeeResult}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
