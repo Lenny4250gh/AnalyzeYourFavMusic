@@ -854,10 +854,18 @@
             const handleDrop = useCallback((e) => {
                 e.preventDefault();
                 processFiles(Array.from(e.dataTransfer.files));
+                // Evita che il focus resti "agganciato" alla drop zone dopo il drop
+                if (document.activeElement) document.activeElement.blur();
+                window.focus();
             }, [lang]);
 
             const handleFileInput = (e) => {
                 processFiles(Array.from(e.target.files));
+                // Rilascia subito il focus dall'input (che sta per essere smontato da React),
+                // altrimenti su alcuni browser la rotellina del mouse smette di far scrollare
+                // la pagina finché non si clicca manualmente da qualche parte.
+                e.target.blur();
+                window.focus();
             };
 
             const resetFiltri = () => {
