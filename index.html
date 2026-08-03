@@ -700,6 +700,13 @@
             return data?.results || [];
         };
 
+        const searchITunesDirect = async (term, entity) => {
+            const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=${entity}&limit=15`;
+            const res = await fetch(url);
+            const data = await res.json();
+            return data?.results || [];
+        };
+
         const EntityImage = ({ artist, title, type, altText, className }) => {
             const [src, setSrc] = useState(null);
             const [loading, setLoading] = useState(true);
@@ -1152,18 +1159,18 @@
                 };
             }, [datiFiltrati, lang]);
 
+            const topArtistName = stats?.topArtisti?.[0]?.[0] || null;
             const [topGenre, setTopGenre] = useState(null);
             useEffect(() => {
                 let cancelled = false;
-                const topArtistName = stats?.topArtisti?.[0]?.[0];
                 if (!topArtistName) { setTopGenre(null); return; }
                 setTopGenre(null);
                 (async () => {
                     try {
-                        let results = await searchITunesResults(topArtistName, 'musicArtist');
+                        let results = await searchITunesDirect(topArtistName, 'musicArtist');
                         let found = results.find(r => r.primaryGenreName)?.primaryGenreName;
                         if (!found) {
-                            results = await searchITunesResults(topArtistName, 'song');
+                            results = await searchITunesDirect(topArtistName, 'song');
                             found = results.find(r => normalizeForMatch(r.artistName) === normalizeForMatch(topArtistName) && r.primaryGenreName)?.primaryGenreName;
                         }
                         if (!cancelled) setTopGenre(found || null);
@@ -1172,7 +1179,7 @@
                     }
                 })();
                 return () => { cancelled = true; };
-            }, [stats]);
+            }, [topArtistName]);
 
             useEffect(() => {
                 const topArtistName = stats?.topArtisti?.[0]?.[0];
@@ -1483,7 +1490,7 @@
                                         </div>
                                         <div className="flex-1 min-w-0 overflow-hidden">
                                             <p className="text-[10px] font-bold uppercase tracking-wide text-black/50 mb-1 whitespace-nowrap">{t.wrappedRecapGenre}</p>
-                                            <p className="font-display text-lg font-black whitespace-nowrap overflow-hidden text-ellipsis">{topGenre || t.na}</p>
+                                            <p className="font-display text-lg font-black whitespace-nowrap overflow-hidden text-ellipsis">{topGenre || (topArtistName ? '…' : t.na)}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1500,7 +1507,7 @@
                 });
 
                 return slides;
-            }, [stats, lang]);
+            }, [stats, lang, topGenre]);
 
             const openWrapped = () => {
                 setWrappedIndex(0);
