@@ -123,7 +123,7 @@
 
         /* Riempimento reale della barra di progresso della storia, sincronizzato col timer di 2.5s */
         @keyframes storyFill { from { width: 0%; } to { width: 100%; } }
-        .animate-story-fill { width: 0%; animation: storyFill 2.5s linear forwards; }
+        .animate-story-fill { width: 0%; animation: storyFill 1.75s linear forwards; }
 
         /* Ingresso della card artista: leggera rotazione, sfocatura e rimbalzo per un effetto più "vivo" */
         @keyframes storyCardIn {
@@ -294,6 +294,8 @@
                 wrappedQuizTapContinue: 'Tocca per continuare',
                 wrappedMonthlyArtistsTitle: 'Il tuo artista del mese',
                 wrappedMonthlyArtistsSub: 'Come sono cambiati i tuoi ascolti, mese dopo mese',
+                wrappedMonthlySkip: 'Salta',
+                wrappedMonthlyBack: 'Indietro',
                 qArtistTitle: 'Qual è il tuo artista più ascoltato?',
                 qTrackTitle: 'Qual è il tuo brano più ascoltato?',
                 qAlbumTitle: 'Qual è il tuo album più ascoltato?',
@@ -450,6 +452,8 @@
                 wrappedQuizTapContinue: 'Tap to continue',
                 wrappedMonthlyArtistsTitle: 'Your artist of the month',
                 wrappedMonthlyArtistsSub: 'How your listening changed, month after month',
+                wrappedMonthlySkip: 'Skip',
+                wrappedMonthlyBack: 'Back',
                 qArtistTitle: 'Who is your most listened artist?',
                 qTrackTitle: 'What is your most played track?',
                 qAlbumTitle: 'What is your most played album?',
@@ -978,7 +982,7 @@
             return <img src={src} alt={altText} className={`object-cover ${className}`} onError={() => setStatus('none')} />;
         };
 
-        const MonthlyTopArtistsStory = ({ months, title, subtitle, idx, onIdxChange, onFinish }) => {
+        const MonthlyTopArtistsStory = ({ months, title, subtitle, idx, onIdxChange, onFinish, onSkipAll, skipLabel, onGoBack, canGoBack, backLabel }) => {
             // Timer per avanzare automaticamente ogni 2.5 secondi (sempre attivo, niente pausa)
             // Quando raggiunge l'ultimo mese, passa alla storia successiva del Wrapped tramite onFinish
             useEffect(() => {
@@ -990,7 +994,7 @@
                     } else if (onFinish) {
                         onFinish();
                     }
-                }, 2500);
+                }, 1750);
 
                 return () => clearInterval(interval);
             }, [months, idx, onIdxChange, onFinish]);
@@ -1072,14 +1076,36 @@
                         </div>
                     </div>
 
-                    {/* Footer / Subtitle */}
-                    {subtitle && (
-                        <div className="w-full max-w-xs text-center">
+                    {/* Footer / Subtitle + Pulsanti per tornare indietro o saltare l'intera macro-storia */}
+                    <div className="w-full max-w-xs flex flex-col items-center gap-3">
+                        {(canGoBack || onSkipAll) && (
+                            <div className="flex items-center gap-2">
+                                {canGoBack && onGoBack && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onGoBack(); }}
+                                        className="px-4 py-1.5 rounded-full border border-white/40 text-white/80 text-[11px] font-bold uppercase tracking-wider hover:bg-white/10 hover:text-white active:scale-95 transition-all"
+                                        aria-label={backLabel}
+                                    >
+                                        {backLabel}
+                                    </button>
+                                )}
+                                {onSkipAll && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onSkipAll(); }}
+                                        className="px-4 py-1.5 rounded-full border border-white/40 text-white/80 text-[11px] font-bold uppercase tracking-wider hover:bg-white/10 hover:text-white active:scale-95 transition-all"
+                                        aria-label={skipLabel}
+                                    >
+                                        {skipLabel}
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                        {subtitle && (
                             <p className="text-white/60 text-xs leading-relaxed max-w-xs mx-auto">
                                 {subtitle}
                             </p>
-                        </div>
-                    )}
+                        )}
+                    </div>
 
                 </div>
             );
@@ -1110,12 +1136,16 @@
                 questions.push({ id: 'artist', question: t.qArtistTitle, options: shuffleArray([correct, ...wrong]), correct });
             }
 
-            // 2. Top track
+            // 2. Top track (tutte le opzioni vengono dalla top 5 più ascoltata, così ci sono 5 scelte invece di 4)
             if (stats.topBrani.length >= 4) {
                 const correct = stats.topBrani[0][0]; // Rimosso split
-                const pool = stats.topBrani.slice(1).map(b => b[0]).filter(x => x !== correct);
-                const wrong = shuffleArray(pool).slice(0, 3);
-                if (wrong.length === 3) questions.push({ id: 'track', question: t.qTrackTitle, options: shuffleArray([correct, ...wrong]), correct });
+                let wrong = stats.topBrani.slice(1, 5).map(b => b[0]).filter(x => x !== correct);
+                // Se la top 5 non basta per avere almeno 3 alternative, si completa con le tracce successive
+                if (wrong.length < 3) {
+                    const extraPool = stats.topBrani.slice(5).map(b => b[0]).filter(x => x !== correct && !wrong.includes(x));
+                    wrong = [...wrong, ...shuffleArray(extraPool).slice(0, 3 - wrong.length)];
+                }
+                if (wrong.length >= 3) questions.push({ id: 'track', question: t.qTrackTitle, options: shuffleArray([correct, ...wrong]), correct });
             }
 
             // 3. Top album
@@ -1554,6 +1584,7 @@
             }, []);
 
             const openQuiz = () => {
+                clearAutoAdvance();
                 setShowQuiz(true);
                 setQuizPhase('intro');
                 setQuizIndex(0);
@@ -1563,6 +1594,7 @@
             };
 
             const startQuiz = () => {
+                clearAutoAdvance();
                 if (quizQuestions && quizQuestions.length > 0) {
                     setQuizSeed(s => s + 1);
                     setQuizPhase('playing');
@@ -1576,6 +1608,20 @@
                 }
             };
 
+            const autoAdvanceTimeoutRef = useRef(null);
+
+            const clearAutoAdvance = () => {
+                if (autoAdvanceTimeoutRef.current) {
+                    clearTimeout(autoAdvanceTimeoutRef.current);
+                    autoAdvanceTimeoutRef.current = null;
+                }
+            };
+
+            // Pulisce il timer automatico quando il componente viene smontato
+            useEffect(() => {
+                return () => clearAutoAdvance();
+            }, []);
+
             const answerQuiz = (option) => {
                 if (answered) return;
                 setSelectedOption(option);
@@ -1586,9 +1632,17 @@
                     setQuizScore(s => s + 1);
                 }
                 setQuizHistory(h => ({ ...h, [quizIndex]: { option, isCorrect } }));
+
+                // Dopo aver mostrato se la risposta è giusta o sbagliata, passa in automatico alla domanda successiva
+                clearAutoAdvance();
+                autoAdvanceTimeoutRef.current = setTimeout(() => {
+                    autoAdvanceTimeoutRef.current = null;
+                    nextQuizQuestion();
+                }, 1500);
             };
 
             const nextQuizQuestion = () => {
+                clearAutoAdvance();
                 if (quizIndex + 1 < quizQuestions.length) {
                     const nextIndex = quizIndex + 1;
                     setQuizIndex(nextIndex);
@@ -1606,6 +1660,7 @@
             };
 
             const prevQuizQuestion = () => {
+                clearAutoAdvance();
                 if (quizIndex > 0) {
                     const prevIndex = quizIndex - 1;
                     setQuizIndex(prevIndex);
@@ -1620,7 +1675,10 @@
                 }
             };
 
-            const closeQuiz = () => setShowQuiz(false);
+            const closeQuiz = () => {
+                clearAutoAdvance();
+                setShowQuiz(false);
+            };
 
             const nfWrapped = (n) => Math.round(n).toLocaleString(lang === 'it' ? 'it-IT' : 'en-US');
 
@@ -1719,8 +1777,9 @@
 
                     slides.push({
                         gradient: 'from-violet-700 via-purple-700 to-fuchsia-700',
+                        qid: q.id,
                         content: (
-                            <div className="flex flex-col items-center justify-center gap-4 w-full h-full" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex flex-col items-center justify-center gap-4 w-full h-full" onClick={(e) => { if (answeredQ) return; e.stopPropagation(); }}>
                                 <p className="text-white/70 text-xs uppercase tracking-widest font-bold">{t.quizQuestionOf(qi + 1, storyQuizQuestions.length)}</p>
                                 <h3 className="font-display text-xl sm:text-2xl font-black text-white leading-tight px-2">{q.question}</h3>
                                 <div className="w-full flex flex-col gap-2.5 px-1 max-h-[48vh] overflow-y-auto">
@@ -1858,6 +1917,19 @@
                                 idx={monthlyStoryIdx}
                                 onIdxChange={setMonthlyStoryIdx}
                                 onFinish={() => nextWrappedSlide()}
+                                skipLabel={t.wrappedMonthlySkip}
+                                backLabel={t.wrappedMonthlyBack}
+                                canGoBack={wrappedIndex > 0}
+                                onGoBack={() => {
+                                    // Torna alla storia precedente del Wrapped (macro-storia), non al mese precedente
+                                    setMonthlyStoryIdx(0);
+                                    setWrappedIndex(i => Math.max(i - 1, 0));
+                                }}
+                                onSkipAll={() => {
+                                    // Salta l'intera macro-storia dei "top del mese" e passa alla slide successiva del Wrapped
+                                    setMonthlyStoryIdx(0);
+                                    setWrappedIndex(i => Math.min(i + 1, wrappedSlides.length - 1));
+                                }}
                             />
                         )
                     });
@@ -1987,6 +2059,10 @@
             const closeWrapped = () => setShowWrapped(false);
             const nextWrappedSlide = () => {
                 const currentSlide = wrappedSlides[wrappedIndex];
+                // Blocca l'avanzamento se la storia corrente è una domanda del quiz senza risposta
+                if (currentSlide && currentSlide.qid && storyQuizAnswers[currentSlide.qid] === undefined) {
+                    return;
+                }
                 // Se siamo nella storia "top del mese", avanza prima tra i mesi (sotto-storie)
                 if (currentSlide && currentSlide.isMonthly && stats?.monthlyTopArtists?.length > 0) {
                     const maxIdx = stats.monthlyTopArtists.length - 1;
@@ -2020,6 +2096,19 @@
                     return prevI;
                 });
             };
+
+            // Nella storia del Wrapped: quando si risponde alla mini-domanda del quiz,
+            // dopo aver mostrato se è giusta o sbagliata si passa in automatico alla storia successiva
+            useEffect(() => {
+                if (!showWrapped) return;
+                const slide = wrappedSlides[wrappedIndex];
+                if (slide && slide.qid && storyQuizAnswers[slide.qid] !== undefined) {
+                    const timeoutId = setTimeout(() => {
+                        nextWrappedSlide();
+                    }, 1500);
+                    return () => clearTimeout(timeoutId);
+                }
+            }, [showWrapped, wrappedIndex, storyQuizAnswers, wrappedSlides]);
             const waitForImagesLoaded = (container, timeoutMs = 4000) => {
                 const imgs = Array.from(container.querySelectorAll('img'));
                 if (imgs.length === 0) return Promise.resolve();
@@ -2142,7 +2231,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.8</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.1.9</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -2215,19 +2304,8 @@
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                                     <button
-                                        onClick={() => { setPostLoadChoiceMade(true); openWrapped(); }}
-                                        className="group text-left bg-white/[0.06] hover:bg-white/[0.1] backdrop-blur-xl border border-white/10 hover:border-fuchsia-400/40 rounded-3xl p-6 sm:p-8 transition-all active:scale-[0.98]"
-                                    >
-                                        <div className="w-12 h-12 rounded-2xl bg-fuchsia-500/20 flex items-center justify-center mb-4 group-hover:bg-fuchsia-500/30 transition-colors">
-                                            <IconMusic className="w-6 h-6 text-fuchsia-300" />
-                                        </div>
-                                        <p className="font-display font-bold text-lg sm:text-xl text-white mb-1">{t.choiceWrapped}</p>
-                                        <p className="text-gray-400 text-sm">{t.choiceWrappedSub}</p>
-                                    </button>
-
-                                    <button
                                         onClick={() => setPostLoadChoiceMade(true)}
-                                        className="group text-left bg-white/[0.06] hover:bg-white/[0.1] backdrop-blur-xl border border-white/10 hover:border-purple-400/40 rounded-3xl p-6 sm:p-8 transition-all active:scale-[0.98]"
+                                        className="group text-left bg-white/[0.03] hover:bg-white/[0.1] backdrop-blur-xl border border-white/10 hover:border-purple-400/40 rounded-3xl p-6 sm:p-8 transition-all active:scale-[0.98]"
                                     >
                                         <div className="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center mb-4 group-hover:bg-purple-500/30 transition-colors">
                                             <IconDisc className="w-6 h-6 text-purple-300" />
@@ -2237,8 +2315,19 @@
                                     </button>
 
                                     <button
+                                        onClick={() => { setPostLoadChoiceMade(true); openWrapped(); }}
+                                        className="group text-left bg-white/[0.03] hover:bg-white/[0.1] backdrop-blur-xl border border-white/10 hover:border-fuchsia-400/40 rounded-3xl p-6 sm:p-8 transition-all active:scale-[0.98]"
+                                    >
+                                        <div className="w-12 h-12 rounded-2xl bg-fuchsia-500/20 flex items-center justify-center mb-4 group-hover:bg-fuchsia-500/30 transition-colors">
+                                            <IconMusic className="w-6 h-6 text-fuchsia-300" />
+                                        </div>
+                                        <p className="font-display font-bold text-lg sm:text-xl text-white mb-1">{t.choiceWrapped}</p>
+                                        <p className="text-gray-400 text-sm">{t.choiceWrappedSub}</p>
+                                    </button>
+
+                                    <button
                                         onClick={() => { setPostLoadChoiceMade(true); openQuiz(); }}
-                                        className="group text-left bg-white/[0.06] hover:bg-white/[0.1] backdrop-blur-xl border border-white/10 hover:border-pink-400/40 rounded-3xl p-6 sm:p-8 transition-all active:scale-[0.98]"
+                                        className="group text-left bg-white/[0.03] hover:bg-white/[0.1] backdrop-blur-xl border border-white/10 hover:border-pink-400/40 rounded-3xl p-6 sm:p-8 transition-all active:scale-[0.98]"
                                     >
                                         <div className="w-12 h-12 rounded-2xl bg-pink-500/20 flex items-center justify-center mb-4 group-hover:bg-pink-500/30 transition-colors">
                                             <IconTrophy className="w-6 h-6 text-pink-300" />
@@ -2249,7 +2338,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.8</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.1.9</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -2330,7 +2419,7 @@
                             
                             {stats && (
                                 <div className="space-y-6 sm:space-y-8">
-                                   <button onClick={openWrapped} className="w-full text-left bg-gradient-to-r from-purple-600/30 via-fuchsia-600/30 to-pink-600/30 hover:from-purple-600/40 hover:via-fuchsia-600/40 hover:to-pink-600/40 border border-white/[0.15] hover:border-fuchsia-300/40 rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex items-center justify-between gap-4 hover:-translate-y-1 transition-all duration-300 group">
+                                   <button onClick={openWrapped} className="w-full text-left bg-white/[0.03] hover:bg-white/[0.1] border border-white/[0.15] hover:border-purple-500 rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex items-center justify-between gap-4 hover:-translate-y-1 transition-all duration-300 group">
                                         <div className="flex items-center gap-4 min-w-0">
                                             <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/10 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-white/20">
                                                 <IconMusic className="w-6 h-6 text-fuchsia-300" />
@@ -2343,7 +2432,7 @@
                                         <span className="flex-shrink-0 hidden sm:inline-flex items-center gap-1.5 px-4 py-2 bg-white text-gray-900 rounded-lg text-sm font-bold transition-all duration-300 group-hover:scale-105">{t.wrappedCardCta}</span>
                                     </button>
 
-                                   <button onClick={openQuiz} className="w-full text-left bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.15] hover:border-yellow-300/40 rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex items-center justify-between gap-4 hover:-translate-y-1 transition-all duration-300 group">
+                                   <button onClick={openQuiz} className="w-full text-left bg-white/[0.03] hover:bg-white/[0.1] border border-white/[0.15] hover:border-yellow-300/40 rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex items-center justify-between gap-4 hover:-translate-y-1 transition-all duration-300 group">
                                         <div className="flex items-center gap-4 min-w-0">
                                             <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/10 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-white/20">
                                                 <IconTrophy className="w-6 h-6 text-yellow-300" />
@@ -2357,22 +2446,22 @@
                                     </button>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-5 sm:p-6 flex flex-col hover:bg-white/[0.08] hover:border-pink-400/30 transition-all">
+                                        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 sm:p-6 flex flex-col hover:bg-white/[0.08] hover:border-pink-400/30 transition-all">
                                             <div className="flex items-center gap-3 mb-3 sm:mb-4 text-gray-400"><IconPlay className="w-5 h-5 sm:w-6 sm:h-6 text-pink-400" /><h3 className="font-semibold text-xs sm:text-sm uppercase tracking-wider">{t.cardStreams}</h3></div>
                                             <p className="font-display text-3xl font-black mb-1 text-white">{stats.totali.toLocaleString()}</p>
                                             <p className="text-xs sm:text-sm text-gray-500">{t.cardStreamsSub(stats.spCount, stats.ytmCount)}</p>
                                         </div>
-                                        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-5 sm:p-6 flex flex-col hover:bg-white/[0.08] hover:border-purple-400/30 transition-all">
+                                        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 sm:p-6 flex flex-col hover:bg-white/[0.08] hover:border-purple-400/30 transition-all">
                                             <div className="flex items-center gap-3 mb-3 sm:mb-4 text-gray-400"><IconClock className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" /><h3 className="font-semibold text-xs sm:text-sm uppercase tracking-wider">{t.cardMinutes}</h3></div>
                                             <p className="font-display text-3xl font-black mb-1 text-white">{stats.minutiTotali.toLocaleString()}</p>
                                             <p className="text-xs sm:text-sm text-gray-500">{t.cardMinutesSub(Math.round(stats.minutiTotali/60))}</p>
                                         </div>
-                                        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-5 sm:p-6 flex flex-col hover:bg-white/[0.08] hover:border-green-400/30 transition-all">
+                                        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 sm:p-6 flex flex-col hover:bg-white/[0.08] hover:border-green-400/30 transition-all">
                                             <div className="flex items-center gap-3 mb-3 sm:mb-4 text-gray-400"><IconMic className="w-5 h-5 sm:w-6 sm:h-6 text-green-400" /><h3 className="font-semibold text-xs sm:text-sm uppercase tracking-wider">{t.cardArtists}</h3></div>
                                             <p className="font-display text-3xl font-black mb-1 text-white">{stats.artistiUnici.toLocaleString()}</p>
                                             <p className="text-xs sm:text-sm text-gray-500">{t.cardArtistsSub}</p>
                                         </div>
-                                        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-5 sm:p-6 flex flex-col hover:bg-white/[0.08] hover:border-blue-400/30 transition-all">
+                                        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 sm:p-6 flex flex-col hover:bg-white/[0.08] hover:border-blue-400/30 transition-all">
                                             <div className="flex items-center gap-3 mb-3 sm:mb-4 text-gray-400"><IconDisc className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" /><h3 className="font-semibold text-xs sm:text-sm uppercase tracking-wider">{t.cardTracks}</h3></div>
                                             <p className="font-display text-3xl font-black mb-1 text-white">{stats.braniUnici.toLocaleString()}</p>
                                             <p className="text-xs sm:text-sm text-gray-500">{t.cardTracksSub}</p>
@@ -2380,7 +2469,7 @@
                                     </div>
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-                                        <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-5 sm:p-8 backdrop-blur-sm">
+                                        <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-5 sm:p-8 backdrop-blur-sm">
                                             <div className="flex items-center gap-3 mb-5 sm:mb-6">
                                                 <IconMic className="text-purple-400 w-5 h-5 sm:w-6 sm:h-6" />
                                                 <h2 className="font-display text-xl sm:text-2xl font-bold">{t.topArtists}</h2>
@@ -2390,7 +2479,7 @@
                                                     const maxCount = stats.topArtisti[0][1];
                                                     const width = `${(artista[1] / maxCount) * 100}%`;
                                                     return (
-                                                        <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.05] transition-colors border border-transparent hover:border-white/5">
+                                                        <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.03] transition-colors border border-transparent hover:border-white/5">
                                                             <div className="flex justify-between items-center z-10 relative px-3 sm:px-4 py-2.5 sm:py-3 gap-3">
                                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
                                                                     <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0 text-sm">{index + 1}</span>
@@ -2408,7 +2497,7 @@
                                             </div>
                                         </div>
 
-                                        <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-5 sm:p-8 backdrop-blur-sm">
+                                        <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-5 sm:p-8 backdrop-blur-sm">
                                             <div className="flex items-center gap-3 mb-5 sm:mb-6">
                                                 <IconMusic className="text-pink-400 w-5 h-5 sm:w-6 sm:h-6" />
                                                 <h2 className="font-display text-xl sm:text-2xl font-bold">{t.topTracks}</h2>
@@ -2419,7 +2508,7 @@
                                                     const maxCount = stats.topBrani[0][1];
                                                     const width = `${(brano[1] / maxCount) * 100}%`;
                                                     return (
-                                                        <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.05] transition-colors border border-transparent hover:border-white/5">
+                                                        <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.03] transition-colors border border-transparent hover:border-white/5">
                                                             <div className="flex justify-between items-center z-10 relative px-3 sm:px-4 py-2.5 sm:py-3 gap-3">
                                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
                                                                     <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0 text-sm">{index + 1}</span>
@@ -2496,17 +2585,21 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.8</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.1.9</span></p>
                             </footer>
                         </div>
                     </div>
-
+                    
                     {/* Modal del Wrapped a storie, stile Spotify */}
-                    {showWrapped && wrappedSlides.length > 0 && (
+                    {showWrapped && wrappedSlides.length > 0 && (() => {
+                        const currentWrappedSlide = wrappedSlides[wrappedIndex];
+                        // Vero finché la storia corrente è una domanda del quiz senza risposta: blocca il tap per avanzare
+                        const wrappedQuizLocked = !!(currentWrappedSlide && currentWrappedSlide.qid && storyQuizAnswers[currentWrappedSlide.qid] === undefined);
+                        return (
                         <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-3 sm:p-6 animate-fadebg">
                             <div
                                 className="relative w-full max-w-sm h-full sm:h-[85vh] sm:max-h-[820px] rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden shadow-2xl select-none cursor-pointer transform-gpu"
-                                onClick={nextWrappedSlide}
+                                onClick={wrappedQuizLocked ? undefined : nextWrappedSlide}
                             >
                                 {/* Barra di avanzamento in stile Storie */}
                                 <div className="absolute top-3 left-3 right-3 z-30 flex gap-1.5">
@@ -2525,11 +2618,13 @@
                                     <IconX className="w-5 h-5" />
                                 </button>
 
-                                {/* Zona di tap sinistra per tornare indietro */}
-                                <div
-                                    className="absolute inset-y-0 left-0 w-1/3 z-20"
-                                    onClick={(e) => { e.stopPropagation(); prevWrappedSlide(); }}
-                                ></div>
+                                {/* Zona di tap sinistra per tornare indietro (disattivata sul quiz senza risposta, per non coprire le opzioni) */}
+                                {!wrappedQuizLocked && (
+                                    <div
+                                        className="absolute inset-y-0 left-0 w-1/3 z-20"
+                                        onClick={(e) => { e.stopPropagation(); prevWrappedSlide(); }}
+                                    ></div>
+                                )}
 
                                 {/* Contenuto della slide corrente */}
                                 <div
@@ -2540,7 +2635,8 @@
                                 </div>
                             </div>
                         </div>
-                    )}
+                        );
+                    })()}
 
                     {/* Modal del Quiz OTTIMIZZATO PER FPS */}
                     {showQuiz && (
