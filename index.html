@@ -1111,6 +1111,120 @@
             );
         };
 
+        const RandomTopArtistsStory = ({ artists, title, subtitle, idx, onIdxChange, onFinish, onSkipAll, skipLabel, onGoBack, canGoBack, backLabel }) => {
+            // Stessa logica della storia "artista del mese": avanzamento automatico ogni 1.75s,
+            // ma qui ogni sotto-storia è uno dei Top 5 artisti mostrati in ordine casuale
+            useEffect(() => {
+                if (!artists || artists.length <= 1) return;
+
+                const interval = setInterval(() => {
+                    if (idx < artists.length - 1) {
+                        onIdxChange(idx + 1);
+                    } else if (onFinish) {
+                        onFinish();
+                    }
+                }, 1750);
+
+                return () => clearInterval(interval);
+            }, [artists, idx, onIdxChange, onFinish]);
+
+            if (!artists || artists.length === 0) return null;
+            const current = artists[idx] || artists[0];
+
+            return (
+                <div className="flex flex-col items-center justify-between h-full w-full py-4 px-2 select-none">
+
+                    {/* Header & Indicatori di Progresso tipo Story, uno per ogni artista della Top 5 */}
+                    <div className="w-full max-w-xs space-y-3">
+                        <div className="flex items-center gap-1.5 w-full">
+                            {artists.map((a, i) => (
+                                <button
+                                    key={a.key || i}
+                                    onClick={(e) => { e.stopPropagation(); onIdxChange(i); }}
+                                    className="h-1.5 flex-1 rounded-full bg-white/20 overflow-hidden cursor-pointer transition-all"
+                                    aria-label={`Vai all'artista ${a.artist}`}
+                                >
+                                    {i < idx ? (
+                                        <div className="h-full w-full bg-white rounded-full" />
+                                    ) : i === idx ? (
+                                        <div
+                                            key={`active-${idx}`}
+                                            className="h-full bg-white rounded-full origin-left animate-story-fill shadow-[0_0_8px_rgba(255,255,255,0.9)]"
+                                        />
+                                    ) : (
+                                        <div className="h-full w-0 bg-white rounded-full" />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="text-center">
+                            <p className="text-white/70 text-xs font-bold uppercase tracking-widest">{title}</p>
+                        </div>
+                    </div>
+
+                    {/* Card Centrale dell'Artista, in stile identico alla storia "artista del mese" */}
+                    <div
+                        key={current.key || idx}
+                        className="flex flex-col items-center animate-story-card my-auto space-y-4"
+                    >
+                        <div className="relative group w-36 h-36 sm:w-44 sm:h-44">
+                            <div
+                                className="absolute -inset-2 rounded-full animate-spin-slower opacity-90"
+                                style={{ background: 'conic-gradient(from 0deg, #a855f7, #ec4899, #f59e0b, #6366f1, #a855f7)' }}
+                            ></div>
+                            <div className="absolute -inset-0.5 rounded-full bg-[#0b0b0f]"></div>
+
+                            <EntityImageBox
+                                artist={current.artist}
+                                type="artist"
+                                altText={current.artist}
+                                boxClassName="relative w-full h-full rounded-full overflow-hidden shadow-2xl bg-black/30 flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
+                                imgClassName="w-full h-full object-cover rounded-full"
+                            />
+                        </div>
+
+                        <div className="text-center pt-2 px-2 max-w-xs">
+                            <h3 className="font-black text-2xl sm:text-4xl text-white tracking-tight drop-shadow-md break-words leading-tight">
+                                {current.artist}
+                            </h3>
+                        </div>
+                    </div>
+
+                    <div className="w-full max-w-xs flex flex-col items-center gap-3">
+                        {(canGoBack || onSkipAll) && (
+                            <div className="flex items-center gap-2">
+                                {canGoBack && onGoBack && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onGoBack(); }}
+                                        className="px-4 py-1.5 rounded-full border border-white/40 text-white/80 text-[11px] font-bold uppercase tracking-wider hover:bg-white/10 hover:text-white active:scale-95 transition-all"
+                                        aria-label={backLabel}
+                                    >
+                                        {backLabel}
+                                    </button>
+                                )}
+                                {onSkipAll && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onSkipAll(); }}
+                                        className="px-4 py-1.5 rounded-full border border-white/40 text-white/80 text-[11px] font-bold uppercase tracking-wider hover:bg-white/10 hover:text-white active:scale-95 transition-all"
+                                        aria-label={skipLabel}
+                                    >
+                                        {skipLabel}
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                        {subtitle && (
+                            <p className="text-white/60 text-xs leading-relaxed max-w-xs mx-auto">
+                                {subtitle}
+                            </p>
+                        )}
+                    </div>
+
+                </div>
+            );
+        };
+
         const generateQuizQuestions = (stats, t, lang) => {
             if (!stats) return [];
             const questions = [];
@@ -1684,6 +1798,16 @@
 
             // Indice della "sotto-storia" corrente all'interno della slide "artista del mese"
             const [monthlyStoryIdx, setMonthlyStoryIdx] = useState(0);
+            // Indice della "sotto-storia" corrente all'interno della slide "Top 5 artisti in ordine casuale"
+            const [randomArtistStoryIdx, setRandomArtistStoryIdx] = useState(0);
+
+            // Ordine casuale dei Top 5 artisti, calcolato UNA SOLA VOLTA per ogni set di statistiche
+            // (non deve dipendere da randomArtistStoryIdx, altrimenti verrebbe rimescolato ad ogni avanzamento)
+            const shuffledTop5Artists = useMemo(() => {
+                if (!stats || !stats.topArtisti || stats.topArtisti.length < 3) return [];
+                return shuffleArray(stats.topArtisti.slice(0, 5).map(([name]) => name))
+                    .map((name, i) => ({ key: `${name}-${i}`, artist: name }));
+            }, [stats]);
 
             const wrappedSlides = useMemo(() => {
                 if (!stats) return [];
@@ -1882,24 +2006,35 @@
                     )
                 });
 
-                // 8. Top 5 artisti più ascoltati (ordine casuale)
-                if (stats.topArtisti.length >= 3) {
-                    const shuffledTop5Artists = shuffleArray(stats.topArtisti.slice(0, 5).map(([name]) => name));
+                // 8. Top 5 artisti più ascoltati (ordine casuale) - macro-storia con una sotto-storia per artista,
+                // sullo stesso modello della macro-storia "artista del mese"
+                // (shuffledTop5Artists è calcolato una sola volta fuori da questo useMemo, per non essere rimescolato ad ogni avanzamento)
+                if (shuffledTop5Artists.length >= 3) {
                     slides.push({
                         gradient: 'from-purple-500 via-violet-500 to-indigo-500',
+                        isRandomTop: true,
                         content: (
-                            <div className="flex flex-col items-center gap-5 w-full">
-                                <p className="text-white text-xl font-bold mb-2">{t.wrappedRandomArtistsListTitle}</p>
-                                <div className="w-full max-w-xs flex flex-col gap-3">
-                                    {shuffledTop5Artists.map((name) => (
-                                        <div key={name} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2.5">
-                                            <EntityImageBox artist={name} type="artist" altText={name} boxClassName="w-11 h-11 rounded-full overflow-hidden bg-white/10 flex-shrink-0" imgClassName="w-full h-full" />
-                                            <span className="flex-1 text-white font-semibold text-sm text-left truncate">{name}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <p className="text-white/50 text-xs">{t.wrappedRandomArtistsListSub}</p>
-                            </div>
+                            <RandomTopArtistsStory
+                                artists={shuffledTop5Artists}
+                                title={t.wrappedRandomArtistsListTitle}
+                                subtitle={t.wrappedRandomArtistsListSub}
+                                idx={randomArtistStoryIdx}
+                                onIdxChange={setRandomArtistStoryIdx}
+                                onFinish={() => nextWrappedSlide()}
+                                skipLabel={t.wrappedMonthlySkip}
+                                backLabel={t.wrappedMonthlyBack}
+                                canGoBack={wrappedIndex > 0}
+                                onGoBack={() => {
+                                    // Torna alla storia precedente del Wrapped (macro-storia), non all'artista precedente
+                                    setRandomArtistStoryIdx(0);
+                                    setWrappedIndex(i => Math.max(i - 1, 0));
+                                }}
+                                onSkipAll={() => {
+                                    // Salta l'intera macro-storia dei "Top 5 artisti casuali" e passa alla slide successiva del Wrapped
+                                    setRandomArtistStoryIdx(0);
+                                    setWrappedIndex(i => Math.min(i + 1, wrappedSlides.length - 1));
+                                }}
+                            />
                         )
                     });
                 }
@@ -2048,7 +2183,7 @@
                 });
 
                 return slides;
-            }, [stats, lang, topGenre, genreStats, storyQuizQuestions, storyQuizAnswers, monthlyStoryIdx]);
+            }, [stats, lang, topGenre, genreStats, storyQuizQuestions, storyQuizAnswers, monthlyStoryIdx, randomArtistStoryIdx, shuffledTop5Artists]);
 
             const openWrapped = () => {
                 setWrappedIndex(0);
@@ -2071,11 +2206,24 @@
                         return;
                     }
                 }
+                // Se siamo nella storia "Top 5 artisti in ordine casuale", avanza prima tra gli artisti (sotto-storie),
+                // esattamente come per la storia "top del mese"
+                if (currentSlide && currentSlide.isRandomTop && shuffledTop5Artists.length > 0) {
+                    const maxIdx = shuffledTop5Artists.length - 1;
+                    if (randomArtistStoryIdx < maxIdx) {
+                        setRandomArtistStoryIdx(i => i + 1);
+                        return;
+                    }
+                }
                 setWrappedIndex(i => {
                     const next = Math.min(i + 1, wrappedSlides.length - 1);
                     // Entrando nella storia mensile si riparte sempre dal primo mese
                     if (wrappedSlides[next] && wrappedSlides[next].isMonthly) {
                         setMonthlyStoryIdx(0);
+                    }
+                    // Entrando nella storia dei Top 5 casuali si riparte sempre dal primo artista
+                    if (wrappedSlides[next] && wrappedSlides[next].isRandomTop) {
+                        setRandomArtistStoryIdx(0);
                     }
                     return next;
                 });
@@ -2087,11 +2235,20 @@
                     setMonthlyStoryIdx(i => i - 1);
                     return;
                 }
+                // Se siamo nella storia "Top 5 artisti in ordine casuale", torna prima indietro tra gli artisti
+                if (currentSlide && currentSlide.isRandomTop && randomArtistStoryIdx > 0) {
+                    setRandomArtistStoryIdx(i => i - 1);
+                    return;
+                }
                 setWrappedIndex(i => {
                     const prevI = Math.max(i - 1, 0);
                     // Tornando dentro la storia mensile, si riparte dall'ultimo mese
                     if (wrappedSlides[prevI] && wrappedSlides[prevI].isMonthly && stats?.monthlyTopArtists?.length > 0) {
                         setMonthlyStoryIdx(stats.monthlyTopArtists.length - 1);
+                    }
+                    // Tornando dentro la storia dei Top 5 casuali, si riparte dall'ultimo artista
+                    if (wrappedSlides[prevI] && wrappedSlides[prevI].isRandomTop && shuffledTop5Artists.length > 0) {
+                        setRandomArtistStoryIdx(shuffledTop5Artists.length - 1);
                     }
                     return prevI;
                 });
@@ -2231,7 +2388,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.1.9</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.0</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -2338,7 +2495,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.1.9</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.0</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -2585,7 +2742,7 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.1.9</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.2.0</span></p>
                             </footer>
                         </div>
                     </div>
