@@ -897,7 +897,6 @@
             const [postLoadChoiceMade, setPostLoadChoiceMade] = useState(false);
             const [showWrapped, setShowWrapped] = useState(false);
             const [wrappedIndex, setWrappedIndex] = useState(0);
-            const [downloadingCard, setDownloadingCard] = useState(false);
             const wrappedCardRef = useRef(null);
 
             useEffect(() => {
@@ -1528,31 +1527,6 @@
                 return Promise.race([Promise.all(perImage), timeout]);
             };
 
-            const downloadWrappedCard = async () => {
-                if (!wrappedCardRef.current || !window.html2canvas) return;
-                setDownloadingCard(true);
-                try {
-                    const topArtistName = stats?.topArtisti?.[0]?.[0];
-                    if (topArtistName) {
-                        await getArtistPhotoDataUrl(topArtistName);
-                        await new Promise(r => setTimeout(r, 60)); // dà tempo a React di aggiornare il DOM con la data URL
-                    }
-                    await waitForImagesLoaded(wrappedCardRef.current);
-                    if (document.fonts && document.fonts.ready) {
-                        await document.fonts.ready;
-                    }
-                    const canvas = await window.html2canvas(wrappedCardRef.current, { backgroundColor: null, scale: 2, useCORS: true });
-                    const link = document.createElement('a');
-                    link.download = 'wrapped.png';
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                } catch (e) {
-                    console.warn('Errore esportazione immagine wrapped', e);
-                } finally {
-                    setDownloadingCard(false);
-                }
-            };
-
             const QuizImageWrapper = ({ artist, title, type, altText, isArtistRound }) => {
                 const [src, setSrc] = useState(null);
                 const [loading, setLoading] = useState(true);
@@ -2035,17 +2009,6 @@
                                     {wrappedSlides[wrappedIndex].content}
                                 </div>
                             </div>
-
-                            {wrappedIndex === wrappedSlides.length - 1 && (
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); downloadWrappedCard(); }}
-                                    disabled={downloadingCard}
-                                    className="mt-4 sm:mt-5 flex items-center gap-2 px-6 py-3 bg-white text-black rounded-full font-bold active:scale-95 transition-transform transform-gpu disabled:opacity-60"
-                                >
-                                    <IconDownload className="w-5 h-5" />
-                                    {downloadingCard ? t.wrappedDownloading : t.wrappedDownload}
-                                </button>
-                            )}
                         </div>
                     )}
 
