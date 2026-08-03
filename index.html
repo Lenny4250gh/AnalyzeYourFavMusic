@@ -79,9 +79,69 @@
             animation: fadeInBg 0.25s ease-out both;
             will-change: opacity;
         }
+
+        @keyframes pulseGlow {
+        0%, 100% { box-shadow: 0 0 25px rgba(255, 255, 255, 0.2); }
+        50% { box-shadow: 0 0 45px rgba(255, 255, 255, 0.45); }
+        }
+
+        @keyframes popIn {
+        0% { opacity: 0; transform: scale(0.85) translateY(10px); }
+        100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .animate-pop-in {
+        animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .animate-glow {
+        animation: pulseGlow 3s infinite ease-in-out;
+        }
+
+        /* Transizione fluida per la barra di progressione della corsa */
+        .race-bar-transition {
+        transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Animazione di pop per i cambi di classifica */
+        @keyframes rankPop {
+        0% { transform: scale(0.95); opacity: 0.7; }
+        50% { transform: scale(1.03); }
+        100% { transform: scale(1); opacity: 1; }
+        }
+
+        .animate-rank-pop {
+        animation: rankPop 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
         .font-display { font-family: 'Outfit', 'Inter', system-ui, sans-serif; }
         .animate-spin-slow { animation: spin 2.2s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* Anello arcobaleno rotante dietro le foto della storia "top del mese" */
+        .animate-spin-slower { animation: spin 5s linear infinite; }
+
+        /* Riempimento reale della barra di progresso della storia, sincronizzato col timer di 2.5s */
+        @keyframes storyFill { from { width: 0%; } to { width: 100%; } }
+        .animate-story-fill { width: 0%; animation: storyFill 2.5s linear forwards; }
+
+        /* Ingresso della card artista: leggera rotazione, sfocatura e rimbalzo per un effetto più "vivo" */
+        @keyframes storyCardIn {
+            0% { opacity: 0; transform: scale(0.82) rotate(-4deg) translateY(16px); filter: blur(6px); }
+            55% { opacity: 1; transform: scale(1.04) rotate(1.5deg) translateY(-3px); filter: blur(0); }
+            80% { transform: scale(0.99) rotate(-0.5deg) translateY(0); }
+            100% { transform: scale(1) rotate(0deg) translateY(0); }
+        }
+        .animate-story-card { animation: storyCardIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+        /* Il badge del mese "salta fuori" con un piccolo ritardo rispetto alla card */
+        @keyframes badgePop {
+            0% { opacity: 0; transform: translate(-50%, 6px) scale(0.6); }
+            60% { opacity: 1; transform: translate(-50%, -2px) scale(1.08); }
+            100% { transform: translate(-50%, 0) scale(1); }
+        }
+        .animate-badge-pop { animation: badgePop 0.45s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
         @keyframes floatY { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
         .animate-float { animation: floatY 4s ease-in-out infinite; }
         ::selection { background: rgba(168, 85, 247, 0.35); }
@@ -106,6 +166,7 @@
         const IconClock = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
         const IconPlay = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>;
         const IconDisc = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>;
+        const IconTag = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42Z"></path><circle cx="7.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"></circle></svg>;
         const IconRefresh = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>;
         const IconAlert = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>;
         const IconDownload = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>;
@@ -136,9 +197,9 @@
             it: {
                 brand: 'WrapYourFavMusic',
                 landingTitle: 'Il Tuo Wrapped, Sempre',
-                landingSubtitle: "Combina i dati di Spotify e YouTube Music in un'unica dashboard. Supporta file ZIP, JSON e CSV senza estrarre nulla!",
+                landingSubtitle: "Unisci i dati di Spotify e YouTube Music. Scegli il periodo e scopri il tuo recap musicale tra dashboard e formato Storie.",
                 dropTitle: 'Trascina qui i tuoi file ZIP, JSON o CSV',
-                dropSubtitle: 'Supporta direttamente i pacchetti ZIP di Spotify e Takeout',
+                dropSubtitle: 'Supporta direttamente i file ZIP di Spotify e Takeout',
                 processing: 'Elaborazione file in corso...',
                 errNoData: 'Nessun dato musicale valido trovato nei file.',
                 errReading: 'Errore nella lettura dei file. Assicurati che siano ZIP, JSON o CSV validi.',
@@ -189,12 +250,18 @@
                 guideBtn: 'Come scaricare i dati',
                 guideTitle: 'Come ottenere i tuoi dati in 2 minuti',
                 guideSpotifyStep: 'Vai su Spotify Impostazioni Privacy e richiedi il download "Dati estesi sugli ascolti".',
-                guideYTMStep: 'Vai su Google Takeout e seleziona solo "YouTube e YouTube Music" (cronologia).',
+                guideYTMStep: 'Clicca qui sotto: Takeout si aprirà con solo "YouTube e YouTube Music" selezionato. Poi assicurati di:',
+                guideYTMSubSteps: [
+                    'Selezionare il giusto account Google (in alto a destra)',
+                    'Cliccare "Più formati", scorrere verso il basso e impostare il formato della cronologia su JSON'
+                ],
                 guideZipNote: 'Appena ti arriva l\'email con il file .zip, TRASCINALO DIRETTAMENTE QUI SENZA ESTRARLO!',
                 openSpotifyPrivacy: 'Apri Privacy Spotify',
                 openGoogleTakeout: 'Apri Google Takeout',
                 choiceTitle: 'Dati caricati!',
                 choiceSubtitle: 'Cosa vuoi fare adesso?',
+                choiceWrapped: 'Guarda il tuo Wrapped',
+                choiceWrappedSub: 'Il riassunto del tuo anno in musica, in stile storie',
                 choiceViewData: 'Vedi i miei dati',
                 choiceViewDataSub: 'Esplora statistiche, classifiche e grafici',
                 choiceStartQuiz: 'Fai subito il quiz',
@@ -222,6 +289,10 @@
                 quizPlayAgain: 'Rigioca',
                 quizClose: 'Chiudi',
                 quizNotEnoughData: 'Servono più dati per generare il quiz: prova a rimuovere i filtri o a caricare più cronologia.',
+                wrappedQuizChoose: 'Tocca una risposta',
+                wrappedQuizTapContinue: 'Tocca per continuare',
+                wrappedMonthlyArtistsTitle: 'Il tuo artista del mese',
+                wrappedMonthlyArtistsSub: 'Come sono cambiati i tuoi ascolti, mese dopo mese',
                 qArtistTitle: 'Qual è il tuo artista più ascoltato?',
                 qTrackTitle: 'Qual è il tuo brano più ascoltato?',
                 qAlbumTitle: 'Qual è il tuo album più ascoltato?',
@@ -252,6 +323,19 @@
                 wrappedHabitsWeekday: 'Giorno preferito',
                 wrappedHabitsTimeSlot: 'Fascia preferita',
                 wrappedHabitsMonth: 'Mese top',
+                wrappedGenresTitle: 'Generi ascoltati',
+                wrappedGenresSub: 'Generi diversi esplorati nei tuoi artisti principali',
+                wrappedTopGenresListTitle: 'I tuoi Top 5 generi',
+                wrappedTracksCountTitle: 'Brani ascoltati',
+                wrappedTracksCountSub: 'Brani diversi che hai riprodotto',
+                wrappedAlbumsCountTitle: 'Album ascoltati',
+                wrappedAlbumsCountSub: 'Album diversi che hai riprodotto',
+                wrappedTopAlbumLabel: 'Il tuo album #1',
+                wrappedTopAlbumsListTitle: 'I tuoi Top 5 album',
+                wrappedArtistsCountTitle: 'Artisti ascoltati',
+                wrappedArtistsCountSub: 'Artisti diversi che hai riprodotto',
+                wrappedRandomArtistsListTitle: 'I tuoi Top 5 artisti',
+                wrappedRandomArtistsListSub: 'In ordine sparso... indovina la classifica finale!',
                 wrappedRecapTitle: 'Il tuo riassunto',
                 wrappedRecapArtist: 'Artista #1',
                 wrappedRecapTrack: 'Brano #1',
@@ -269,9 +353,9 @@
             en: {
                 brand: 'WrapYourFavMusic',
                 landingTitle: 'Your Wrapped, Anytime',
-                landingSubtitle: 'Combine Spotify and YouTube Music data into a single dashboard. Supports ZIP, JSON, and CSV files directly!',
+                landingSubtitle: 'Combine your Spotify and YouTube Music data. Pick a timeframe and discover your music recap via dashboard or Stories format.',
                 dropTitle: 'Drag your ZIP, JSON, or CSV files here',
-                dropSubtitle: 'Directly supports raw ZIP packages from Spotify and Takeout',
+                dropSubtitle: 'Directly supports raw ZIP files from Spotify and Takeout',
                 processing: 'Processing files...',
                 errNoData: 'No valid music data found in the files.',
                 errReading: 'Error reading files. Ensure they are valid ZIP, JSON, or CSV files.',
@@ -322,12 +406,18 @@
                 guideBtn: 'How to get data',
                 guideTitle: 'How to get your data in 2 minutes',
                 guideSpotifyStep: 'Go to Spotify Privacy Settings and request "Extended Streaming History".',
-                guideYTMStep: 'Go to Google Takeout and select only "YouTube and YouTube Music" (history).',
+                guideYTMStep: 'Click below: Takeout will open with only "YouTube and YouTube Music" selected. Then make sure to:',
+                guideYTMSubSteps: [
+                    'Select the correct Google account (top right)',
+                    'Click "Multiple formats," scroll down, and set the history format to JSON'
+                ],
                 guideZipNote: 'As soon as you receive the email with the .zip file, DRAG IT HERE DIRECTLY WITHOUT UNZIPPING!',
                 openSpotifyPrivacy: 'Open Spotify Privacy',
                 openGoogleTakeout: 'Open Google Takeout',
                 choiceTitle: 'Data loaded!',
                 choiceSubtitle: 'What would you like to do now?',
+                choiceWrapped: 'Watch your Wrapped',
+                choiceWrappedSub: 'Your year in music, story-style',
                 choiceViewData: 'View my data',
                 choiceViewDataSub: 'Explore stats, rankings and charts',
                 choiceStartQuiz: 'Take the quiz now',
@@ -355,6 +445,10 @@
                 quizPlayAgain: 'Play again',
                 quizClose: 'Close',
                 quizNotEnoughData: 'Not enough data to generate the quiz: try removing filters or uploading more history.',
+                wrappedQuizChoose: 'Tap an answer',
+                wrappedQuizTapContinue: 'Tap to continue',
+                wrappedMonthlyArtistsTitle: 'Your artist of the month',
+                wrappedMonthlyArtistsSub: 'How your listening changed, month after month',
                 qArtistTitle: 'Who is your most listened artist?',
                 qTrackTitle: 'What is your most played track?',
                 qAlbumTitle: 'What is your most played album?',
@@ -385,6 +479,19 @@
                 wrappedHabitsWeekday: 'Favorite day',
                 wrappedHabitsTimeSlot: 'Favorite time',
                 wrappedHabitsMonth: 'Top month',
+                wrappedGenresTitle: 'Genres listened to',
+                wrappedGenresSub: 'Different genres explored across your top artists',
+                wrappedTopGenresListTitle: 'Your Top 5 genres',
+                wrappedTracksCountTitle: 'Tracks listened to',
+                wrappedTracksCountSub: 'Different tracks you played',
+                wrappedAlbumsCountTitle: 'Albums listened to',
+                wrappedAlbumsCountSub: 'Different albums you played',
+                wrappedTopAlbumLabel: 'Your #1 album',
+                wrappedTopAlbumsListTitle: 'Your Top 5 albums',
+                wrappedArtistsCountTitle: 'Artists listened to',
+                wrappedArtistsCountSub: 'Different artists you played',
+                wrappedRandomArtistsListTitle: 'Your Top 5 artists',
+                wrappedRandomArtistsListSub: 'In random order... guess the final ranking!',
                 wrappedRecapTitle: 'Your recap',
                 wrappedRecapArtist: 'Top Artist',
                 wrappedRecapTrack: 'Top Track',
@@ -707,6 +814,27 @@
             return data?.results || [];
         };
 
+        // Cache condivisa artista -> genere (Promise), per evitare richieste duplicate tra render
+        const genreCache = new Map();
+        const fetchArtistGenre = (artistName) => {
+            if (genreCache.has(artistName)) return genreCache.get(artistName);
+            const promise = (async () => {
+                try {
+                    let results = await searchITunesResults(artistName, 'musicArtist');
+                    let found = results.find(r => artistMatches(artistName, r.artistName) && r.primaryGenreName)?.primaryGenreName;
+                    if (!found) {
+                        results = await searchITunesResults(artistName, 'song');
+                        found = results.find(r => normalizeForMatch(r.artistName) === normalizeForMatch(artistName) && r.primaryGenreName)?.primaryGenreName;
+                    }
+                    return found || null;
+                } catch (e) {
+                    return null;
+                }
+            })();
+            genreCache.set(artistName, promise);
+            return promise;
+        };
+
         const EntityImage = ({ artist, title, type, altText, className }) => {
             const [src, setSrc] = useState(null);
             const [loading, setLoading] = useState(true);
@@ -746,7 +874,76 @@
             );
         };
 
+        // Come EntityImage, ma controlla anche il riquadro/contenitore esterno:
+        // se la foto non è disponibile o non carica, il riquadro sparisce del tutto
+        // invece di restare vuoto (utile nelle card del Wrapped).
+        const EntityImageBox = ({ artist, title, type, altText, boxClassName, imgClassName }) => {
+            const [src, setSrc] = useState(null);
+            const [status, setStatus] = useState('loading'); // loading | ready | none
+
+            useEffect(() => {
+                let isMounted = true;
+                setStatus('loading');
+                setSrc(null);
+
+                fetchArtwork(artist, title, type).then(url => {
+                    if (!isMounted) return;
+                    if (!url) { setStatus('none'); return; }
+                    setSrc(url);
+                    setStatus('ready');
+                });
+
+                return () => { isMounted = false; };
+            }, [artist, title, type]);
+
+            if (status === 'none') {
+                return null;
+            }
+
+            return (
+                <div className={boxClassName}>
+                    {status === 'loading' ? (
+                        <div className="animate-pulse bg-white/10 w-full h-full"></div>
+                    ) : (
+                        <img
+                            src={src}
+                            alt={altText}
+                            className={`object-cover ${imgClassName}`}
+                            loading="lazy"
+                            onError={() => setStatus('none')}
+                        />
+                    )}
+                </div>
+            );
+        };
+
         const shuffleArray = (arr) => arr.map(v => [Math.random(), v]).sort((a, b) => a[0] - b[0]).map(v => v[1]);
+
+        // Striscia di copertine/foto sovrapposte, usata per rendere più "ricche" visivamente
+        // le slide con soli numeri (es. numero brani/artisti ascoltati)
+        const CoverStrip = ({ items, shape = 'rounded' }) => {
+            if (!items || items.length === 0) return null;
+            return (
+                <div className="flex items-center justify-center">
+                    {items.map((item, idx) => (
+                        <div
+                            key={idx}
+                            className={`w-14 h-14 sm:w-16 sm:h-16 overflow-hidden bg-white/10 border-2 border-white/30 shadow-lg animate-pop-in ${shape === 'circle' ? 'rounded-full' : 'rounded-xl'}`}
+                            style={{ marginLeft: idx === 0 ? 0 : '-16px', zIndex: 10 - idx, animationDelay: `${idx * 80}ms` }}
+                        >
+                            <EntityImageBox
+                                artist={item.artist}
+                                title={item.title}
+                                type={item.type}
+                                altText={item.artist || item.title}
+                                boxClassName="w-full h-full"
+                                imgClassName="w-full h-full"
+                            />
+                        </div>
+                    ))}
+                </div>
+            );
+        };
 
         const RecapArtistPhoto = ({ artist, altText, className }) => {
             const [src, setSrc] = useState(null);
@@ -778,6 +975,113 @@
                 return null;
             }
             return <img src={src} alt={altText} className={`object-cover ${className}`} onError={() => setStatus('none')} />;
+        };
+
+        const MonthlyTopArtistsStory = ({ months, title, subtitle, idx, onIdxChange, onFinish }) => {
+            // Timer per avanzare automaticamente ogni 2.5 secondi (sempre attivo, niente pausa)
+            // Quando raggiunge l'ultimo mese, passa alla storia successiva del Wrapped tramite onFinish
+            useEffect(() => {
+                if (!months || months.length <= 1) return;
+
+                const interval = setInterval(() => {
+                    if (idx < months.length - 1) {
+                        onIdxChange(idx + 1);
+                    } else if (onFinish) {
+                        onFinish();
+                    }
+                }, 2500);
+
+                return () => clearInterval(interval);
+            }, [months, idx, onIdxChange, onFinish]);
+
+            if (!months || months.length === 0) return null;
+            const current = months[idx] || months[0];
+
+            return (
+                <div className="flex flex-col items-center justify-between h-full w-full py-4 px-2 select-none">
+                    
+                    {/* Header & Indicatori di Progresso tipo Story */}
+                    <div className="w-full max-w-xs space-y-3">
+                        {/* Barre di avanzamento in alto: si riempiono realmente in 2.5s, sincronizzate col timer */}
+                        <div className="flex items-center gap-1.5 w-full">
+                            {months.map((m, i) => (
+                                <button
+                                    key={m.key || i}
+                                    onClick={(e) => { e.stopPropagation(); onIdxChange(i); }}
+                                    className="h-1.5 flex-1 rounded-full bg-white/20 overflow-hidden cursor-pointer transition-all"
+                                    aria-label={`Vai al mese ${m.fullLabel}`}
+                                >
+                                    {i < idx ? (
+                                        <div className="h-full w-full bg-white rounded-full" />
+                                    ) : i === idx ? (
+                                        <div
+                                            key={`active-${idx}`}
+                                            className="h-full bg-white rounded-full origin-left animate-story-fill shadow-[0_0_8px_rgba(255,255,255,0.9)]"
+                                        />
+                                    ) : (
+                                        <div className="h-full w-0 bg-white rounded-full" />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Titolo Principale */}
+                        <div className="text-center">
+                            <p className="text-white/70 text-xs font-bold uppercase tracking-widest">{title}</p>
+                        </div>
+                    </div>
+
+                    {/* Card Centrale dell'Artista con Immagine e Glow */}
+                    <div 
+                        key={current.key || idx} 
+                        className="flex flex-col items-center animate-story-card my-auto space-y-4"
+                    >
+                        {/* Contenitore Immagine con anello colorato rotante e Badge Mese Incastonato */}
+                        <div className="relative group w-36 h-36 sm:w-44 sm:h-44">
+                            {/* Anello arcobaleno che ruota lentamente dietro l'immagine */}
+                            <div
+                                className="absolute -inset-2 rounded-full animate-spin-slower opacity-90"
+                                style={{ background: 'conic-gradient(from 0deg, #a855f7, #ec4899, #f59e0b, #6366f1, #a855f7)' }}
+                            ></div>
+                            {/* Cornice scura per dare respiro tra anello e foto */}
+                            <div className="absolute -inset-0.5 rounded-full bg-[#0b0b0f]"></div>
+
+                            <EntityImageBox
+                                artist={current.artist}
+                                type="artist"
+                                altText={current.artist}
+                                boxClassName="relative w-full h-full rounded-full overflow-hidden shadow-2xl bg-black/30 flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
+                                imgClassName="w-full h-full object-cover rounded-full"
+                            />
+                            
+                            {/* Badge del Mese che galleggia sotto l'immagine */}
+                            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white text-black font-black text-xs px-4 py-1 rounded-full shadow-lg border border-black/10 uppercase tracking-wider whitespace-nowrap animate-badge-pop">
+                                📅 {current.fullLabel}
+                            </div>
+                        </div>
+
+                        {/* Nome Artista con Stile Tipografico Forte */}
+                        <div className="text-center pt-2 px-2 max-w-xs">
+                            <h3 className="font-black text-2xl sm:text-4xl text-white tracking-tight drop-shadow-md break-words leading-tight">
+                                {current.artist}
+                            </h3>
+                            <p className="text-white/80 text-xs font-medium mt-1">
+                                Il tuo artista più ascoltato del mese
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Footer / Subtitle */}
+                    {subtitle && (
+                        <div className="w-full max-w-xs text-center">
+                            <p className="text-white/60 text-xs leading-relaxed max-w-xs mx-auto">
+                                {subtitle}
+                            </p>
+                        </div>
+                    )}
+
+                </div>
+            );
         };
 
         const generateQuizQuestions = (stats, t, lang) => {
@@ -1098,6 +1402,7 @@
                 const albumCount = {};
                 const giorniCount = {};
                 const mesiCount = {};
+                const mesiArtistiCount = {};
                 const weekdayCount = {};
                 const fasceCount = {};
 
@@ -1119,6 +1424,8 @@
 
                     const meseStr = `${a.data.getFullYear()}-${a.data.getMonth()}`;
                     mesiCount[meseStr] = (mesiCount[meseStr] || 0) + 1;
+                    if (!mesiArtistiCount[meseStr]) mesiArtistiCount[meseStr] = {};
+                    mesiArtistiCount[meseStr][a.artista] = (mesiArtistiCount[meseStr][a.artista] || 0) + 1;
 
                     weekdayCount[a.data.getDay()] = (weekdayCount[a.data.getDay()] || 0) + 1;
 
@@ -1138,15 +1445,34 @@
                 const weekdayFull = t.days.map((nome, idx) => ({ nome, count: weekdayCount[idx] || 0 }));
                 const maxWeekday = Math.max(1, ...weekdayFull.map(w => w.count));
 
+                const monthlyTopArtists = Object.entries(mesiArtistiCount)
+                    .map(([key, counts]) => {
+                        const [annoM, meseM] = key.split('-').map(Number);
+                        const top = sortObject(counts)[0];
+                        return {
+                            key,
+                            anno: annoM,
+                            mese: meseM,
+                            label: `${t.months[meseM].slice(0, 3)} ${annoM}`,
+                            fullLabel: `${t.months[meseM]} ${annoM}`,
+                            artist: top ? top[0] : null,
+                            count: top ? top[1] : 0
+                        };
+                    })
+                    .filter(m => m.artist)
+                    .sort((a, b) => a.anno - b.anno || a.mese - b.mese);
+
                 return {
                     totali: filtered.length,
                     ytmCount, spCount, minutiTotali,
                     artistiUnici: Object.keys(artistiCount).length,
                     braniUnici: Object.keys(braniCount).length,
+                    albumUnici: Object.keys(albumCount).length,
                     topArtisti: sortObject(artistiCount).slice(0, 10),
+                    topArtistiPerGeneri: sortObject(artistiCount).slice(0, 40),
                     topBrani: sortObject(braniCount).filter(b => b[1] > 1).slice(0, 10),
                     topAlbum: sortObject(albumCount).filter(b => b[1] > 1).slice(0, 10),
-                    weekdayFull, maxWeekday,
+                    weekdayFull, maxWeekday, monthlyTopArtists,
                     date: {
                         inizio: minDate,
                         fine: maxDate,
@@ -1181,6 +1507,29 @@
                 return () => { cancelled = true; };
             }, [topArtistName]);
 
+            // Calcola i generi ascoltati basandosi sui generi dei tuoi artisti principali (approccio best-effort via iTunes)
+            const [genreStats, setGenreStats] = useState({ loading: false, count: 0, top5: [] });
+            useEffect(() => {
+                let cancelled = false;
+                const artistsForGenres = stats?.topArtistiPerGeneri || [];
+                if (artistsForGenres.length === 0) {
+                    setGenreStats({ loading: false, count: 0, top5: [] });
+                    return;
+                }
+                setGenreStats({ loading: true, count: 0, top5: [] });
+                (async () => {
+                    const genreCounts = {};
+                    await Promise.all(artistsForGenres.map(async ([name, count]) => {
+                        const genre = await fetchArtistGenre(name);
+                        if (genre) genreCounts[genre] = (genreCounts[genre] || 0) + count;
+                    }));
+                    if (cancelled) return;
+                    const sorted = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]);
+                    setGenreStats({ loading: false, count: sorted.length, top5: sorted.slice(0, 5) });
+                })();
+                return () => { cancelled = true; };
+            }, [stats]);
+
             useEffect(() => {
                 const topArtistName = stats?.topArtisti?.[0]?.[0];
                 if (!topArtistName) return;
@@ -1195,6 +1544,13 @@
             }, [ascolti]);
 
             const quizQuestions = useMemo(() => generateQuizQuestions(stats, t, lang), [stats, quizSeed, lang]);
+
+            // Domande del mini-quiz integrato come "storia" dentro il Wrapped (indipendenti dal quiz del modal)
+            const storyQuizQuestions = useMemo(() => generateQuizQuestions(stats, t, lang).filter(q => q.id === 'track'), [stats, lang]);
+            const [storyQuizAnswers, setStoryQuizAnswers] = useState({});
+            const answerStoryQuiz = useCallback((qid, option) => {
+                setStoryQuizAnswers(prev => (prev[qid] !== undefined ? prev : { ...prev, [qid]: option }));
+            }, []);
 
             const openQuiz = () => {
                 setShowQuiz(true);
@@ -1267,11 +1623,15 @@
 
             const nfWrapped = (n) => Math.round(n).toLocaleString(lang === 'it' ? 'it-IT' : 'en-US');
 
+            // Indice della "sotto-storia" corrente all'interno della slide "artista del mese"
+            const [monthlyStoryIdx, setMonthlyStoryIdx] = useState(0);
+
             const wrappedSlides = useMemo(() => {
                 if (!stats) return [];
                 const slides = [];
                 const dateFmt = (d) => d.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 
+                // 0. Copertina
                 slides.push({
                     gradient: 'from-purple-600 via-fuchsia-600 to-pink-600',
                     content: (
@@ -1286,18 +1646,7 @@
                     )
                 });
 
-                slides.push({
-                    gradient: 'from-rose-600 via-red-500 to-orange-500',
-                    content: (
-                        <div className="flex flex-col items-center gap-4">
-                            <IconPlay className="w-10 h-10 text-white/80" />
-                            <p className="font-display text-7xl sm:text-8xl font-black text-white">{nfWrapped(stats.totali)}</p>
-                            <p className="text-white text-lg font-bold">{t.wrappedStreamsTitle}</p>
-                            <p className="text-white/70 text-sm">{t.wrappedStreamsSub}</p>
-                        </div>
-                    )
-                });
-
+                // 1. Minuti ascoltati
                 const hoursW = Math.round(stats.minutiTotali / 60);
                 const daysW = Math.floor(stats.minutiTotali / 1440);
                 slides.push({
@@ -1312,52 +1661,33 @@
                     )
                 });
 
+                // 2. Numero generi ascoltati
                 slides.push({
-                    gradient: 'from-emerald-600 via-teal-500 to-cyan-500',
+                    gradient: 'from-teal-500 via-cyan-500 to-blue-500',
                     content: (
                         <div className="flex flex-col items-center gap-4">
-                            <IconMic className="w-10 h-10 text-white/80" />
-                            <div className="flex items-end gap-6">
-                                <p className="font-display text-6xl font-black text-white">{nfWrapped(stats.artistiUnici)}</p>
-                                <span className="text-white/60 text-2xl font-black pb-1">+</span>
-                                <p className="font-display text-6xl font-black text-white">{nfWrapped(stats.braniUnici)}</p>
-                            </div>
-                            <p className="text-white text-lg font-bold">{t.wrappedDiversityTitle}</p>
-                            <p className="text-white/70 text-sm max-w-xs">{t.wrappedDiversitySub(nfWrapped(stats.artistiUnici), nfWrapped(stats.braniUnici))}</p>
+                            <IconTag className="w-8 h-8 text-white/70 mt-1" />
+                            <p className="font-display text-7xl sm:text-8xl font-black text-white">
+                                {genreStats.loading ? '…' : (genreStats.count > 0 ? nfWrapped(genreStats.count) : t.na)}
+                            </p>
+                            <p className="text-white text-lg font-bold">{t.wrappedGenresTitle}</p>
+                            <p className="text-white/70 text-sm max-w-xs">{t.wrappedGenresSub}</p>
                         </div>
                     )
                 });
 
-                if (stats.topArtisti.length > 0) {
-                    const [artistName, artistCount] = stats.topArtisti[0];
+                // 3. Top 5 generi ascoltati
+                if (genreStats.top5.length > 0) {
                     slides.push({
-                        gradient: 'from-amber-500 via-orange-500 to-red-500',
-                        content: (
-                            <div className="flex flex-col items-center gap-4">
-                                <IconTrophy className="w-8 h-8 text-white/90" />
-                                <p className="text-white/80 text-sm uppercase tracking-wider font-semibold">{t.wrappedTopArtistLabel}</p>
-                                <div className="w-36 h-36 rounded-full overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center">
-                                    <EntityImage artist={artistName} type="artist" altText={artistName} className="w-full h-full rounded-full" />
-                                </div>
-                                <p className="font-display text-3xl sm:text-4xl font-black text-white text-center px-4 break-words">{artistName}</p>
-                                <p className="text-white/80 text-sm">{t.wrappedTopArtistSub(nfWrapped(artistCount))}</p>
-                            </div>
-                        )
-                    });
-                }
-
-                if (stats.topArtisti.length >= 3) {
-                    slides.push({
-                        gradient: 'from-fuchsia-600 via-purple-600 to-indigo-600',
+                        gradient: 'from-emerald-500 via-teal-500 to-cyan-600',
                         content: (
                             <div className="flex flex-col items-center gap-5 w-full">
-                                <p className="text-white text-xl font-bold mb-2">{t.wrappedTopArtistsListTitle}</p>
+                                <p className="text-white text-xl font-bold -mt-1 mb-1">{t.wrappedTopGenresListTitle}</p>
                                 <div className="w-full max-w-xs flex flex-col gap-3">
-                                    {stats.topArtisti.slice(0, 5).map(([name, count], idx) => (
+                                    {genreStats.top5.map(([name], idx) => (
                                         <div key={name} className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-2.5">
                                             <span className="font-display text-xl font-black text-white/70 w-5">{idx + 1}</span>
                                             <span className="flex-1 text-white font-semibold text-sm text-left truncate">{name}</span>
-                                            <span className="text-white/60 text-xs">{nfWrapped(count)}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -1366,26 +1696,92 @@
                     });
                 }
 
-                if (stats.topBrani.length > 0) {
-                    const [keyT, trackCount] = stats.topBrani[0];
-                    const [trackTitle, trackArtist] = keyT.split(' -|- ');
+                // 4. Numero brani ascoltati
+                slides.push({
+                    gradient: 'from-red-500 via-rose-500 to-pink-600',
+                    content: (
+                        <div className="flex flex-col items-center gap-4">
+                            <IconMusic className="w-8 h-8 text-white/70 mt-1" />
+                            <p className="font-display text-7xl sm:text-8xl font-black text-white">{nfWrapped(stats.braniUnici)}</p>
+                            <p className="text-white text-lg font-bold">{t.wrappedTracksCountTitle}</p>
+                            <p className="text-white/70 text-sm max-w-xs">{t.wrappedTracksCountSub}</p>
+                        </div>
+                    )
+                });
+
+
+                // 5. Quiz: indovina il brano #1
+                storyQuizQuestions.forEach((q, qi) => {
+                    const answeredQ = storyQuizAnswers[q.id] !== undefined;
+                    const selectedQ = storyQuizAnswers[q.id];
+                    const isEntityQ = ['artist', 'track', 'album', 'compare'].includes(q.id);
+
                     slides.push({
-                        gradient: 'from-pink-600 via-rose-500 to-red-500',
+                        gradient: 'from-violet-700 via-purple-700 to-fuchsia-700',
                         content: (
-                            <div className="flex flex-col items-center gap-4">
-                                <IconMusic className="w-8 h-8 text-white/90" />
-                                <p className="text-white/80 text-sm uppercase tracking-wider font-semibold">{t.wrappedTopTrackLabel}</p>
-                                <div className="w-36 h-36 rounded-2xl overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center">
-                                    <EntityImage artist={trackArtist} title={trackTitle} type="track" altText={trackTitle} className="w-full h-full" />
+                            <div className="flex flex-col items-center justify-center gap-4 w-full h-full" onClick={(e) => e.stopPropagation()}>
+                                <p className="text-white/70 text-xs uppercase tracking-widest font-bold">{t.quizQuestionOf(qi + 1, storyQuizQuestions.length)}</p>
+                                <h3 className="font-display text-xl sm:text-2xl font-black text-white leading-tight px-2">{q.question}</h3>
+                                <div className="w-full flex flex-col gap-2.5 px-1 max-h-[48vh] overflow-y-auto">
+                                    {q.options.map((option, idx) => {
+                                        let displayTitleQ = option;
+                                        let queryArtistQ = null;
+                                        let queryTitleQ = option;
+                                        if (q.id === 'track' || q.id === 'album') {
+                                            const parts = String(option).split(' -|- ');
+                                            displayTitleQ = parts[0];
+                                            queryTitleQ = parts[0];
+                                            if (parts.length > 1) queryArtistQ = parts[1];
+                                        } else if (q.id === 'artist' || q.id === 'compare') {
+                                            queryArtistQ = option;
+                                        }
+
+                                        let clsQ = 'bg-white/10 border-transparent text-white';
+                                        if (answeredQ) {
+                                            if (option === q.correct) clsQ = 'bg-emerald-500/25 border-emerald-400 text-white';
+                                            else if (option === selectedQ) clsQ = 'bg-red-500/25 border-red-400 opacity-70 text-white';
+                                            else clsQ = 'bg-black/20 border-transparent text-white/40 opacity-50';
+                                        }
+
+                                        return (
+                                            <button
+                                                key={idx}
+                                                onClick={(e) => { e.stopPropagation(); if (!answeredQ) answerStoryQuiz(q.id, option); }}
+                                                disabled={answeredQ}
+                                                className={`relative w-full flex items-center p-3 rounded-2xl border-2 transition-all duration-200 transform-gpu active:scale-[0.98] text-left overflow-hidden ${clsQ} ${isEntityQ ? 'h-16 sm:h-20' : ''}`}
+                                            >
+                                                {isEntityQ && (
+                                                    <EntityImageBox
+                                                        artist={queryArtistQ}
+                                                        title={queryTitleQ}
+                                                        type={q.id === 'artist' || q.id === 'compare' ? 'artist' : q.id}
+                                                        altText={displayTitleQ}
+                                                        boxClassName={`relative flex-shrink-0 mr-3 overflow-hidden bg-white/10 flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 ${q.id === 'artist' || q.id === 'compare' ? 'rounded-full' : 'rounded-lg'}`}
+                                                        imgClassName="w-full h-full"
+                                                    />
+                                                )}
+                                                <span className="font-bold leading-tight text-sm sm:text-base flex flex-col justify-center">
+                                                    <span className="line-clamp-2">{displayTitleQ}</span>
+                                                    {queryArtistQ && (q.id === 'track' || q.id === 'album') && (
+                                                        <span className="text-xs text-gray-300 font-normal mt-0.5 truncate">{queryArtistQ}</span>
+                                                    )}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
-                                <p className="font-display text-2xl sm:text-3xl font-black text-white text-center px-4 break-words">{trackTitle}</p>
-                                <p className="text-white/80 text-sm">{trackArtist}</p>
-                                <p className="text-white/60 text-xs">{t.wrappedTopArtistSub(nfWrapped(trackCount))}</p>
+                                {answeredQ && (
+                                    <p className={`text-sm font-bold animate-fadein ${selectedQ === q.correct ? 'text-emerald-300' : 'text-red-300'}`}>
+                                        {selectedQ === q.correct ? t.quizCorrect : `${t.quizWrong} — ${t.quizCorrectWas(String(q.correct).split(' -|- ')[0])}`}
+                                    </p>
+                                )}
+                                <p className="text-white/40 text-[11px] mt-1">{answeredQ ? t.wrappedQuizTapContinue : t.wrappedQuizChoose}</p>
                             </div>
                         )
                     });
-                }
+                });
 
+                // 6. Top 5 brani più ascoltati
                 if (stats.topBrani.length >= 3) {
                     slides.push({
                         gradient: 'from-cyan-600 via-sky-600 to-blue-600',
@@ -1396,8 +1792,9 @@
                                     {stats.topBrani.slice(0, 5).map(([keyT, count], idx) => {
                                         const [title, artist] = keyT.split(' -|- ');
                                         return (
-                                            <div key={keyT} className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-2.5">
-                                                <span className="font-display text-xl font-black text-white/70 w-5">{idx + 1}</span>
+                                            <div key={keyT} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2.5">
+                                                <span className="font-display text-xl font-black text-white/70 w-5 flex-shrink-0">{idx + 1}</span>
+                                                <EntityImageBox artist={artist} title={title} type="track" altText={title} boxClassName="w-11 h-11 rounded-lg overflow-hidden bg-white/10 flex-shrink-0" imgClassName="w-full h-full" />
                                                 <span className="flex-1 min-w-0 text-left">
                                                     <span className="block text-white font-semibold text-sm truncate">{title}</span>
                                                     <span className="block text-white/60 text-xs truncate">{artist}</span>
@@ -1412,32 +1809,103 @@
                     });
                 }
 
+                // 7. Numero artisti ascoltati
                 slides.push({
-                    gradient: 'from-lime-600 via-green-600 to-emerald-600',
+                    gradient: 'from-orange-500 via-amber-500 to-yellow-400',
                     content: (
-                        <div className="flex flex-col items-center gap-5 w-full">
-                            <p className="text-white text-xl font-bold mb-1">{t.wrappedHabitsTitle}</p>
-                            <div className="w-full max-w-xs flex flex-col gap-3">
-                                <div className="bg-white/10 rounded-xl px-4 py-3 text-left">
-                                    <p className="text-white/60 text-xs uppercase tracking-wide">{t.wrappedHabitsWeekday}</p>
-                                    <p className="text-white font-display text-xl font-black">{stats.date.giornoSettimanaTop}</p>
-                                </div>
-                                <div className="bg-white/10 rounded-xl px-4 py-3 text-left">
-                                    <p className="text-white/60 text-xs uppercase tracking-wide">{t.wrappedHabitsTimeSlot}</p>
-                                    <p className="text-white font-display text-xl font-black">{stats.date.fasciaTop}</p>
-                                </div>
-                                <div className="bg-white/10 rounded-xl px-4 py-3 text-left">
-                                    <p className="text-white/60 text-xs uppercase tracking-wide">{t.wrappedHabitsMonth}</p>
-                                    <p className="text-white font-display text-xl font-black">{stats.date.meseTop}</p>
-                                </div>
-                            </div>
+                        <div className="flex flex-col items-center gap-4">
+                            <IconMic className="w-8 h-8 text-white/70 mt-1" />
+                            <p className="font-display text-7xl sm:text-8xl font-black text-white">{nfWrapped(stats.artistiUnici)}</p>
+                            <p className="text-white text-lg font-bold">{t.wrappedArtistsCountTitle}</p>
+                            <p className="text-white/70 text-sm max-w-xs">{t.wrappedArtistsCountSub}</p>
                         </div>
                     )
                 });
 
+                // 8. Top 5 artisti più ascoltati (ordine casuale)
+                if (stats.topArtisti.length >= 3) {
+                    const shuffledTop5Artists = shuffleArray(stats.topArtisti.slice(0, 5).map(([name]) => name));
+                    slides.push({
+                        gradient: 'from-purple-500 via-violet-500 to-indigo-500',
+                        content: (
+                            <div className="flex flex-col items-center gap-5 w-full">
+                                <p className="text-white text-xl font-bold mb-2">{t.wrappedRandomArtistsListTitle}</p>
+                                <div className="w-full max-w-xs flex flex-col gap-3">
+                                    {shuffledTop5Artists.map((name) => (
+                                        <div key={name} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2.5">
+                                            <EntityImageBox artist={name} type="artist" altText={name} boxClassName="w-11 h-11 rounded-full overflow-hidden bg-white/10 flex-shrink-0" imgClassName="w-full h-full" />
+                                            <span className="flex-1 text-white font-semibold text-sm text-left truncate">{name}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-white/50 text-xs">{t.wrappedRandomArtistsListSub}</p>
+                            </div>
+                        )
+                    });
+                }
+
+                // 9. Top artista più ascoltato di ogni mese (se il periodo copre più mesi)
+                if (stats.monthlyTopArtists && stats.monthlyTopArtists.length > 1) {
+                    slides.push({
+                        gradient: 'from-violet-600 via-indigo-600 to-blue-600',
+                        isMonthly: true,
+                        content: (
+                            <MonthlyTopArtistsStory
+                                months={stats.monthlyTopArtists}
+                                title={t.wrappedMonthlyArtistsTitle}
+                                subtitle={t.wrappedMonthlyArtistsSub}
+                                idx={monthlyStoryIdx}
+                                onIdxChange={setMonthlyStoryIdx}
+                                onFinish={() => nextWrappedSlide()}
+                            />
+                        )
+                    });
+                }
+
+                // 10. Top artista più ascoltato
+                if (stats.topArtisti.length > 0) {
+                    const [artistName, artistCount] = stats.topArtisti[0];
+                    slides.push({
+                        gradient: 'from-amber-500 via-orange-500 to-red-500',
+                        content: (
+                            <div className="flex flex-col items-center gap-4">
+                                <IconTrophy className="w-8 h-8 text-white/90" />
+                                <p className="text-white/80 text-sm uppercase tracking-wider font-semibold">{t.wrappedTopArtistLabel}</p>
+                                <EntityImageBox artist={artistName} type="artist" altText={artistName} boxClassName="w-36 h-36 rounded-full overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center" imgClassName="w-full h-full rounded-full" />
+                                <p className="font-display text-3xl sm:text-4xl font-black text-white text-center px-4 break-words">{artistName}</p>
+                                <p className="text-white/80 text-sm">{t.wrappedTopArtistSub(nfWrapped(artistCount))}</p>
+                            </div>
+                        )
+                    });
+                }
+
+                // 11. Top 5 artisti più ascoltati (in ordine)
+                if (stats.topArtisti.length >= 3) {
+                    slides.push({
+                        gradient: 'from-fuchsia-600 via-purple-600 to-indigo-600',
+                        content: (
+                            <div className="flex flex-col items-center gap-5 w-full">
+                                <p className="text-white text-xl font-bold mb-2">{t.wrappedTopArtistsListTitle}</p>
+                                <div className="w-full max-w-xs flex flex-col gap-3">
+                                    {stats.topArtisti.slice(0, 5).map(([name, count], idx) => (
+                                        <div key={name} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2.5">
+                                            <span className="font-display text-xl font-black text-white/70 w-5 flex-shrink-0">{idx + 1}</span>
+                                            <EntityImageBox artist={name} type="artist" altText={name} boxClassName="w-11 h-11 rounded-full overflow-hidden bg-white/10 flex-shrink-0" imgClassName="w-full h-full" />
+                                            <span className="flex-1 text-white font-semibold text-sm text-left truncate">{name}</span>
+                                            <span className="text-white/60 text-xs flex-shrink-0">{nfWrapped(count)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    });
+                }
+
+                // 12. Riassunto finale
                 const topArtistNameW = stats.topArtisti[0] ? stats.topArtisti[0][0] : t.na;
                 const topTrackKeyW = stats.topBrani[0] ? stats.topBrani[0][0] : null;
                 const topTrackTitleW = topTrackKeyW ? topTrackKeyW.split(' -|- ')[0] : t.na;
+                const recapGenreW = topGenre || (genreStats.top5[0] ? genreStats.top5[0][0] : null);
                 slides.push({
                     gradient: 'from-neutral-100 to-neutral-100',
                     isRecap: true,
@@ -1490,7 +1958,7 @@
                                         </div>
                                         <div className="flex-1 min-w-0 overflow-hidden">
                                             <p className="text-[10px] font-bold uppercase tracking-wide text-black/50 mb-1 whitespace-nowrap">{t.wrappedRecapGenre}</p>
-                                            <p className="font-display text-lg font-black whitespace-nowrap overflow-hidden text-ellipsis">{topGenre || (topArtistName ? '…' : t.na)}</p>
+                                            <p className="font-display text-lg font-black whitespace-nowrap overflow-hidden text-ellipsis">{recapGenreW || (topArtistName ? '…' : t.na)}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1507,18 +1975,49 @@
                 });
 
                 return slides;
-            }, [stats, lang, topGenre]);
+            }, [stats, lang, topGenre, genreStats, storyQuizQuestions, storyQuizAnswers, monthlyStoryIdx]);
 
             const openWrapped = () => {
                 setWrappedIndex(0);
+                setMonthlyStoryIdx(0);
+                setStoryQuizAnswers({});
                 setShowWrapped(true);
             };
             const closeWrapped = () => setShowWrapped(false);
             const nextWrappedSlide = () => {
-                setWrappedIndex(i => Math.min(i + 1, wrappedSlides.length - 1));
+                const currentSlide = wrappedSlides[wrappedIndex];
+                // Se siamo nella storia "top del mese", avanza prima tra i mesi (sotto-storie)
+                if (currentSlide && currentSlide.isMonthly && stats?.monthlyTopArtists?.length > 0) {
+                    const maxIdx = stats.monthlyTopArtists.length - 1;
+                    if (monthlyStoryIdx < maxIdx) {
+                        setMonthlyStoryIdx(i => i + 1);
+                        return;
+                    }
+                }
+                setWrappedIndex(i => {
+                    const next = Math.min(i + 1, wrappedSlides.length - 1);
+                    // Entrando nella storia mensile si riparte sempre dal primo mese
+                    if (wrappedSlides[next] && wrappedSlides[next].isMonthly) {
+                        setMonthlyStoryIdx(0);
+                    }
+                    return next;
+                });
             };
             const prevWrappedSlide = () => {
-                setWrappedIndex(i => Math.max(i - 1, 0));
+                const currentSlide = wrappedSlides[wrappedIndex];
+                // Se siamo nella storia "top del mese", torna prima indietro tra i mesi (sotto-storie)
+                if (currentSlide && currentSlide.isMonthly && monthlyStoryIdx > 0) {
+                    setMonthlyStoryIdx(i => i - 1);
+                    return;
+                }
+                setWrappedIndex(i => {
+                    const prevI = Math.max(i - 1, 0);
+                    // Tornando dentro la storia mensile, si riparte dall'ultimo mese
+                    if (wrappedSlides[prevI] && wrappedSlides[prevI].isMonthly && stats?.monthlyTopArtists?.length > 0) {
+                        setMonthlyStoryIdx(stats.monthlyTopArtists.length - 1);
+                    }
+                    return prevI;
+                });
             };
             const waitForImagesLoaded = (container, timeoutMs = 4000) => {
                 const imgs = Array.from(container.querySelectorAll('img'));
@@ -1649,11 +2148,11 @@
                                         <h3 className="font-display text-xl sm:text-2xl font-bold text-white flex items-start gap-2 mb-6 pr-8">
                                             <IconHelp className="text-purple-400 flex-shrink-0 w-6 h-6 mt-0.5" /> {t.guideTitle}
                                         </h3>
-                                        <div className="space-y-4 text-sm text-gray-300">
+                                        <div className="space-y-4 text-sm text-gray-300 leading-relaxed">
                                             <div className="flex gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
                                                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold flex items-center justify-center mt-0.5">1</span>
                                                 <div className="space-y-3 flex-1">
-                                                    <p className="leading-relaxed">{t.guideSpotifyStep}</p>
+                                                    <p className="leading-relaxed font-bold text-white">{t.guideSpotifyStep}</p>
                                                     <a href="https://www.spotify.com/account/privacy/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-lg transition-colors">
                                                         <IconSpotify className="w-4 h-4" /> {t.openSpotifyPrivacy}
                                                     </a>
@@ -1661,16 +2160,24 @@
                                             </div>
                                             <div className="flex gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
                                                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-red-500/20 text-red-300 text-xs font-bold flex items-center justify-center mt-0.5">2</span>
-                                                <div className="space-y-3 flex-1">
-                                                    <p className="leading-relaxed">{t.guideYTMStep}</p>
-                                                    <a href="https://takeout.google.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-red-600 hover:bg-red-500 text-white font-semibold px-4 py-2 rounded-lg transition-colors">
+                                                <div className="flex-1">
+                                                    <p className="leading-relaxed font-bold text-white">{t.guideYTMStep}</p>
+                                                    <ul className="space-y-1.5 pl-0.5 mt-3">
+                                                        {t.guideYTMSubSteps.map((step, idx) => (
+                                                            <li key={idx} className="flex items-start gap-2.5">
+                                                                <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-red-400 mt-2"></span>
+                                                                <span className="leading-relaxed text-gray-300">{step}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                    <a href="https://takeout.google.com/settings/takeout/custom/youtube" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs bg-red-600 hover:bg-red-500 text-white font-semibold px-4 py-2 rounded-lg transition-colors mt-6">
                                                         {t.openGoogleTakeout}
                                                     </a>
                                                 </div>
                                             </div>
                                             <div className="flex gap-3 p-4 bg-purple-500/10 rounded-xl border border-purple-500/20">
                                                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold flex items-center justify-center mt-0.5">3</span>
-                                                <p className="text-purple-200 font-medium leading-relaxed flex-1">{t.guideZipNote}</p>
+                                                <p className="text-purple-200 font-bold leading-relaxed flex-1">{t.guideZipNote}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -1689,7 +2196,7 @@
                                 <LangSwitch />
                             </div>
 
-                            <div className="max-w-2xl w-full text-center animate-fadein">
+                            <div className="max-w-4xl w-full text-center animate-fadein">
                                 <div className="flex justify-center mb-6">
                                     <div className="relative animate-float">
                                         <div className="absolute inset-0 bg-purple-500/30 blur-2xl rounded-full"></div>
@@ -1703,7 +2210,18 @@
                                     {t.choiceSubtitle}
                                 </p>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                                    <button
+                                        onClick={() => { setPostLoadChoiceMade(true); openWrapped(); }}
+                                        className="group text-left bg-white/[0.06] hover:bg-white/[0.1] backdrop-blur-xl border border-white/10 hover:border-fuchsia-400/40 rounded-3xl p-6 sm:p-8 transition-all active:scale-[0.98]"
+                                    >
+                                        <div className="w-12 h-12 rounded-2xl bg-fuchsia-500/20 flex items-center justify-center mb-4 group-hover:bg-fuchsia-500/30 transition-colors">
+                                            <IconMusic className="w-6 h-6 text-fuchsia-300" />
+                                        </div>
+                                        <p className="font-display font-bold text-lg sm:text-xl text-white mb-1">{t.choiceWrapped}</p>
+                                        <p className="text-gray-400 text-sm">{t.choiceWrappedSub}</p>
+                                    </button>
+
                                     <button
                                         onClick={() => setPostLoadChoiceMade(true)}
                                         className="group text-left bg-white/[0.06] hover:bg-white/[0.1] backdrop-blur-xl border border-white/10 hover:border-purple-400/40 rounded-3xl p-6 sm:p-8 transition-all active:scale-[0.98]"
