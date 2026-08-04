@@ -122,6 +122,32 @@
             will-change: opacity, transform, filter;
         }
 
+        /* Ingresso "a cascata" del ritratto tondo dell'artista: rimbalza leggermente in scala,
+           così l'occhio viene guidato verso il centro appena la sotto-storia cambia */
+        @keyframes artistRingPop {
+            0% { opacity: 0; transform: scale(0.8); }
+            70% { opacity: 1; transform: scale(1.05); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .animate-artist-ring-pop {
+            animation: artistRingPop 0.5s 0.05s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+        /* Il nome entra con un leggero ritardo rispetto al ritratto, per un effetto "a cascata".
+           Essendo la card rimontata per intero ad ogni cambio artista (mai due nomi in sovrapposizione),
+           questo ritardo è puramente estetico e non crea mai testo doppio/illeggibile */
+        .animate-artist-name-in {
+            animation: fadeInUp 0.4s 0.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        /* Breve lampo di luce sull'anello quando cambia artista, per marcare il cambio sotto-storia */
+        @keyframes artistRingFlash {
+            0% { box-shadow: 0 0 0 rgba(255,255,255,0); }
+            35% { box-shadow: 0 0 40px rgba(255,255,255,0.55); }
+            100% { box-shadow: 0 0 0 rgba(255,255,255,0); }
+        }
+        .animate-artist-ring-flash {
+            animation: artistRingFlash 0.7s ease-out both;
+        }
+
         /* Sfere ambientali che fluttuano lentamente dietro al contenuto di ogni storia, per dare profondità */
         .story-ambient::before,
         .story-ambient::after {
@@ -350,6 +376,11 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 999px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); }
+        /* Nasconde la barra di scorrimento (restando comunque scrollabile con dito/rotellina) —
+           usata nella lista di risposte della storia-quiz del Wrapped, dove una scrollbar visibile
+           rompe l'estetica "a schermo intero" tipica delle storie */
+        .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
         input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.7; cursor: pointer; }
     </style>
 </head>
@@ -1011,11 +1042,28 @@
             return null;
         });
 
+        // NOTA SU AFFIDABILITÀ: le ricerche iTunes (usate per artwork, generi e per risalire all'album dei
+        // brani ascoltati su YouTube Music) possono fallire in modo transitorio per rate-limiting o hiccup
+        // di rete. Prima non c'era alcun retry: un fallimento veniva silenziosamente trattato come "non
+        // trovato", e siccome QUALI richieste fallivano dipendeva dal carico/timing del momento, statistiche
+        // come il totale degli album ascoltati risultavano diverse ad ogni ricarica pur partendo dagli
+        // stessi dati. Il retry con backoff rende l'esito molto più stabile e riproducibile.
         const searchITunesResults = async (term, entity) => {
             const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=${entity}&limit=15`;
             const data = await runQueued(async () => {
-                const res = await fetch(url);
-                return res.json();
+                let lastErr = null;
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    try {
+                        if (attempt > 0) await wait(450 * attempt);
+                        const res = await fetch(url);
+                        if (!res.ok) throw new Error(`iTunes HTTP ${res.status}`);
+                        return await res.json();
+                    } catch (e) {
+                        lastErr = e;
+                    }
+                }
+                console.warn("Errore ricerca iTunes dopo i retry", lastErr);
+                return null;
             });
             return data?.results || [];
         };
@@ -1049,8 +1097,41 @@
         };
 
         // Cache condivisa titolo+artista -> nome album (Promise), usata per risolvere via iTunes l'album
-        // dei brani ascoltati su YouTube Music, il cui storico non include mai questa informazione
+        // dei brani ascoltati su YouTube Music, il cui storico non include mai questa informazione.
+        //
+        // FIX instabilità "totale album ascoltati": oltre alla cache in memoria (che dura solo il tempo
+        // della sessione), gli abbinamenti trovati con successo vengono salvati anche in localStorage.
+        // Così, una volta risolto un brano su un dato dispositivo/browser, resta risolto per sempre:
+        // ricaricando la pagina il conteggio non deve più dipendere dalla sorte della rete in quel momento
+        // e smette di "ballare" tra un caricamento e l'altro. I fallimenti (non trovato / errore) NON
+        // vengono salvati apposta, così ai caricamenti successivi (uniti al retry aggiunto in
+        // searchITunesResults) quei brani hanno un'altra possibilità di essere risolti correttamente,
+        // invece di restare bloccati per sempre su un esito che poteva essere solo un rate-limit passeggero.
+        const ALBUM_CACHE_STORAGE_KEY = 'wrappedAlbumLookupCache_v1';
+        const loadStoredAlbumResolutions = () => {
+            try {
+                const raw = localStorage.getItem(ALBUM_CACHE_STORAGE_KEY);
+                return raw ? JSON.parse(raw) : {};
+            } catch (e) {
+                return {};
+            }
+        };
+        const storedAlbumResolutions = loadStoredAlbumResolutions();
+        const persistAlbumResolution = (cacheKey, albumName) => {
+            try {
+                storedAlbumResolutions[cacheKey] = albumName;
+                localStorage.setItem(ALBUM_CACHE_STORAGE_KEY, JSON.stringify(storedAlbumResolutions));
+            } catch (e) {
+                // localStorage pieno o non disponibile (es. navigazione privata): non blocchiamo l'app,
+                // semplicemente quella risoluzione non verrà ricordata al prossimo caricamento
+            }
+        };
+
         const albumLookupCache = new Map();
+        Object.entries(storedAlbumResolutions).forEach(([key, albumName]) => {
+            albumLookupCache.set(key, Promise.resolve(albumName));
+        });
+
         const looksLikeCompilationAlbum = (collectionName) => !!collectionName &&
             /various artists|greatest hits|best of|now (that|playing)|mixtape|compilation|goes pop|megamix|top \d|hits collection|essentials?\b|anthology|playlist|singles?\b/i.test(collectionName);
 
@@ -1075,7 +1156,9 @@
                         match = findMatch(results);
                     }
 
-                    return match ? match.collectionName : null;
+                    const albumName = match ? match.collectionName : null;
+                    if (albumName) persistAlbumResolution(cacheKey, albumName);
+                    return albumName;
                 } catch (e) {
                     return null;
                 }
@@ -1455,6 +1538,39 @@
             );
         };
 
+        // Card centrale (ritratto + nome) di un singolo artista della storia "Top 5 casuale".
+        // Un'unica istanza per volta (rimontata via key ad ogni cambio artista): avere due nomi
+        // sovrapposti in crossfade (uscente/entrante) si è rivelato illeggibile — a differenza di una
+        // foto, due scritte testuali sovrapposte non si "fondono" mai in modo pulito, risultano solo
+        // un guazzabuglio di lettere. Qui invece il ritratto e il nome del NUOVO artista entrano insieme
+        // scivolando (direzione avanti/indietro), col ritratto che rimbalza leggermente in scala e il
+        // nome che lo segue con un piccolo ritardo, per un ingresso vivace ma sempre a singola scritta.
+        const RandomArtistCard = ({ artist, animClass }) => (
+            <div className={`flex flex-col items-center space-y-4 ${animClass}`}>
+                <div className="relative group w-36 h-36 sm:w-44 sm:h-44">
+                    <div
+                        className="absolute -inset-2 rounded-full animate-spin-slower opacity-90 animate-artist-ring-flash"
+                        style={{ background: 'conic-gradient(from 0deg, #a855f7, #ec4899, #f59e0b, #6366f1, #a855f7)' }}
+                    ></div>
+                    <div className="absolute -inset-0.5 rounded-full bg-[#0b0b0f]"></div>
+
+                    <EntityImageBox
+                        artist={artist}
+                        type="artist"
+                        altText={artist}
+                        boxClassName="relative w-full h-full rounded-full overflow-hidden shadow-2xl bg-black/30 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 animate-artist-ring-pop"
+                        imgClassName="w-full h-full object-cover rounded-full"
+                    />
+                </div>
+
+                <div className="text-center pt-2 px-2 max-w-xs animate-artist-name-in">
+                    <h3 className="font-black text-2xl sm:text-4xl text-white tracking-tight drop-shadow-md break-words leading-tight">
+                        {artist}
+                    </h3>
+                </div>
+            </div>
+        );
+
         const RandomTopArtistsStory = ({ artists, title, subtitle, idx, onIdxChange, onFinish, onSkipAll, skipLabel, onGoBack, canGoBack, backLabel }) => {
             // Stessa logica della storia "artista del mese": avanzamento automatico ogni 1.75s,
             // ma qui ogni sotto-storia è uno dei Top 5 artisti mostrati in ordine casuale.
@@ -1470,6 +1586,19 @@
 
                 return () => clearInterval(interval);
             }, [artists, idx, onIdxChange]);
+
+            // Direzione dell'ultima transizione tra sotto-storie (avanti/indietro), per animare la card
+            // dell'artista con lo stesso stile "slide" direzionale usato per le macro-storie del Wrapped:
+            // avanti quando idx cresce (auto-avanzamento o tap avanti), indietro quando si torna
+            // all'artista precedente (tap indietro o click su un indicatore passato).
+            const prevIdxRef = useRef(idx);
+            const [direction, setDirection] = useState(1);
+            useEffect(() => {
+                if (idx !== prevIdxRef.current) {
+                    setDirection(idx > prevIdxRef.current ? 1 : -1);
+                    prevIdxRef.current = idx;
+                }
+            }, [idx]);
 
             if (!artists || artists.length === 0) return null;
             const current = artists[idx] || artists[0];
@@ -1506,32 +1635,15 @@
                         </div>
                     </div>
 
-                    {/* Card Centrale dell'Artista, in stile identico alla storia "artista del mese" */}
-                    <div
-                        key={current.key || idx}
-                        className="flex flex-col items-center animate-story-card my-auto space-y-4"
-                    >
-                        <div className="relative group w-36 h-36 sm:w-44 sm:h-44">
-                            <div
-                                className="absolute -inset-2 rounded-full animate-spin-slower opacity-90"
-                                style={{ background: 'conic-gradient(from 0deg, #a855f7, #ec4899, #f59e0b, #6366f1, #a855f7)' }}
-                            ></div>
-                            <div className="absolute -inset-0.5 rounded-full bg-[#0b0b0f]"></div>
-
-                            <EntityImageBox
-                                artist={current.artist}
-                                type="artist"
-                                altText={current.artist}
-                                boxClassName="relative w-full h-full rounded-full overflow-hidden shadow-2xl bg-black/30 flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
-                                imgClassName="w-full h-full object-cover rounded-full"
-                            />
-                        </div>
-
-                        <div className="text-center pt-2 px-2 max-w-xs">
-                            <h3 className="font-black text-2xl sm:text-4xl text-white tracking-tight drop-shadow-md break-words leading-tight">
-                                {current.artist}
-                            </h3>
-                        </div>
+                    {/* Card Centrale dell'Artista: un'unica istanza per volta, rimontata via key ad ogni
+                        cambio artista con lo slide direzionale (avanti/indietro) + un piccolo "rimbalzo"
+                        sul ritratto e il nome che lo segue con un lieve ritardo */}
+                    <div className="w-full my-auto flex justify-center">
+                        <RandomArtistCard
+                            key={current.key || idx}
+                            artist={current.artist}
+                            animClass={direction >= 0 ? 'animate-story-fwd' : 'animate-story-back'}
+                        />
                     </div>
 
                     <div className="w-full max-w-xs flex flex-col items-center gap-3">
@@ -2310,7 +2422,7 @@
                             <div className="flex flex-col items-center justify-center gap-4 w-full h-full" onClick={(e) => { if (answeredQ) return; e.stopPropagation(); }}>
                                 <p className="text-white/70 text-xs uppercase tracking-widest font-bold">{t.quizQuestionOf(qi + 1, storyQuizQuestions.length)}</p>
                                 <h3 className="font-display text-xl sm:text-2xl font-black text-white leading-tight px-2">{q.question}</h3>
-                                <div className="w-full flex flex-col gap-2.5 px-1 max-h-[48vh] overflow-y-auto">
+                                <div className="w-full flex flex-col gap-2.5 px-1 max-h-[48vh] overflow-y-auto no-scrollbar">
                                     {q.options.map((option, idx) => {
                                         let displayTitleQ = option;
                                         let queryArtistQ = null;
@@ -2882,7 +2994,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.3</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.5</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -2989,7 +3101,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.3</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.5</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -3236,7 +3348,7 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.2.3</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.2.5</span></p>
                             </footer>
                         </div>
                     </div>
