@@ -98,9 +98,31 @@
         animation: pulseGlow 3s infinite ease-in-out;
         }
 
-        /* Transizione fluida per la barra di progressione della corsa */
+        /* Transizione fluida per la barra di progressione della corsa: cresce in modo lineare per 1.75s,
+           la stessa durata del timer della sottostoria, così arriva al valore del mese successivo
+           esattamente nel momento in cui la storia avanza da sola */
         .race-bar-transition {
-        transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transition: width 1.75s cubic-bezier(0.22, 1, 0.36, 1);
+        position: relative;
+        overflow: hidden;
+        will-change: width;
+        }
+
+        /* Riflesso che scorre in loop sulla barra, per dare la sensazione di caricamento continuo nel tempo */
+        .race-bar-transition::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -60%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+        animation: raceBarShimmer 2.2s ease-in-out infinite;
+        }
+
+        @keyframes raceBarShimmer {
+        0% { left: -60%; }
+        100% { left: 130%; }
         }
 
         /* Animazione di pop per i cambi di classifica */
@@ -136,14 +158,24 @@
 
         /* Il badge del mese "salta fuori" con un piccolo ritardo rispetto alla card */
         @keyframes badgePop {
-            0% { opacity: 0; transform: translate(-50%, 6px) scale(0.6); }
-            60% { opacity: 1; transform: translate(-50%, -2px) scale(1.08); }
-            100% { transform: translate(-50%, 0) scale(1); }
+            0% { opacity: 0; transform: translateY(6px) scale(0.6); }
+            60% { opacity: 1; transform: translateY(-2px) scale(1.08); }
+            100% { transform: translateY(0) scale(1); }
         }
         .animate-badge-pop { animation: badgePop 0.45s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 
         @keyframes floatY { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
         .animate-float { animation: floatY 4s ease-in-out infinite; }
+
+        /* Coroncina animata sulla foto del primo classificato nella corsa: fluttua leggermente e brilla */
+        @keyframes crownFloat {
+        0%, 100% { transform: translateX(-50%) rotate(-6deg) translateY(0); }
+        50% { transform: translateX(-50%) rotate(6deg) translateY(-3px); }
+        }
+        .animate-crown {
+        animation: crownFloat 2.4s ease-in-out infinite;
+        filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.85));
+        }
         ::selection { background: rgba(168, 85, 247, 0.35); }
         ::-webkit-scrollbar { width: 10px; height: 10px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -174,6 +206,7 @@
         const IconHelp = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>;
         const IconClose = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
         const IconTrophy = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M7 4h10v6a5 5 0 0 1-10 0V4Z"></path><path d="M7 5H4a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4"></path><path d="M17 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4"></path></svg>;
+        const IconCrown = ({ className, style }) => <svg className={className} style={style} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.5 7 11l5-6 5 6 4-2.5-2 10.5H5L3 8.5Z"></path><path d="M5 19h14" strokeWidth="2"></path></svg>;
         const IconCheck = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
         const IconX = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
         const IconSpotify = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.376 0 0 5.376 0 12s5.376 12 12 12 12-5.376 12-12S18.624 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.48.66.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141 4.38-1.32 9.84-.66 13.44 1.56.42.24.54.84.301 1.261zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.18-1.38-.72-.18-.6.18-1.2.72-1.38 4.26-1.26 11.28-1.02 15.72 1.62.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>;
@@ -292,10 +325,11 @@
                 quizNotEnoughData: 'Servono più dati per generare il quiz: prova a rimuovere i filtri o a caricare più cronologia.',
                 wrappedQuizChoose: 'Tocca una risposta',
                 wrappedQuizTapContinue: 'Tocca per continuare',
-                wrappedMonthlyArtistsTitle: 'Il tuo artista del mese',
-                wrappedMonthlyArtistsSub: 'Come sono cambiati i tuoi ascolti, mese dopo mese',
+                wrappedMonthlyArtistsTitle: 'La corsa dei tuoi Top 5',
+                wrappedMonthlyArtistsSub: 'Guarda chi supera chi, mese dopo mese',
                 wrappedMonthlySkip: 'Salta',
                 wrappedMonthlyBack: 'Indietro',
+                wrappedMonthlyPlaysLabel: (n) => `${n} ascolti questo mese`,
                 qArtistTitle: 'Qual è il tuo artista più ascoltato?',
                 qTrackTitle: 'Qual è il tuo brano più ascoltato?',
                 qAlbumTitle: 'Qual è il tuo album più ascoltato?',
@@ -450,10 +484,11 @@
                 quizNotEnoughData: 'Not enough data to generate the quiz: try removing filters or uploading more history.',
                 wrappedQuizChoose: 'Tap an answer',
                 wrappedQuizTapContinue: 'Tap to continue',
-                wrappedMonthlyArtistsTitle: 'Your artist of the month',
-                wrappedMonthlyArtistsSub: 'How your listening changed, month after month',
+                wrappedMonthlyArtistsTitle: 'Your Top 5 race',
+                wrappedMonthlyArtistsSub: 'See who overtakes who, month after month',
                 wrappedMonthlySkip: 'Skip',
                 wrappedMonthlyBack: 'Back',
+                wrappedMonthlyPlaysLabel: (n) => `${n} plays this month`,
                 qArtistTitle: 'Who is your most listened artist?',
                 qTrackTitle: 'What is your most played track?',
                 qAlbumTitle: 'What is your most played album?',
@@ -982,32 +1017,82 @@
             return <img src={src} alt={altText} className={`object-cover ${className}`} onError={() => setStatus('none')} />;
         };
 
-        const MonthlyTopArtistsStory = ({ months, title, subtitle, idx, onIdxChange, onFinish, onSkipAll, skipLabel, onGoBack, canGoBack, backLabel }) => {
-            // Timer per avanzare automaticamente ogni 2.5 secondi (sempre attivo, niente pausa)
-            // Quando raggiunge l'ultimo mese, passa alla storia successiva del Wrapped tramite onFinish
+        // Palette fissa per artista nella corsa: ogni artista mantiene sempre lo stesso colore lungo tutta l'animazione,
+        // così è facile seguirlo mentre supera gli altri, mese dopo mese
+        const RACE_COLORS = ['#a855f7', '#ec4899', '#f59e0b', '#22d3ee', '#22c55e', '#f43f5e'];
+
+        // Numero che si "conta" progressivamente dal valore precedente a quello nuovo, sincronizzato
+        // con la stessa durata/curva della barra così crescono insieme mentre la sottostoria scorre
+        const AnimatedCount = ({ value, duration = 1750, className, style }) => {
+            const [display, setDisplay] = useState(value);
+            const prevValueRef = useRef(value);
+
+            useEffect(() => {
+                const from = prevValueRef.current;
+                const to = value;
+                if (from === to) { setDisplay(to); return; }
+
+                let rafId;
+                const startTime = performance.now();
+                const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+                const step = (now) => {
+                    const t = Math.min(1, (now - startTime) / duration);
+                    const eased = easeOutCubic(t);
+                    setDisplay(Math.round(from + (to - from) * eased));
+                    if (t < 1) {
+                        rafId = requestAnimationFrame(step);
+                    } else {
+                        prevValueRef.current = to;
+                    }
+                };
+                rafId = requestAnimationFrame(step);
+                return () => cancelAnimationFrame(rafId);
+            }, [value, duration]);
+
+            return <span className={className} style={style}>{display.toLocaleString('it-IT')}</span>;
+        };
+
+        const MonthlyArtistRaceStory = ({ months, title, subtitle, idx, onIdxChange, onFinish, onSkipAll, skipLabel, onGoBack, canGoBack, backLabel }) => {
+            // Timer per avanzare automaticamente ogni 1.75 secondi tra i mesi.
+            // Sull'ultimo mese il timer si ferma e NON passa da solo alla storia successiva del Wrapped:
+            // resta in attesa di un tap/swipe manuale dell'utente.
             useEffect(() => {
                 if (!months || months.length <= 1) return;
+                if (idx >= months.length - 1) return;
 
                 const interval = setInterval(() => {
-                    if (idx < months.length - 1) {
-                        onIdxChange(idx + 1);
-                    } else if (onFinish) {
-                        onFinish();
-                    }
+                    onIdxChange(idx + 1);
                 }, 1750);
 
                 return () => clearInterval(interval);
-            }, [months, idx, onIdxChange, onFinish]);
+            }, [months, idx, onIdxChange]);
 
             if (!months || months.length === 0) return null;
             const current = months[idx] || months[0];
 
+            // Il totale finale (ultimo mese) di ogni artista serve a calibrare la larghezza massima delle barre,
+            // così la corsa "riempie" gradualmente lo schermo invece di sballonzolare in larghezza
+            const finalMonth = months[months.length - 1];
+            const maxFinalTotal = Math.max(1, ...finalMonth.ranking.map(r => r.total));
+            // Un colore stabile per ogni artista (stesso artista = stesso colore in ogni mese)
+            const colorForArtist = (artist) => {
+                const allNames = finalMonth.ranking.map(r => r.artist);
+                const colorIdx = allNames.indexOf(artist) % RACE_COLORS.length;
+                return RACE_COLORS[colorIdx >= 0 ? colorIdx : 0];
+            };
+
+            const ROW_HEIGHT = 76;
+            const BAR_MAX_WIDTH = 128;
+            // Scala dimensionale in base alla posizione: il primo è il più grande, poi via via un po' più piccoli
+            const scaleForRank = (rank) => [1.2, 1.08, 1, 0.94, 0.88][rank] ?? 0.85;
+
             return (
-                <div className="flex flex-col items-center justify-between h-full w-full py-4 px-2 select-none">
-                    
+                <div className="flex flex-col items-center justify-between h-full w-full py-4 px-2 select-none overflow-hidden">
+
                     {/* Header & Indicatori di Progresso tipo Story */}
-                    <div className="w-full max-w-xs space-y-3">
-                        {/* Barre di avanzamento in alto: si riempiono realmente in 2.5s, sincronizzate col timer */}
+                    <div className="w-full max-w-xs space-y-3 z-20">
+                        {/* Barre di avanzamento in alto: si riempiono realmente in 1.75s, sincronizzate col timer */}
                         <div className="flex items-center gap-1.5 w-full">
                             {months.map((m, i) => (
                                 <button
@@ -1036,50 +1121,102 @@
                         </div>
                     </div>
 
-                    {/* Card Centrale dell'Artista con Immagine e Glow */}
-                    <div 
-                        key={current.key || idx} 
-                        className="flex flex-col items-center animate-story-card my-auto space-y-4"
+                    {/* La corsa: una riga per artista, che sale/scende di posizione e si allunga mese dopo mese.
+                        Le transizioni CSS su "top" e "width" creano l'effetto di sorpasso.
+                        Il primo classificato è reso più grande, con una scala che decresce leggermente verso il basso. */}
+                    <div
+                        className="relative w-full max-w-xs my-auto"
+                        style={{ height: current.ranking.length * ROW_HEIGHT }}
                     >
-                        {/* Contenitore Immagine con anello colorato rotante e Badge Mese Incastonato */}
-                        <div className="relative group w-36 h-36 sm:w-44 sm:h-44">
-                            {/* Anello arcobaleno che ruota lentamente dietro l'immagine */}
-                            <div
-                                className="absolute -inset-2 rounded-full animate-spin-slower opacity-90"
-                                style={{ background: 'conic-gradient(from 0deg, #a855f7, #ec4899, #f59e0b, #6366f1, #a855f7)' }}
-                            ></div>
-                            {/* Cornice scura per dare respiro tra anello e foto */}
-                            <div className="absolute -inset-0.5 rounded-full bg-[#0b0b0f]"></div>
+                        {current.ranking.map((r, rank) => {
+                            const color = rank === 0 ? '#facc15' : colorForArtist(r.artist);
+                            const widthPx = Math.max(10, Math.round((r.total / maxFinalTotal) * BAR_MAX_WIDTH));
+                            const scale = scaleForRank(rank);
+                            const avatarSize = Math.round(54 * scale);
+                            const barHeight = Math.round(17 * scale);
+                            return (
+                                <div
+                                    key={r.artist}
+                                    className="absolute left-0 w-full flex items-center gap-2"
+                                    style={{
+                                        top: rank * ROW_HEIGHT,
+                                        height: ROW_HEIGHT - 10,
+                                        transition: 'top 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                                    }}
+                                >
+                                    {/* Numero di posizione */}
+                                    <span
+                                        className="text-white/50 font-black flex-shrink-0 text-center"
+                                        style={{ width: 22, fontSize: 16 * scale }}
+                                    >
+                                        {rank + 1}
+                                    </span>
 
-                            <EntityImageBox
-                                artist={current.artist}
-                                type="artist"
-                                altText={current.artist}
-                                boxClassName="relative w-full h-full rounded-full overflow-hidden shadow-2xl bg-black/30 flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
-                                imgClassName="w-full h-full object-cover rounded-full"
-                            />
-                            
-                            {/* Badge del Mese che galleggia sotto l'immagine */}
-                            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white text-black font-black text-xs px-4 py-1 rounded-full shadow-lg border border-black/10 uppercase tracking-wider whitespace-nowrap animate-badge-pop">
-                                📅 {current.fullLabel}
+                                    {/* Foto tonda dell'artista, "testa" della barra. La coroncina del primo va FUORI dal
+                                        cerchio con overflow-hidden, altrimenti verrebbe tagliata via */}
+                                    <div className="relative flex-shrink-0" style={{ width: avatarSize, height: avatarSize }}>
+                                        {rank === 0 && (
+                                            <IconCrown
+                                                className="animate-crown absolute z-20 text-yellow-400"
+                                                style={{ top: -18, left: '50%', width: 24, height: 24 }}
+                                            />
+                                        )}
+                                        <div
+                                            className="relative w-full h-full rounded-full overflow-hidden border-2 z-10"
+                                            style={{ borderColor: color }}
+                                        >
+                                            <EntityImageBox
+                                                artist={r.artist}
+                                                type="artist"
+                                                altText={r.artist}
+                                                boxClassName="w-full h-full bg-black/30 flex items-center justify-center"
+                                                imgClassName="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Barra di progressione della corsa, col nome dell'artista scritto subito sotto, sempre allineato a sinistra all'inizio della barra */}
+                                    <div className="flex flex-col items-start flex-shrink-0 min-w-0" style={{ width: Math.max(widthPx, 70), marginTop: -9 }}>
+                                        <div
+                                            className="race-bar-transition rounded-full"
+                                            style={{ width: widthPx, height: barHeight, backgroundColor: color }}
+                                        />
+                                        <span
+                                            className="text-white/90 font-bold truncate mt-1 leading-none block text-left"
+                                            style={{ fontSize: 12 * scale, maxWidth: Math.max(widthPx, 70) }}
+                                        >
+                                            {r.artist}
+                                        </span>
+                                    </div>
+
+                                    {/* Conteggio ascolti cumulativo, subito dopo la fine della barra: cresce progressivamente
+                                        (conta su) in sincrono con la barra mentre la sottostoria scorre. Larghezza riservata
+                                        e cifre monospaziate così il totale della riga entra sempre nello schermo */}
+                                    <AnimatedCount
+                                        value={r.total}
+                                        duration={1750}
+                                        className="text-white/80 font-bold flex-shrink-0 text-right"
+                                        style={{ fontSize: 15 * scale, minWidth: 44 * scale, fontVariantNumeric: 'tabular-nums', display: 'inline-block' }}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Etichetta del mese in corso, sempre centrata, sopra ai controlli — stessa posizione
+                        di INDIETRO/SALTA della macro-storia "Top 5 artisti" */}
+                    <div className="w-full max-w-xs flex flex-col items-center gap-3">
+                        <div className="w-full flex justify-center">
+                            <div
+                                key={`label-${current.key || idx}`}
+                                className="animate-badge-pop inline-flex px-6 py-2 rounded-full border-2 border-white/80 font-black text-base text-white uppercase tracking-wide text-center"
+                            >
+                                {current.fullLabel}
                             </div>
                         </div>
 
-                        {/* Nome Artista con Stile Tipografico Forte */}
-                        <div className="text-center pt-2 px-2 max-w-xs">
-                            <h3 className="font-black text-2xl sm:text-4xl text-white tracking-tight drop-shadow-md break-words leading-tight">
-                                {current.artist}
-                            </h3>
-                            <p className="text-white/80 text-xs font-medium mt-1">
-                                Il tuo artista più ascoltato del mese
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Footer / Subtitle + Pulsanti per tornare indietro o saltare l'intera macro-storia */}
-                    <div className="w-full max-w-xs flex flex-col items-center gap-3">
                         {(canGoBack || onSkipAll) && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-12">
                                 {canGoBack && onGoBack && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); onGoBack(); }}
@@ -1100,8 +1237,9 @@
                                 )}
                             </div>
                         )}
+
                         {subtitle && (
-                            <p className="text-white/60 text-xs leading-relaxed max-w-xs mx-auto">
+                            <p className="text-white/60 text-xs leading-relaxed max-w-xs mx-auto text-center">
                                 {subtitle}
                             </p>
                         )}
@@ -1113,20 +1251,19 @@
 
         const RandomTopArtistsStory = ({ artists, title, subtitle, idx, onIdxChange, onFinish, onSkipAll, skipLabel, onGoBack, canGoBack, backLabel }) => {
             // Stessa logica della storia "artista del mese": avanzamento automatico ogni 1.75s,
-            // ma qui ogni sotto-storia è uno dei Top 5 artisti mostrati in ordine casuale
+            // ma qui ogni sotto-storia è uno dei Top 5 artisti mostrati in ordine casuale.
+            // Sull'ultimo artista il timer si ferma e NON passa da solo alla storia successiva del Wrapped:
+            // resta in attesa di un tap/swipe manuale dell'utente.
             useEffect(() => {
                 if (!artists || artists.length <= 1) return;
+                if (idx >= artists.length - 1) return;
 
                 const interval = setInterval(() => {
-                    if (idx < artists.length - 1) {
-                        onIdxChange(idx + 1);
-                    } else if (onFinish) {
-                        onFinish();
-                    }
+                    onIdxChange(idx + 1);
                 }, 1750);
 
                 return () => clearInterval(interval);
-            }, [artists, idx, onIdxChange, onFinish]);
+            }, [artists, idx, onIdxChange]);
 
             if (!artists || artists.length === 0) return null;
             const current = artists[idx] || artists[0];
@@ -1193,7 +1330,7 @@
 
                     <div className="w-full max-w-xs flex flex-col items-center gap-3">
                         {(canGoBack || onSkipAll) && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-12">
                                 {canGoBack && onGoBack && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); onGoBack(); }}
@@ -1590,22 +1727,31 @@
                 const weekdayFull = t.days.map((nome, idx) => ({ nome, count: weekdayCount[idx] || 0 }));
                 const maxWeekday = Math.max(1, ...weekdayFull.map(w => w.count));
 
-                const monthlyTopArtists = Object.entries(mesiArtistiCount)
-                    .map(([key, counts]) => {
-                        const [annoM, meseM] = key.split('-').map(Number);
-                        const top = sortObject(counts)[0];
-                        return {
-                            key,
-                            anno: annoM,
-                            mese: meseM,
-                            label: `${t.months[meseM].slice(0, 3)} ${annoM}`,
-                            fullLabel: `${t.months[meseM]} ${annoM}`,
-                            artist: top ? top[0] : null,
-                            count: top ? top[1] : 0
-                        };
-                    })
-                    .filter(m => m.artist)
-                    .sort((a, b) => a.anno - b.anno || a.mese - b.mese);
+                // Corsa mensile tra i Top 5 artisti: per ogni mese, quante riproduzioni CUMULATIVE (fino a quel mese incluso)
+                // ha ciascuno dei 5 artisti più ascoltati in assoluto - usata per l'animazione stile "bar chart race"
+                // dove i vari artisti si superano a vicenda mese dopo mese.
+                const top5NamesForRace = sortObject(artistiCount).slice(0, 5).map(([name]) => name);
+                const monthKeysSorted = Object.keys(mesiArtistiCount).sort((a, b) => {
+                    const [ya, ma] = a.split('-').map(Number);
+                    const [yb, mb] = b.split('-').map(Number);
+                    return ya - yb || ma - mb;
+                });
+                const raceCumulative = {};
+                top5NamesForRace.forEach(n => { raceCumulative[n] = 0; });
+                const monthlyArtistRace = monthKeysSorted.map(key => {
+                    const [annoM, meseM] = key.split('-').map(Number);
+                    const countsThisMonth = mesiArtistiCount[key];
+                    top5NamesForRace.forEach(n => { raceCumulative[n] += (countsThisMonth[n] || 0); });
+                    const ranking = top5NamesForRace
+                        .map(n => ({ artist: n, total: raceCumulative[n] }))
+                        .sort((a, b) => b.total - a.total);
+                    return {
+                        key,
+                        label: `${t.months[meseM].slice(0, 3)} ${annoM}`,
+                        fullLabel: `${t.months[meseM]} ${annoM}`,
+                        ranking
+                    };
+                });
 
                 return {
                     totali: filtered.length,
@@ -1617,7 +1763,7 @@
                     topArtistiPerGeneri: sortObject(artistiCount).slice(0, 40),
                     topBrani: sortObject(braniCount).filter(b => b[1] > 1).slice(0, 10),
                     topAlbum: sortObject(albumCount).filter(b => b[1] > 1).slice(0, 10),
-                    weekdayFull, maxWeekday, monthlyTopArtists,
+                    weekdayFull, maxWeekday, monthlyArtistRace,
                     date: {
                         inizio: minDate,
                         fine: maxDate,
@@ -2039,14 +2185,14 @@
                     });
                 }
 
-                // 9. Top artista più ascoltato di ogni mese (se il periodo copre più mesi)
-                if (stats.monthlyTopArtists && stats.monthlyTopArtists.length > 1) {
+                // 9. Corsa tra i Top 5 artisti mese dopo mese (se il periodo copre più mesi) - si superano a vicenda
+                if (stats.monthlyArtistRace && stats.monthlyArtistRace.length > 1) {
                     slides.push({
                         gradient: 'from-violet-600 via-indigo-600 to-blue-600',
                         isMonthly: true,
                         content: (
-                            <MonthlyTopArtistsStory
-                                months={stats.monthlyTopArtists}
+                            <MonthlyArtistRaceStory
+                                months={stats.monthlyArtistRace}
                                 title={t.wrappedMonthlyArtistsTitle}
                                 subtitle={t.wrappedMonthlyArtistsSub}
                                 idx={monthlyStoryIdx}
@@ -2199,8 +2345,8 @@
                     return;
                 }
                 // Se siamo nella storia "top del mese", avanza prima tra i mesi (sotto-storie)
-                if (currentSlide && currentSlide.isMonthly && stats?.monthlyTopArtists?.length > 0) {
-                    const maxIdx = stats.monthlyTopArtists.length - 1;
+                if (currentSlide && currentSlide.isMonthly && stats?.monthlyArtistRace?.length > 0) {
+                    const maxIdx = stats.monthlyArtistRace.length - 1;
                     if (monthlyStoryIdx < maxIdx) {
                         setMonthlyStoryIdx(i => i + 1);
                         return;
@@ -2243,8 +2389,8 @@
                 setWrappedIndex(i => {
                     const prevI = Math.max(i - 1, 0);
                     // Tornando dentro la storia mensile, si riparte dall'ultimo mese
-                    if (wrappedSlides[prevI] && wrappedSlides[prevI].isMonthly && stats?.monthlyTopArtists?.length > 0) {
-                        setMonthlyStoryIdx(stats.monthlyTopArtists.length - 1);
+                    if (wrappedSlides[prevI] && wrappedSlides[prevI].isMonthly && stats?.monthlyArtistRace?.length > 0) {
+                        setMonthlyStoryIdx(stats.monthlyArtistRace.length - 1);
                     }
                     // Tornando dentro la storia dei Top 5 casuali, si riparte dall'ultimo artista
                     if (wrappedSlides[prevI] && wrappedSlides[prevI].isRandomTop && shuffledTop5Artists.length > 0) {
@@ -2388,7 +2534,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.0</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.1</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -2495,7 +2641,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.0</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.1</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -2742,7 +2888,7 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.2.0</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.2.1</span></p>
                             </footer>
                         </div>
                     </div>
