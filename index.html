@@ -526,7 +526,7 @@
                 wrappedQuizChoose: 'Tocca una risposta',
                 wrappedQuizTapContinue: 'Tocca per continuare',
                 wrappedMonthlyArtistsTitle: 'La corsa dei tuoi Top 5',
-                wrappedMonthlyArtistsSub: 'Guarda chi supera chi, mese dopo mese',
+                wrappedMonthlyArtistsSub: 'Guarda i tuoi artisti più ascoltati ogni mese',
                 wrappedMonthlySkip: 'Salta',
                 wrappedMonthlyBack: 'Indietro',
                 wrappedMonthlyPlaysLabel: (n) => `${n} ascolti questo mese`,
@@ -690,7 +690,7 @@
                 wrappedQuizChoose: 'Tap an answer',
                 wrappedQuizTapContinue: 'Tap to continue',
                 wrappedMonthlyArtistsTitle: 'Your Top 5 race',
-                wrappedMonthlyArtistsSub: 'See who overtakes who, month after month',
+                wrappedMonthlyArtistsSub: 'See your most-listened-to artists each month',
                 wrappedMonthlySkip: 'Skip',
                 wrappedMonthlyBack: 'Back',
                 wrappedMonthlyPlaysLabel: (n) => `${n} plays this month`,
@@ -1469,7 +1469,7 @@
                 return RACE_COLORS[colorIdx >= 0 ? colorIdx : 0];
             };
 
-            const ROW_HEIGHT = 76;
+            const ROW_HEIGHT = 92;
             const BAR_MAX_WIDTH = 128;
             // Scala dimensionale in base alla posizione: il primo è il più grande, poi via via un po' più piccoli
             const scaleForRank = (rank) => [1.2, 1.08, 1, 0.94, 0.88][rank] ?? 0.85;
@@ -1503,8 +1503,18 @@
                         </div>
 
                         {/* Titolo Principale */}
-                        <div className="text-center">
+                        <div className="text-center mt-3">
                             <p className="text-white/70 text-xs font-bold uppercase tracking-widest">{title}</p>
+                        </div>
+
+                        {/* Etichetta del mese in corso, spostata qui sopra la classifica (prima era sotto) */}
+                        <div className="w-full flex justify-center">
+                            <div
+                                key={`label-${current.key || idx}`}
+                                className="animate-badge-pop inline-flex px-6 py-2 rounded-full border-2 border-white/80 font-black text-base text-white uppercase tracking-wide text-center"
+                            >
+                                {current.fullLabel}
+                            </div>
                         </div>
                     </div>
 
@@ -1565,15 +1575,19 @@
                                         </div>
                                     </div>
 
-                                    {/* Barra di progressione della corsa, col nome dell'artista scritto subito sotto, sempre allineato a sinistra all'inizio della barra */}
-                                    <div className="flex flex-col items-start flex-shrink-0 min-w-0" style={{ width: Math.max(widthPx, 70), marginTop: -9 }}>
+                                    {/* Barra di progressione della corsa, col nome dell'artista scritto subito sotto.
+                                        La colonna del nome prende lo spazio disponibile nella riga (non più legata
+                                        alla larghezza della barra, che con pochi ascolti può essere molto stretta):
+                                        così il nome resta sempre leggibile, al massimo va su due righe invece di
+                                        essere tagliato con "...". */}
+                                    <div className="flex flex-col items-start flex-1 min-w-0" style={{ marginTop: -9 }}>
                                         <div
                                             className="race-bar-transition rounded-full"
                                             style={{ width: widthPx, height: barHeight, backgroundColor: color }}
                                         />
                                         <span
-                                            className="text-white/90 font-bold truncate mt-1 leading-none block text-left"
-                                            style={{ fontSize: 12 * scale, maxWidth: Math.max(widthPx, 70) }}
+                                            className="text-white/90 font-bold mt-1 leading-tight text-left line-clamp-2 break-words"
+                                            style={{ fontSize: 12 * scale }}
                                         >
                                             {r.artist}
                                         </span>
@@ -1593,24 +1607,15 @@
                         })}
                     </div>
 
-                    {/* Etichetta del mese in corso, sempre centrata, sopra ai controlli — stessa posizione
+                    {/* Sottotitolo, sempre centrato in basso sopra ai controlli — stessa posizione
                         di INDIETRO/SALTA della macro-storia "Top 5 artisti" */}
-                    <div className="w-full max-w-xs flex flex-col items-center gap-3">
-                        <div className="w-full flex justify-center">
-                            <div
-                                key={`label-${current.key || idx}`}
-                                className="animate-badge-pop inline-flex px-6 py-2 rounded-full border-2 border-white/80 font-black text-base text-white uppercase tracking-wide text-center"
-                            >
-                                {current.fullLabel}
-                            </div>
-                        </div>
-
-                        {subtitle && (
+                    {subtitle && (
+                        <div className="w-full max-w-xs">
                             <p className="text-white/60 text-xs leading-relaxed max-w-xs mx-auto text-center">
                                 {subtitle}
                             </p>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                 </div>
             );
@@ -1864,6 +1869,10 @@
             const [postLoadChoiceMade, setPostLoadChoiceMade] = useState(false);
             const [showWrapped, setShowWrapped] = useState(false);
             const [wrappedPreparing, setWrappedPreparing] = useState(false);
+            // Vero durante l'attesa (1s) tra la risposta al quiz-storia e l'avanzamento automatico
+            // alla storia successiva: blocca il tap "avanti" manuale in quella finestra, per evitare
+            // di saltare due storie insieme (un avanzamento manuale + quello automatico in arrivo).
+            const [quizAutoAdvancing, setQuizAutoAdvancing] = useState(false);
             const [wrappedIndex, setWrappedIndex] = useState(0);
             const [wrappedDirection, setWrappedDirection] = useState(1); // 1 = avanti, -1 = indietro (per l'animazione direzionale delle storie)
             const wrappedCardRef = useRef(null);
@@ -2310,6 +2319,10 @@
             // Domande del mini-quiz integrato come "storia" dentro il Wrapped (indipendenti dal quiz del modal)
             const storyQuizQuestions = useMemo(() => generateQuizQuestions(stats, t, lang).filter(q => q.id === 'track'), [stats, lang]);
             const [storyQuizAnswers, setStoryQuizAnswers] = useState({});
+            // Tiene traccia delle domande del quiz-storia per cui è già scattato l'avanzamento
+            // automatico: così, se si torna indietro su una domanda a cui si è già risposto in
+            // precedenza, non riparte da capo il timer che fa avanzare da solo alla storia dopo.
+            const autoAdvancedQuizIdsRef = useRef(new Set());
             const answerStoryQuiz = useCallback((qid, option) => {
                 setStoryQuizAnswers(prev => (prev[qid] !== undefined ? prev : { ...prev, [qid]: option }));
             }, []);
@@ -2581,7 +2594,7 @@
                         )
                     });
                 });
-
+                
                 // 5b. Top brano più ascoltato
                 if (stats.topBrani.length > 0) {
                     const [trackKeyW, trackCountW] = stats.topBrani[0];
@@ -2962,6 +2975,7 @@
                 setMonthlyStoryIdx(0);
                 setRandomArtistStoryIdx(0);
                 setStoryQuizAnswers({});
+                autoAdvancedQuizIdsRef.current.clear();
                 // Non apriamo subito le storie: prima mostriamo una schermata di caricamento e
                 // aspettiamo che generi, album e tutte le immagini necessarie siano pronti (vedi
                 // useEffect qui sotto), così durante il Wrapped non compare più nulla "a scatti".
@@ -3083,11 +3097,25 @@
             useEffect(() => {
                 if (!showWrapped) return;
                 const slide = wrappedSlides[wrappedIndex];
-                if (slide && slide.qid && storyQuizAnswers[slide.qid] !== undefined) {
+                if (
+                    slide && slide.qid &&
+                    storyQuizAnswers[slide.qid] !== undefined &&
+                    !autoAdvancedQuizIdsRef.current.has(slide.qid)
+                ) {
+                    // Segniamo subito la domanda come "gestita": se l'utente tocca avanti a mano
+                    // prima che scatti il timer, il setTimeout viene annullato dal cleanup qui sotto,
+                    // ma la domanda deve comunque risultare già consumata per non far ripartire
+                    // l'avanzamento automatico se in seguito si torna indietro su questa storia.
+                    autoAdvancedQuizIdsRef.current.add(slide.qid);
+                    setQuizAutoAdvancing(true);
                     const timeoutId = setTimeout(() => {
+                        setQuizAutoAdvancing(false);
                         nextWrappedSlide();
-                    }, 1500);
-                    return () => clearTimeout(timeoutId);
+                    }, 1000);
+                    return () => {
+                        clearTimeout(timeoutId);
+                        setQuizAutoAdvancing(false);
+                    };
                 }
             }, [showWrapped, wrappedIndex, storyQuizAnswers, wrappedSlides]);
             const waitForImagesLoaded = (container, timeoutMs = 4000) => {
@@ -3342,17 +3370,6 @@
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                                     <button
-                                        onClick={() => setPostLoadChoiceMade(true)}
-                                        className="group text-left bg-white/[0.03] hover:bg-white/[0.1] backdrop-blur-xl border border-white/10 hover:border-purple-400/40 rounded-3xl p-6 sm:p-8 transition-all active:scale-[0.98]"
-                                    >
-                                        <div className="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center mb-4 group-hover:bg-purple-500/30 transition-colors">
-                                            <IconDisc className="w-6 h-6 text-purple-300" />
-                                        </div>
-                                        <p className="font-display font-bold text-lg sm:text-xl text-white mb-1">{t.choiceViewData}</p>
-                                        <p className="text-gray-400 text-sm">{t.choiceViewDataSub}</p>
-                                    </button>
-
-                                    <button
                                         onClick={() => { setPostLoadChoiceMade(true); openWrapped(); }}
                                         className="group text-left bg-white/[0.03] hover:bg-white/[0.1] backdrop-blur-xl border border-white/10 hover:border-fuchsia-400/40 rounded-3xl p-6 sm:p-8 transition-all active:scale-[0.98]"
                                     >
@@ -3372,6 +3389,17 @@
                                         </div>
                                         <p className="font-display font-bold text-lg sm:text-xl text-white mb-1">{t.choiceStartQuiz}</p>
                                         <p className="text-gray-400 text-sm">{t.choiceStartQuizSub}</p>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setPostLoadChoiceMade(true)}
+                                        className="group text-left bg-white/[0.03] hover:bg-white/[0.1] backdrop-blur-xl border border-white/10 hover:border-purple-400/40 rounded-3xl p-6 sm:p-8 transition-all active:scale-[0.98]"
+                                    >
+                                        <div className="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center mb-4 group-hover:bg-purple-500/30 transition-colors">
+                                            <IconDisc className="w-6 h-6 text-purple-300" />
+                                        </div>
+                                        <p className="font-display font-bold text-lg sm:text-xl text-white mb-1">{t.choiceViewData}</p>
+                                        <p className="text-gray-400 text-sm">{t.choiceViewDataSub}</p>
                                     </button>
                                 </div>
                             </div>
@@ -3660,11 +3688,15 @@
                         const currentWrappedSlide = wrappedSlides[wrappedIndex];
                         // Vero finché la storia corrente è una domanda del quiz senza risposta: blocca il tap per avanzare
                         const wrappedQuizLocked = !!(currentWrappedSlide && currentWrappedSlide.qid && storyQuizAnswers[currentWrappedSlide.qid] === undefined);
+                        // Vero anche durante l'attesa che precede l'avanzamento automatico dopo aver
+                        // risposto al quiz: in questa finestra il tap "avanti" manuale resta disattivato,
+                        // per non sommarsi all'avanzamento automatico in arrivo e saltare una storia.
+                        const wrappedForwardLocked = wrappedQuizLocked || quizAutoAdvancing;
                         return (
                         <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-3 sm:p-6 animate-fadebg">
                             <div
                                 className="relative w-full max-w-sm h-full sm:h-[85vh] sm:max-h-[820px] rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden shadow-2xl select-none cursor-pointer transform-gpu"
-                                onClick={wrappedQuizLocked ? undefined : nextWrappedSlide}
+                                onClick={wrappedForwardLocked ? undefined : nextWrappedSlide}
                             >
                                 {/* Barra di avanzamento in stile Storie */}
                                 <div className="absolute top-3 left-3 right-3 z-30 flex gap-1.5">
@@ -3683,10 +3715,18 @@
                                     <IconX className="w-5 h-5" />
                                 </button>
 
-                                {/* Zona di tap sinistra per tornare indietro (disattivata sul quiz senza risposta, per non coprire le opzioni) */}
-                                {!wrappedQuizLocked && (
+                                {/* Zona di tap sinistra per tornare indietro. Sul quiz senza risposta viene
+                                    ristretta a una fascia in alto (sotto la barra di avanzamento), per non
+                                    coprire le opzioni di risposta più in basso, ma resta comunque possibile
+                                    tornare indietro. */}
+                                {!wrappedQuizLocked ? (
                                     <div
                                         className="absolute inset-y-0 left-0 w-1/3 z-20"
+                                        onClick={(e) => { e.stopPropagation(); prevWrappedSlide(); }}
+                                    ></div>
+                                ) : (
+                                    <div
+                                        className="absolute top-0 left-0 w-1/3 h-20 z-20"
                                         onClick={(e) => { e.stopPropagation(); prevWrappedSlide(); }}
                                     ></div>
                                 )}
