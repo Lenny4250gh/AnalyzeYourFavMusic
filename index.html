@@ -545,6 +545,8 @@
                 wrappedCoverTitle: 'Il Tuo Wrapped',
                 wrappedCoverSubtitle: (f, tt) => `Dal ${f} al ${tt}`,
                 wrappedTapHint: 'Tocca per iniziare →',
+                wrappedPreparingTitle: 'Sto preparando il tuo Wrapped',
+                wrappedPreparingSubtitle: 'Sto raccogliendo foto, generi e album...',
                 wrappedStreamsTitle: 'Streaming totali',
                 wrappedStreamsSub: 'volte hai premuto play quest\'anno',
                 wrappedMinutesTitle: 'Minuti ascoltati',
@@ -707,6 +709,8 @@
                 wrappedCoverTitle: 'Your Wrapped',
                 wrappedCoverSubtitle: (f, tt) => `From ${f} to ${tt}`,
                 wrappedTapHint: 'Tap to start →',
+                wrappedPreparingTitle: 'Preparing your Wrapped',
+                wrappedPreparingSubtitle: 'Gathering photos, genres and albums...',
                 wrappedStreamsTitle: 'Total streams',
                 wrappedStreamsSub: 'times you hit play this year',
                 wrappedMinutesTitle: 'Minutes listened',
@@ -959,6 +963,78 @@
         };
 
         const looksLikeRealPhoto = (url) => !!url && !/\.svg(\?.*)?$/i.test(url);
+
+        // --- INIZIO NUOVE FUNZIONI YOUTUBE MUSIC ALBUMS ---
+
+        // Funzione 1: Cerca il VERO album su iTunes (ignorando i finti album di YT)
+        async function getAlbumFromiTunes(title, artist) {
+            if (!title || !artist) return null;
+            
+            // Pulizia dei titoli tipici di YouTube per migliorare la ricerca
+            const cleanTitle = title.replace(/(\(Official Video\)|\(Lyric Video\)|\[.*?\]|- Topic)/gi, '').trim();
+            const cleanArtist = artist.replace(/ - Topic/gi, '').trim();
+            
+            const query = encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
+            const url = `https://itunes.apple.com/search?term=${query}&entity=song&limit=1`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    return {
+                        albumName: data.results[0].collectionName, // Il VERO nome
+                        albumCover: data.results[0].artworkUrl100.replace('100x100bb', '300x300bb') // Copertina in alta qualità
+                    };
+                }
+            } catch (error) {
+                console.warn("Nessun album trovato per:", cleanTitle);
+            }
+            return null;
+        }
+
+        // Funzione 2: Sostituisce il tuo generatore di Top Album
+        // ATTENZIONE: Passagli SOLO la lista delle canzoni più ascoltate (es. top 50), NON tutto il file
+        async function generateRealYTTopAlbums(topSongsList) {
+            console.log("Inizio calcolo accurato degli album...");
+            const albumCounts = {};
+            
+            for (let i = 0; i < topSongsList.length; i++) {
+                const song = topSongsList[i];
+                
+                // Pausa di 300 millisecondi per evitare il blocco da parte di iTunes
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                // CERCA: Adatta "song.title" e "song.artist" ai nomi che usi nel tuo codice
+                const albumData = await getAlbumFromiTunes(song.title, song.artist);
+                
+                if (albumData && albumData.albumName) {
+                    const albumName = albumData.albumName;
+                    
+                    // Se l'album non esiste ancora nella nostra classifica, lo creiamo
+                    if (!albumCounts[albumName]) {
+                        albumCounts[albumName] = {
+                            name: albumName,
+                            artist: song.artist,
+                            cover: albumData.albumCover,
+                            playCount: 0
+                        };
+                    }
+                    
+                    // Sommiamo gli ascolti. 
+                    // CERCA: Adatta "song.playCount" con il nome della tua variabile (es. song.count o song.ascolti)
+                    albumCounts[albumName].playCount += song.playCount; 
+                }
+            }
+            
+            // Trasformiamo in un array e ordiniamo dal più ascoltato al meno ascoltato
+            const sortedAlbums = Object.values(albumCounts).sort((a, b) => b.playCount - a.playCount);
+            
+            console.log("Top Album reali generati:", sortedAlbums);
+            return sortedAlbums; // Ritorna l'array perfetto e invariabile!
+        }
+
+        // --- FINE NUOVE FUNZIONI YOUTUBE MUSIC ALBUMS ---
 
         const looksLikeMusicianDescription = (desc) => {
             if (!desc) return false;
@@ -1787,6 +1863,7 @@
             const [quizHistory, setQuizHistory] = useState({});
             const [postLoadChoiceMade, setPostLoadChoiceMade] = useState(false);
             const [showWrapped, setShowWrapped] = useState(false);
+            const [wrappedPreparing, setWrappedPreparing] = useState(false);
             const [wrappedIndex, setWrappedIndex] = useState(0);
             const [wrappedDirection, setWrappedDirection] = useState(1); // 1 = avanti, -1 = indietro (per l'animazione direzionale delle storie)
             const wrappedCardRef = useRef(null);
@@ -2156,6 +2233,7 @@
             // noti (Spotify) e arricchiamo in background con l'album dei brani ascoltati su YouTube Music,
             // risolto via iTunes (best-effort, sullo stesso modello usato per i generi musicali).
             const [albumStats, setAlbumStats] = useState({ loading: false, albumUnici: 0, topAlbum: [] });
+
             useEffect(() => {
                 let cancelled = false;
                 if (!stats) { setAlbumStats({ loading: false, albumUnici: 0, topAlbum: [] }); return; }
@@ -2174,14 +2252,27 @@
 
                 (async () => {
                     const merged = { ...baseCount };
-                    await Promise.all(unresolved.map(async (tr) => {
+
+                    // Le richieste passano comunque dalla coda condivisa (fetchTrackAlbum → searchITunesResults →
+                    // runQueued), che limita già la concorrenza reale a 4 richieste alla volta e riprova in caso
+                    // di errore/rate-limit. Il vecchio ciclo seriale con 300ms di pausa FISSA tra un brano e
+                    // l'altro era quindi un doppio freno inutile (ogni richiesta aspettava sia la coda SIA questa
+                    // pausa), che con tante tracce da abbinare poteva far durare l'operazione anche oltre un
+                    // minuto. Lanciandole tutte insieme e lasciando che sia la coda a scaglionarle davvero, lo
+                    // stesso lavoro finisce in una frazione del tempo, restando comunque rispettoso verso l'API.
+                    const results = await Promise.all(unresolved.map(async (tr) => {
                         const albumName = await fetchTrackAlbum(tr.artista, tr.titolo);
-                        if (albumName) {
-                            const key = `${albumName} -|- ${tr.artista}`;
-                            merged[key] = (merged[key] || 0) + tr.count;
-                        }
+                        return albumName ? { tr, albumName } : null;
                     }));
+
                     if (cancelled) return;
+
+                    results.forEach(res => {
+                        if (!res) return;
+                        const key = `${res.albumName} -|- ${res.tr.artista}`;
+                        merged[key] = (merged[key] || 0) + res.tr.count;
+                    });
+
                     const sorted = Object.entries(merged).sort((a, b) => b[1] - a[1]);
                     setAlbumStats({
                         loading: false,
@@ -2192,6 +2283,14 @@
 
                 return () => { cancelled = true; };
             }, [stats]);
+
+            // "Specchi" sempre aggiornati di genreStats/albumStats, leggibili da dentro un effect senza
+            // dover rimettere questi oggetti nelle dipendenze (cosa che farebbe ripartire l'effect ad ogni
+            // loro variazione, anche solo di riferimento) e senza rischiare di leggere valori vecchi.
+            const genreStatsRef = useRef(genreStats);
+            genreStatsRef.current = genreStats;
+            const albumStatsRef = useRef(albumStats);
+            albumStatsRef.current = albumStats;
 
             useEffect(() => {
                 const topArtistName = stats?.topArtisti?.[0]?.[0];
@@ -2803,13 +2902,118 @@
                 return slides;
             }, [stats, lang, topGenre, genreStats, albumStats, storyQuizQuestions, storyQuizAnswers, monthlyStoryIdx, randomArtistStoryIdx, shuffledTop5Artists]);
 
+            // Raccoglie tutte le combinazioni artista/titolo/tipo la cui immagine servirà da qualche
+            // parte nel Wrapped (top brano/album/artista, le rispettive Top 5, la corsa mensile, i
+            // Top 5 casuali e le opzioni del mini-quiz), così da poterle precaricare TUTTE in un colpo
+            // solo prima di aprire le storie, invece di farle comparire una alla volta man mano che
+            // l'utente scorre (che è quello che succedeva prima, con EntityImage/EntityImageBox che
+            // partivano a caricare solo al montaggio della singola slide).
+            const getWrappedImageJobs = () => {
+                if (!stats) return [];
+                const jobs = [];
+                const seen = new Set();
+                const addJob = (artist, title, type) => {
+                    if (!artist) return;
+                    const key = `${type}-${artist}-${title || ''}`;
+                    if (seen.has(key)) return;
+                    seen.add(key);
+                    jobs.push({ artist, title, type });
+                };
+
+                (stats.topBrani || []).slice(0, 5).forEach(([keyT]) => {
+                    const [title, artist] = keyT.split(' -|- ');
+                    addJob(artist, title, 'track');
+                });
+
+                (albumStatsRef.current.topAlbum || []).slice(0, 5).forEach(([keyA]) => {
+                    const [title, artist] = keyA.split(' -|- ');
+                    addJob(artist, title, 'album');
+                });
+
+                (stats.topArtisti || []).slice(0, 5).forEach(([name]) => {
+                    addJob(name, undefined, 'artist');
+                });
+
+                (stats.monthlyArtistRace || []).forEach(month => {
+                    (month.ranking || []).forEach(r => addJob(r.artist, undefined, 'artist'));
+                });
+
+                (storyQuizQuestions || []).forEach(q => {
+                    if (!['artist', 'track', 'album', 'compare'].includes(q.id)) return;
+                    (q.options || []).forEach(option => {
+                        let optArtist = null;
+                        let optTitle = null;
+                        if (q.id === 'track' || q.id === 'album') {
+                            const parts = String(option).split(' -|- ');
+                            optTitle = parts[0];
+                            if (parts.length > 1) optArtist = parts[1];
+                        } else {
+                            optArtist = option;
+                        }
+                        addJob(optArtist, optTitle, q.id === 'artist' || q.id === 'compare' ? 'artist' : q.id);
+                    });
+                });
+
+                return jobs;
+            };
+
             const openWrapped = () => {
                 setWrappedIndex(0);
                 setMonthlyStoryIdx(0);
+                setRandomArtistStoryIdx(0);
                 setStoryQuizAnswers({});
-                setShowWrapped(true);
+                // Non apriamo subito le storie: prima mostriamo una schermata di caricamento e
+                // aspettiamo che generi, album e tutte le immagini necessarie siano pronti (vedi
+                // useEffect qui sotto), così durante il Wrapped non compare più nulla "a scatti".
+                setWrappedPreparing(true);
             };
-            const closeWrapped = () => setShowWrapped(false);
+            const closeWrapped = () => {
+                setShowWrapped(false);
+                setWrappedPreparing(false);
+            };
+
+            // Fase di preparazione del Wrapped: aspetta (con un limite massimo) che il calcolo di
+            // generi/album sia finito, poi precarica in blocco tutte le immagini che serviranno
+            // durante le storie, e solo a quel punto apre davvero il Wrapped.
+            // IMPORTANTE: l'abbinamento degli album per YouTube Music può essere lento (una richiesta
+            // ogni 300ms, in sequenza, per ogni brano non ancora risolto), quindi NON possiamo
+            // aspettare che finisca del tutto: se supera i pochi secondi di tolleranza qui sotto,
+            // apriamo comunque il Wrapped con i dati che ci sono — la slide "Album ascoltati" mostrerà
+            // il suo indicatore di caricamento come prima, ma tutto il resto (foto, generi, artisti)
+            // sarà già pronto e non ci saranno più attese "infinite".
+            const WRAPPED_STATS_MAX_WAIT_MS = 7000;
+            const WRAPPED_IMAGES_MAX_WAIT_MS = 5000;
+            useEffect(() => {
+                if (!wrappedPreparing) return;
+                if (!stats) { setWrappedPreparing(false); return; }
+
+                let cancelled = false;
+                const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+                (async () => {
+                    const startedAt = Date.now();
+                    // Aspetta che generi/album finiscano, ma non oltre il tempo massimo concesso
+                    while (
+                        !cancelled &&
+                        (genreStatsRef.current.loading || albumStatsRef.current.loading) &&
+                        (Date.now() - startedAt) < WRAPPED_STATS_MAX_WAIT_MS
+                    ) {
+                        await wait(150);
+                    }
+                    if (cancelled) return;
+
+                    const jobs = getWrappedImageJobs();
+                    const preload = Promise.all(jobs.map(job => fetchArtwork(job.artist, job.title, job.type)))
+                        .then(() => stats.topArtisti && stats.topArtisti[0] ? getArtistPhotoDataUrl(stats.topArtisti[0][0]) : null);
+                    await Promise.race([preload, wait(WRAPPED_IMAGES_MAX_WAIT_MS)]);
+
+                    if (cancelled) return;
+                    setShowWrapped(true);
+                    setWrappedPreparing(false);
+                })();
+
+                return () => { cancelled = true; };
+            }, [wrappedPreparing, stats]);
             const nextWrappedSlide = () => {
                 const currentSlide = wrappedSlides[wrappedIndex];
                 // Blocca l'avanzamento se la storia corrente è una domanda del quiz senza risposta
@@ -2954,8 +3158,52 @@
                 </div>
             );
 
+            // Controlli per selezionare il periodo (tutto / anno / intervallo di date), riutilizzati
+            // sia nella pagina "Dati caricati!" sia nella dashboard, cosi la scelta del periodo va fatta
+            // (o cambiata) in un unico posto invece di essere duplicata anche nell'intro del quiz.
+            const PeriodFilterControls = ({ className }) => (
+                <div className={className}>
+                    <p className="text-purple-300 text-xs sm:text-sm mb-3 text-center">
+                        {filterMode === 'all' && t.showingAll}
+                        {filterMode === 'year' && (selectedYear === 'all' ? t.pickYear : t.showingYear(selectedYear))}
+                        {filterMode === 'range' && (dateFrom || dateTo) && t.showingRange(
+                            dateFrom ? new Date(dateFrom + 'T00:00:00').toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US') : t.rangeStart,
+                            dateTo ? new Date(dateTo + 'T23:59:59').toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US') : t.rangeToday
+                        )}
+                        {filterMode === 'range' && !dateFrom && !dateTo && t.pickRange}
+                    </p>
+                    <div className="flex flex-col items-center gap-3">
+                        <div className="flex bg-black/25 rounded-lg p-1 w-full">
+                            <button onClick={() => setFilterMode('all')} className={`flex-1 px-3 py-2 sm:py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'all' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fAll}</button>
+                            <button onClick={() => setFilterMode('year')} className={`flex-1 px-3 py-2 sm:py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'year' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fYear}</button>
+                            <button onClick={() => setFilterMode('range')} className={`flex-1 px-3 py-2 sm:py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'range' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fRange}</button>
+                        </div>
+
+                        {filterMode === 'year' && (
+                            <select className="w-full bg-black/25 text-white font-semibold outline-none cursor-pointer px-4 py-2.5 rounded-lg text-base sm:text-sm border border-white/10 animate-fadein" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+                                <option value="all" className="bg-gray-900">{t.selectYear}</option>
+                                {anniDisponibili.map(anno => <option key={anno} value={anno} className="bg-gray-900">{anno}</option>)}
+                            </select>
+                        )}
+
+                        {filterMode === 'range' && (
+                            <div className="flex flex-col sm:flex-row items-center gap-2 w-full text-sm animate-fadein">
+                                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full bg-black/25 text-white px-3 py-2.5 rounded-lg outline-none border border-white/10 text-base sm:text-sm" />
+                                <span className="hidden sm:inline text-gray-400">→</span>
+                                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full bg-black/25 text-white px-3 py-2.5 rounded-lg outline-none border border-white/10 text-base sm:text-sm" />
+                            </div>
+                        )}
+
+                        {filterMode === 'range' && dateFrom && dateTo && dateFrom > dateTo && (
+                            <p className="text-red-400 text-xs">{t.rangeError}</p>
+                        )}
+                    </div>
+                </div>
+            );
+
             if (ascolti.length === 0) {
                 return (
+
                     <React.Fragment>
                         <div className="min-h-screen text-white flex flex-col items-center justify-center p-6 relative" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
                             <div className="absolute top-6 right-6 flex items-center gap-3">
@@ -3087,6 +3335,10 @@
                                 <p className="text-gray-300 text-base sm:text-lg mb-10">
                                     {t.choiceSubtitle}
                                 </p>
+
+                                <div className="max-w-md mx-auto mb-10 bg-white/[0.04] p-4 rounded-2xl border border-white/10 text-left">
+                                    <PeriodFilterControls />
+                                </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                                     <button
@@ -3376,6 +3628,33 @@
                         </div>
                     </div>
                     
+                    {/* Schermata di caricamento del Wrapped: mostrata PRIMA di aprire le storie, mentre
+                        generi, album e tutte le immagini necessarie vengono preparati in blocco */}
+                    {wrappedPreparing && !showWrapped && (
+                        <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-6 animate-fadebg">
+                            <button
+                                onClick={() => setWrappedPreparing(false)}
+                                className="absolute top-6 right-6 z-30 bg-white/10 hover:bg-white/20 p-2 rounded-full text-white/80 hover:text-white transition-colors"
+                            >
+                                <IconX className="w-5 h-5" />
+                            </button>
+                            <div className="flex flex-col items-center animate-pop-in">
+                                <div className="relative flex items-center justify-center mb-6">
+                                    <div className="loader-ring"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="music-loader">
+                                            <span></span><span></span><span></span><span></span><span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="font-display font-bold text-lg sm:text-xl text-white mb-2 text-center">
+                                    {t.wrappedPreparingTitle}<span className="loader-dot">.</span><span className="loader-dot">.</span><span className="loader-dot">.</span>
+                                </p>
+                                <p className="text-gray-400 text-sm text-center max-w-xs">{t.wrappedPreparingSubtitle}</p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Modal del Wrapped a storie, stile Spotify */}
                     {showWrapped && wrappedSlides.length > 0 && (() => {
                         const currentWrappedSlide = wrappedSlides[wrappedIndex];
@@ -3442,45 +3721,16 @@
                                             </div>
                                         </div>
                                         <h3 className="font-display text-3xl sm:text-5xl font-black text-white mb-4">{t.quizTitle}</h3>
-                                        <p className="text-gray-400 text-base sm:text-lg leading-relaxed mb-6 max-w-lg mx-auto">{t.quizIntro}</p>
-
-                                        <div className="max-w-md mx-auto mb-8 bg-white/[0.04] p-4 rounded-2xl border border-white/10 text-left">
-                                            <p className="text-purple-300 text-xs sm:text-sm mb-3 text-center">
-                                                {filterMode === 'all' && t.showingAll}
-                                                {filterMode === 'year' && (selectedYear === 'all' ? t.pickYear : t.showingYear(selectedYear))}
-                                                {filterMode === 'range' && (dateFrom || dateTo) && t.showingRange(
-                                                    dateFrom ? new Date(dateFrom + 'T00:00:00').toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US') : t.rangeStart,
-                                                    dateTo ? new Date(dateTo + 'T23:59:59').toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US') : t.rangeToday
-                                                )}
-                                                {filterMode === 'range' && !dateFrom && !dateTo && t.pickRange}
-                                            </p>
-                                            <div className="flex flex-col items-center gap-3">
-                                                <div className="flex bg-black/25 rounded-lg p-1 w-full">
-                                                    <button onClick={() => setFilterMode('all')} className={`flex-1 px-3 py-2 sm:py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'all' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fAll}</button>
-                                                    <button onClick={() => setFilterMode('year')} className={`flex-1 px-3 py-2 sm:py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'year' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fYear}</button>
-                                                    <button onClick={() => setFilterMode('range')} className={`flex-1 px-3 py-2 sm:py-1.5 rounded-md text-sm font-semibold transition-colors ${filterMode === 'range' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>{t.fRange}</button>
-                                                </div>
-
-                                                {filterMode === 'year' && (
-                                                    <select className="w-full bg-black/25 text-white font-semibold outline-none cursor-pointer px-4 py-2.5 rounded-lg text-base sm:text-sm border border-white/10 animate-fadein" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
-                                                        <option value="all" className="bg-gray-900">{t.selectYear}</option>
-                                                        {anniDisponibili.map(anno => <option key={anno} value={anno} className="bg-gray-900">{anno}</option>)}
-                                                    </select>
-                                                )}
-
-                                                {filterMode === 'range' && (
-                                                    <div className="flex flex-col sm:flex-row items-center gap-2 w-full text-sm animate-fadein">
-                                                        <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full bg-black/25 text-white px-3 py-2.5 rounded-lg outline-none border border-white/10 text-base sm:text-sm" />
-                                                        <span className="hidden sm:inline text-gray-400">→</span>
-                                                        <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full bg-black/25 text-white px-3 py-2.5 rounded-lg outline-none border border-white/10 text-base sm:text-sm" />
-                                                    </div>
-                                                )}
-
-                                                {filterMode === 'range' && dateFrom && dateTo && dateFrom > dateTo && (
-                                                    <p className="text-red-400 text-xs">{t.rangeError}</p>
-                                                )}
-                                            </div>
-                                        </div>
+                                        <p className="text-gray-400 text-base sm:text-lg leading-relaxed mb-2 max-w-lg mx-auto">{t.quizIntro}</p>
+                                        <p className="text-purple-300 text-xs sm:text-sm mb-8">
+                                            {filterMode === 'all' && t.showingAll}
+                                            {filterMode === 'year' && (selectedYear === 'all' ? t.pickYear : t.showingYear(selectedYear))}
+                                            {filterMode === 'range' && (dateFrom || dateTo) && t.showingRange(
+                                                dateFrom ? new Date(dateFrom + 'T00:00:00').toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US') : t.rangeStart,
+                                                dateTo ? new Date(dateTo + 'T23:59:59').toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US') : t.rangeToday
+                                            )}
+                                            {filterMode === 'range' && !dateFrom && !dateTo && t.pickRange}
+                                        </p>
 
                                         <button onClick={startQuiz} className="w-full sm:w-auto px-10 py-4 bg-white text-black active:scale-95 rounded-full font-bold text-lg transition-transform transform-gpu">
                                             {t.quizStart}
