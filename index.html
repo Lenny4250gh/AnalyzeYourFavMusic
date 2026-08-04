@@ -253,7 +253,7 @@
                 noResultsTitle: 'Nessun ascolto trovato per il filtro selezionato.',
                 noResultsSubtitle: "Prova a cambiare l'anno o l'intervallo di date.",
                 cardStreams: 'Streaming Totali',
-                cardStreamsSub: (sp, yt) => `${sp} Spotify • ${yt} YTM`,
+                cardStreamsSub: (sp, yt) => `${sp} Spotify • ${yt} YT Music`,
                 cardMinutes: 'Minuti Ascoltati',
                 cardMinutesSub: (h) => `Circa ${h} ore`,
                 cardArtists: 'Artisti Diversi',
@@ -355,6 +355,7 @@
                 wrappedTopArtistSub: (n) => `${n} ascolti`,
                 wrappedTopArtistsListTitle: 'I tuoi Top 5 artisti',
                 wrappedTopTrackLabel: 'Il tuo brano #1',
+                wrappedTopTrackSub: (n) => `${n} ascolti`,
                 wrappedTopTracksListTitle: 'I tuoi Top 5 brani',
                 wrappedHabitsTitle: 'Le tue abitudini',
                 wrappedHabitsWeekday: 'Giorno preferito',
@@ -368,6 +369,7 @@
                 wrappedAlbumsCountTitle: 'Album ascoltati',
                 wrappedAlbumsCountSub: 'Album diversi che hai riprodotto',
                 wrappedTopAlbumLabel: 'Il tuo album #1',
+                wrappedTopAlbumSub: (n) => `${n} ascolti`,
                 wrappedTopAlbumsListTitle: 'I tuoi Top 5 album',
                 wrappedArtistsCountTitle: 'Artisti ascoltati',
                 wrappedArtistsCountSub: 'Artisti diversi che hai riprodotto',
@@ -514,6 +516,7 @@
                 wrappedTopArtistSub: (n) => `${n} plays`,
                 wrappedTopArtistsListTitle: 'Your Top 5 artists',
                 wrappedTopTrackLabel: 'Your #1 track',
+                wrappedTopTrackSub: (n) => `${n} plays`,
                 wrappedTopTracksListTitle: 'Your Top 5 tracks',
                 wrappedHabitsTitle: 'Your habits',
                 wrappedHabitsWeekday: 'Favorite day',
@@ -527,6 +530,7 @@
                 wrappedAlbumsCountTitle: 'Albums listened to',
                 wrappedAlbumsCountSub: 'Different albums you played',
                 wrappedTopAlbumLabel: 'Your #1 album',
+                wrappedTopAlbumSub: (n) => `${n} plays`,
                 wrappedTopAlbumsListTitle: 'Your Top 5 albums',
                 wrappedArtistsCountTitle: 'Artists listened to',
                 wrappedArtistsCountSub: 'Different artists you played',
@@ -875,6 +879,42 @@
             return promise;
         };
 
+        // Cache condivisa titolo+artista -> nome album (Promise), usata per risolvere via iTunes l'album
+        // dei brani ascoltati su YouTube Music, il cui storico non include mai questa informazione
+        const albumLookupCache = new Map();
+        const looksLikeCompilationAlbum = (collectionName) => !!collectionName &&
+            /various artists|greatest hits|best of|now (that|playing)|mixtape|compilation|goes pop|megamix|top \d|hits collection|essentials?\b|anthology|playlist|singles?\b/i.test(collectionName);
+
+        const fetchTrackAlbum = (artistName, trackTitle) => {
+            const cacheKey = `${artistName}-|-${trackTitle}`;
+            if (albumLookupCache.has(cacheKey)) return albumLookupCache.get(cacheKey);
+            const promise = (async () => {
+                try {
+                    const cleanTitle = stripTitleQualifiers(trackTitle);
+                    const findMatch = (results) => results.find(r =>
+                        r.collectionName &&
+                        artistMatches(artistName, r.artistName) &&
+                        titleMatches(trackTitle, r.trackName) &&
+                        !looksLikeCompilationAlbum(r.collectionName)
+                    );
+
+                    let results = await searchITunesResults(`${artistName} ${cleanTitle}`, 'song');
+                    let match = findMatch(results);
+
+                    if (!match) {
+                        results = await searchITunesResults(`${artistName} ${trackTitle}`, 'song');
+                        match = findMatch(results);
+                    }
+
+                    return match ? match.collectionName : null;
+                } catch (e) {
+                    return null;
+                }
+            })();
+            albumLookupCache.set(cacheKey, promise);
+            return promise;
+        };
+
         const EntityImage = ({ artist, title, type, altText, className }) => {
             const [src, setSrc] = useState(null);
             const [loading, setLoading] = useState(true);
@@ -1068,13 +1108,30 @@
                 return () => clearInterval(interval);
             }, [months, idx, onIdxChange]);
 
+            // Al montaggio della sottostoria (primo mese), le barre/i conteggi partono da 0 e si
+            // "caricano" fino al valore reale, esattamente come accade nei sorpassi tra un mese e l'altro.
+            // Il doppio requestAnimationFrame garantisce che il browser dipinga prima lo stato a 0,
+            // così la transizione CSS/il conteggio animato scattano davvero invece di saltare al valore finale.
+            const [hasEntered, setHasEntered] = useState(false);
+            useEffect(() => {
+                let raf2;
+                const raf1 = requestAnimationFrame(() => {
+                    raf2 = requestAnimationFrame(() => setHasEntered(true));
+                });
+                return () => {
+                    cancelAnimationFrame(raf1);
+                    if (raf2) cancelAnimationFrame(raf2);
+                };
+            }, []);
+
             if (!months || months.length === 0) return null;
             const current = months[idx] || months[0];
 
-            // Il totale finale (ultimo mese) di ogni artista serve a calibrare la larghezza massima delle barre,
-            // così la corsa "riempie" gradualmente lo schermo invece di sballonzolare in larghezza
+            // Il massimo di riproduzioni in un singolo mese (su tutti i mesi) serve a calibrare la larghezza
+            // massima delle barre, dato che ora i valori sono per-mese e non più cumulativi (non crescono
+            // in modo monotono da un mese all'altro)
             const finalMonth = months[months.length - 1];
-            const maxFinalTotal = Math.max(1, ...finalMonth.ranking.map(r => r.total));
+            const maxFinalTotal = Math.max(1, ...months.flatMap(m => m.ranking.map(r => r.total)));
             // Un colore stabile per ogni artista (stesso artista = stesso colore in ogni mese)
             const colorForArtist = (artist) => {
                 const allNames = finalMonth.ranking.map(r => r.artist);
@@ -1130,7 +1187,10 @@
                     >
                         {current.ranking.map((r, rank) => {
                             const color = rank === 0 ? '#facc15' : colorForArtist(r.artist);
-                            const widthPx = Math.max(10, Math.round((r.total / maxFinalTotal) * BAR_MAX_WIDTH));
+                            // Finché la sottostoria non è "entrata" (primissimo render del primo mese), la barra
+                            // resta a 0 così può poi animarsi verso il valore reale, come fa nei mesi successivi.
+                            const widthPx = hasEntered ? Math.max(10, Math.round((r.total / maxFinalTotal) * BAR_MAX_WIDTH)) : 0;
+                            const displayTotal = hasEntered ? r.total : 0;
                             const scale = scaleForRank(rank);
                             const avatarSize = Math.round(54 * scale);
                             const barHeight = Math.round(17 * scale);
@@ -1189,11 +1249,11 @@
                                         </span>
                                     </div>
 
-                                    {/* Conteggio ascolti cumulativo, subito dopo la fine della barra: cresce progressivamente
-                                        (conta su) in sincrono con la barra mentre la sottostoria scorre. Larghezza riservata
+                                    {/* Conteggio ascolti del mese corrente, subito dopo la fine della barra: si anima
+                                        in sincrono con la barra mentre la sottostoria scorre. Larghezza riservata
                                         e cifre monospaziate così il totale della riga entra sempre nello schermo */}
                                     <AnimatedCount
-                                        value={r.total}
+                                        value={displayTotal}
                                         duration={1750}
                                         className="text-white/80 font-bold flex-shrink-0 text-right"
                                         style={{ fontSize: 15 * scale, minWidth: 44 * scale, fontVariantNumeric: 'tabular-nums', display: 'inline-block' }}
@@ -1214,29 +1274,6 @@
                                 {current.fullLabel}
                             </div>
                         </div>
-
-                        {(canGoBack || onSkipAll) && (
-                            <div className="flex items-center gap-12">
-                                {canGoBack && onGoBack && (
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); onGoBack(); }}
-                                        className="px-4 py-1.5 rounded-full border border-white/40 text-white/80 text-[11px] font-bold uppercase tracking-wider hover:bg-white/10 hover:text-white active:scale-95 transition-all"
-                                        aria-label={backLabel}
-                                    >
-                                        {backLabel}
-                                    </button>
-                                )}
-                                {onSkipAll && (
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); onSkipAll(); }}
-                                        className="px-4 py-1.5 rounded-full border border-white/40 text-white/80 text-[11px] font-bold uppercase tracking-wider hover:bg-white/10 hover:text-white active:scale-95 transition-all"
-                                        aria-label={skipLabel}
-                                    >
-                                        {skipLabel}
-                                    </button>
-                                )}
-                            </div>
-                        )}
 
                         {subtitle && (
                             <p className="text-white/60 text-xs leading-relaxed max-w-xs mx-auto text-center">
@@ -1329,28 +1366,6 @@
                     </div>
 
                     <div className="w-full max-w-xs flex flex-col items-center gap-3">
-                        {(canGoBack || onSkipAll) && (
-                            <div className="flex items-center gap-12">
-                                {canGoBack && onGoBack && (
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); onGoBack(); }}
-                                        className="px-4 py-1.5 rounded-full border border-white/40 text-white/80 text-[11px] font-bold uppercase tracking-wider hover:bg-white/10 hover:text-white active:scale-95 transition-all"
-                                        aria-label={backLabel}
-                                    >
-                                        {backLabel}
-                                    </button>
-                                )}
-                                {onSkipAll && (
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); onSkipAll(); }}
-                                        className="px-4 py-1.5 rounded-full border border-white/40 text-white/80 text-[11px] font-bold uppercase tracking-wider hover:bg-white/10 hover:text-white active:scale-95 transition-all"
-                                        aria-label={skipLabel}
-                                    >
-                                        {skipLabel}
-                                    </button>
-                                )}
-                            </div>
-                        )}
                         {subtitle && (
                             <p className="text-white/60 text-xs leading-relaxed max-w-xs mx-auto">
                                 {subtitle}
@@ -1682,6 +1697,7 @@
                 const artistiCount = {};
                 const braniCount = {};
                 const albumCount = {};
+                const trackKnownAlbumVotes = {}; // chiaveBrano -> { nomeAlbum: quante volte compare }
                 const giorniCount = {};
                 const mesiCount = {};
                 const mesiArtistiCount = {};
@@ -1691,11 +1707,38 @@
                 let minDate = filtered[0].data;
                 let maxDate = filtered[0].data;
 
+                // Primo passaggio: per ogni brano, raccogliamo quale album gli è stato associato nelle
+                // riproduzioni che lo specificano (in pratica quelle da Spotify), così da poter attribuire
+                // lo stesso album anche alle riproduzioni dello stesso brano fatte su YouTube Music, che
+                // nel suo storico non include mai l'informazione dell'album.
+                filtered.forEach(a => {
+                    if (a.album) {
+                        const chiaveBrano = `${a.titolo} -|- ${a.artista}`;
+                        if (!trackKnownAlbumVotes[chiaveBrano]) trackKnownAlbumVotes[chiaveBrano] = {};
+                        trackKnownAlbumVotes[chiaveBrano][a.album] = (trackKnownAlbumVotes[chiaveBrano][a.album] || 0) + 1;
+                    }
+                });
+                const trackToAlbumName = {};
+                Object.keys(trackKnownAlbumVotes).forEach(chiaveBrano => {
+                    const voti = Object.entries(trackKnownAlbumVotes[chiaveBrano]).sort((x, y) => y[1] - x[1]);
+                    trackToAlbumName[chiaveBrano] = voti[0][0];
+                });
+
+                const unknownAlbumTrackCount = {}; // chiaveBrano -> quante riproduzioni senza un album noto
+                const unknownAlbumTrackInfo = {}; // chiaveBrano -> { artista, titolo }
+
                 filtered.forEach(a => {
                     artistiCount[a.artista] = (artistiCount[a.artista] || 0) + 1;
                     const chiaveBrano = `${a.titolo} -|- ${a.artista}`;
                     braniCount[chiaveBrano] = (braniCount[chiaveBrano] || 0) + 1;
-                    if (a.album) albumCount[`${a.album} -|- ${a.artista}`] = (albumCount[`${a.album} -|- ${a.artista}`] || 0) + 1;
+
+                    const nomeAlbumNoto = a.album || trackToAlbumName[chiaveBrano] || null;
+                    if (nomeAlbumNoto) {
+                        albumCount[`${nomeAlbumNoto} -|- ${a.artista}`] = (albumCount[`${nomeAlbumNoto} -|- ${a.artista}`] || 0) + 1;
+                    } else {
+                        unknownAlbumTrackCount[chiaveBrano] = (unknownAlbumTrackCount[chiaveBrano] || 0) + 1;
+                        unknownAlbumTrackInfo[chiaveBrano] = { artista: a.artista, titolo: a.titolo };
+                    }
 
                     if (a.data < minDate) minDate = a.data;
                     if (a.data > maxDate) maxDate = a.data;
@@ -1727,23 +1770,21 @@
                 const weekdayFull = t.days.map((nome, idx) => ({ nome, count: weekdayCount[idx] || 0 }));
                 const maxWeekday = Math.max(1, ...weekdayFull.map(w => w.count));
 
-                // Corsa mensile tra i Top 5 artisti: per ogni mese, quante riproduzioni CUMULATIVE (fino a quel mese incluso)
-                // ha ciascuno dei 5 artisti più ascoltati in assoluto - usata per l'animazione stile "bar chart race"
-                // dove i vari artisti si superano a vicenda mese dopo mese.
+                // Corsa mensile tra i Top 5 artisti: per ogni mese, quante riproduzioni ha avuto in QUEL mese
+                // (non cumulative) ciascuno dei 5 artisti più ascoltati in assoluto - usata per l'animazione stile
+                // "bar chart race" dove i vari artisti si superano a vicenda mese dopo mese, in base a chi è stato
+                // più ascoltato in quello specifico mese.
                 const top5NamesForRace = sortObject(artistiCount).slice(0, 5).map(([name]) => name);
                 const monthKeysSorted = Object.keys(mesiArtistiCount).sort((a, b) => {
                     const [ya, ma] = a.split('-').map(Number);
                     const [yb, mb] = b.split('-').map(Number);
                     return ya - yb || ma - mb;
                 });
-                const raceCumulative = {};
-                top5NamesForRace.forEach(n => { raceCumulative[n] = 0; });
                 const monthlyArtistRace = monthKeysSorted.map(key => {
                     const [annoM, meseM] = key.split('-').map(Number);
                     const countsThisMonth = mesiArtistiCount[key];
-                    top5NamesForRace.forEach(n => { raceCumulative[n] += (countsThisMonth[n] || 0); });
                     const ranking = top5NamesForRace
-                        .map(n => ({ artist: n, total: raceCumulative[n] }))
+                        .map(n => ({ artist: n, total: countsThisMonth[n] || 0 }))
                         .sort((a, b) => b.total - a.total);
                     return {
                         key,
@@ -1763,6 +1804,12 @@
                     topArtistiPerGeneri: sortObject(artistiCount).slice(0, 40),
                     topBrani: sortObject(braniCount).filter(b => b[1] > 1).slice(0, 10),
                     topAlbum: sortObject(albumCount).filter(b => b[1] > 1).slice(0, 10),
+                    albumCountBase: albumCount,
+                    // Brani più ascoltati per cui non conosciamo ancora l'album (tipicamente da YouTube Music):
+                    // verranno risolti in un secondo momento via iTunes per completare le statistiche sugli album
+                    unresolvedTracksForAlbum: sortObject(unknownAlbumTrackCount).slice(0, 80).map(([chiaveBrano, count]) => ({
+                        chiaveBrano, count, ...unknownAlbumTrackInfo[chiaveBrano]
+                    })),
                     weekdayFull, maxWeekday, monthlyArtistRace,
                     date: {
                         inizio: minDate,
@@ -1818,6 +1865,47 @@
                     const sorted = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]);
                     setGenreStats({ loading: false, count: sorted.length, top5: sorted.slice(0, 5) });
                 })();
+                return () => { cancelled = true; };
+            }, [stats]);
+
+            // Statistiche sugli album, valide sia per Spotify che per YouTube Music: partiamo dagli album già
+            // noti (Spotify) e arricchiamo in background con l'album dei brani ascoltati su YouTube Music,
+            // risolto via iTunes (best-effort, sullo stesso modello usato per i generi musicali).
+            const [albumStats, setAlbumStats] = useState({ loading: false, albumUnici: 0, topAlbum: [] });
+            useEffect(() => {
+                let cancelled = false;
+                if (!stats) { setAlbumStats({ loading: false, albumUnici: 0, topAlbum: [] }); return; }
+
+                const baseCount = stats.albumCountBase || {};
+                const baseSorted = Object.entries(baseCount).sort((a, b) => b[1] - a[1]);
+                const unresolved = stats.unresolvedTracksForAlbum || [];
+
+                setAlbumStats({
+                    loading: unresolved.length > 0,
+                    albumUnici: Object.keys(baseCount).length,
+                    topAlbum: baseSorted.filter(b => b[1] > 1).slice(0, 10)
+                });
+
+                if (unresolved.length === 0) return;
+
+                (async () => {
+                    const merged = { ...baseCount };
+                    await Promise.all(unresolved.map(async (tr) => {
+                        const albumName = await fetchTrackAlbum(tr.artista, tr.titolo);
+                        if (albumName) {
+                            const key = `${albumName} -|- ${tr.artista}`;
+                            merged[key] = (merged[key] || 0) + tr.count;
+                        }
+                    }));
+                    if (cancelled) return;
+                    const sorted = Object.entries(merged).sort((a, b) => b[1] - a[1]);
+                    setAlbumStats({
+                        loading: false,
+                        albumUnici: Object.keys(merged).length,
+                        topAlbum: sorted.filter(b => b[1] > 1).slice(0, 10)
+                    });
+                })();
+
                 return () => { cancelled = true; };
             }, [stats]);
 
@@ -2111,6 +2199,25 @@
                     });
                 });
 
+                // 5b. Top brano più ascoltato
+                if (stats.topBrani.length > 0) {
+                    const [trackKeyW, trackCountW] = stats.topBrani[0];
+                    const [trackTitleW, trackArtistW] = trackKeyW.split(' -|- ');
+                    slides.push({
+                        gradient: 'from-rose-500 via-red-500 to-orange-500',
+                        content: (
+                            <div className="flex flex-col items-center gap-4">
+                                <IconTrophy className="w-8 h-8 text-white/90" />
+                                <p className="text-white/80 text-sm uppercase tracking-wider font-semibold">{t.wrappedTopTrackLabel}</p>
+                                <EntityImageBox artist={trackArtistW} title={trackTitleW} type="track" altText={trackTitleW} boxClassName="w-36 h-36 rounded-2xl overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center" imgClassName="w-full h-full" />
+                                <p className="font-display text-3xl sm:text-4xl font-black text-white text-center px-4 break-words">{trackTitleW}</p>
+                                {trackArtistW && <p className="text-white/70 text-sm font-semibold">{trackArtistW}</p>}
+                                <p className="text-white/80 text-sm">{t.wrappedTopTrackSub(nfWrapped(trackCountW))}</p>
+                            </div>
+                        )
+                    });
+                }
+
                 // 6. Top 5 brani più ascoltati
                 if (stats.topBrani.length >= 3) {
                     slides.push({
@@ -2125,6 +2232,66 @@
                                             <div key={keyT} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2.5">
                                                 <span className="font-display text-xl font-black text-white/70 w-5 flex-shrink-0">{idx + 1}</span>
                                                 <EntityImageBox artist={artist} title={title} type="track" altText={title} boxClassName="w-11 h-11 rounded-lg overflow-hidden bg-white/10 flex-shrink-0" imgClassName="w-full h-full" />
+                                                <span className="flex-1 min-w-0 text-left">
+                                                    <span className="block text-white font-semibold text-sm truncate">{title}</span>
+                                                    <span className="block text-white/60 text-xs truncate">{artist}</span>
+                                                </span>
+                                                <span className="text-white/60 text-xs flex-shrink-0">{nfWrapped(count)}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )
+                    });
+                }
+
+                // 6b. Numero album ascoltati
+                slides.push({
+                    gradient: 'from-fuchsia-500 via-pink-500 to-rose-500',
+                    content: (
+                        <div className="flex flex-col items-center gap-4">
+                            <IconDisc className="w-8 h-8 text-white/70 mt-1" />
+                            <p className="font-display text-7xl sm:text-8xl font-black text-white">{nfWrapped(albumStats.albumUnici)}</p>
+                            <p className="text-white text-lg font-bold">{t.wrappedAlbumsCountTitle}</p>
+                            <p className="text-white/70 text-sm max-w-xs">{t.wrappedAlbumsCountSub}</p>
+                        </div>
+                    )
+                });
+
+                // 6c. Album più ascoltato
+                if (albumStats.topAlbum.length > 0) {
+                    const [albumKeyW, albumCountW] = albumStats.topAlbum[0];
+                    const [albumTitleW, albumArtistW] = albumKeyW.split(' -|- ');
+                    slides.push({
+                        gradient: 'from-pink-600 via-fuchsia-600 to-purple-600',
+                        content: (
+                            <div className="flex flex-col items-center gap-4">
+                                <IconTrophy className="w-8 h-8 text-white/90" />
+                                <p className="text-white/80 text-sm uppercase tracking-wider font-semibold">{t.wrappedTopAlbumLabel}</p>
+                                <EntityImageBox artist={albumArtistW} title={albumTitleW} type="album" altText={albumTitleW} boxClassName="w-36 h-36 rounded-2xl overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center" imgClassName="w-full h-full" />
+                                <p className="font-display text-3xl sm:text-4xl font-black text-white text-center px-4 break-words">{albumTitleW}</p>
+                                {albumArtistW && <p className="text-white/70 text-sm font-semibold">{albumArtistW}</p>}
+                                <p className="text-white/80 text-sm">{t.wrappedTopAlbumSub(nfWrapped(albumCountW))}</p>
+                            </div>
+                        )
+                    });
+                }
+
+                // 6d. Top 5 album più ascoltati
+                if (albumStats.topAlbum.length >= 3) {
+                    slides.push({
+                        gradient: 'from-purple-600 via-pink-600 to-rose-600',
+                        content: (
+                            <div className="flex flex-col items-center gap-5 w-full">
+                                <p className="text-white text-xl font-bold mb-2">{t.wrappedTopAlbumsListTitle}</p>
+                                <div className="w-full max-w-xs flex flex-col gap-3">
+                                    {albumStats.topAlbum.slice(0, 5).map(([keyA, count], idx) => {
+                                        const [title, artist] = keyA.split(' -|- ');
+                                        return (
+                                            <div key={keyA} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2.5">
+                                                <span className="font-display text-xl font-black text-white/70 w-5 flex-shrink-0">{idx + 1}</span>
+                                                <EntityImageBox artist={artist} title={title} type="album" altText={title} boxClassName="w-11 h-11 rounded-lg overflow-hidden bg-white/10 flex-shrink-0" imgClassName="w-full h-full" />
                                                 <span className="flex-1 min-w-0 text-left">
                                                     <span className="block text-white font-semibold text-sm truncate">{title}</span>
                                                     <span className="block text-white/60 text-xs truncate">{artist}</span>
@@ -2329,7 +2496,7 @@
                 });
 
                 return slides;
-            }, [stats, lang, topGenre, genreStats, storyQuizQuestions, storyQuizAnswers, monthlyStoryIdx, randomArtistStoryIdx, shuffledTop5Artists]);
+            }, [stats, lang, topGenre, genreStats, albumStats, storyQuizQuestions, storyQuizAnswers, monthlyStoryIdx, randomArtistStoryIdx, shuffledTop5Artists]);
 
             const openWrapped = () => {
                 setWrappedIndex(0);
@@ -2534,7 +2701,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.1</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.2</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -2641,7 +2808,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.1</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.2</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -2888,7 +3055,7 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.2.1</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.2.2</span></p>
                             </footer>
                         </div>
                     </div>
