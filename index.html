@@ -568,6 +568,7 @@
                 wrappedTracksCountSub: 'Brani diversi che hai riprodotto',
                 wrappedAlbumsCountTitle: 'Album ascoltati',
                 wrappedAlbumsCountSub: 'Album diversi che hai riprodotto',
+                wrappedAlbumsCountLoading: 'Sto ancora abbinando alcuni brani ai loro album…',
                 wrappedTopAlbumLabel: 'Il tuo album #1',
                 wrappedTopAlbumSub: (n) => `${n} ascolti`,
                 wrappedTopAlbumsListTitle: 'I tuoi Top 5 album',
@@ -729,6 +730,7 @@
                 wrappedTracksCountSub: 'Different tracks you played',
                 wrappedAlbumsCountTitle: 'Albums listened to',
                 wrappedAlbumsCountSub: 'Different albums you played',
+                wrappedAlbumsCountLoading: 'Still matching some tracks to their albums…',
                 wrappedTopAlbumLabel: 'Your #1 album',
                 wrappedTopAlbumSub: (n) => `${n} plays`,
                 wrappedTopAlbumsListTitle: 'Your Top 5 albums',
@@ -2529,14 +2531,35 @@
                 }
 
                 // 6b. Numero album ascoltati
+                // FIX instabilità: prima il numero veniva mostrato anche mentre in background si stava
+                // ancora provando a risolvere via iTunes l'album dei brani ascoltati su YouTube Music.
+                // Se l'utente arrivava su questa slide PRIMA che la risoluzione finisse (dipende da quanto
+                // è reattivo lo swipe e da quanto è veloce la rete in quel momento), vedeva un conteggio
+                // parziale — da qui gran parte della "casualità" percepita tra un dispositivo e l'altro,
+                // più della semplice variabilità di rete. Ora, finché albumStats è ancora in caricamento,
+                // si mostra un indicatore invece del numero: il totale che l'utente vede è sempre quello
+                // definitivo (per quella sessione), mai un valore a metà.
                 slides.push({
                     gradient: 'from-fuchsia-500 via-pink-500 to-rose-500',
                     content: (
                         <div className="flex flex-col items-center gap-4">
-                            <IconDisc className="w-8 h-8 text-white/70 mt-1" />
-                            <p className="font-display text-7xl sm:text-8xl font-black text-white animate-number-pop">{nfWrapped(albumStats.albumUnici)}</p>
+                            <IconDisc className={`w-8 h-8 text-white/70 mt-1 ${albumStats.loading ? 'animate-spin-slower' : ''}`} />
+                            {albumStats.loading ? (
+                                <div className="flex flex-col items-center gap-3 py-4">
+                                    <div className="flex gap-1.5">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-white/80 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                                        <span className="w-2.5 h-2.5 rounded-full bg-white/80 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                                        <span className="w-2.5 h-2.5 rounded-full bg-white/80 animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                                    </div>
+                                    <p className="text-white/70 text-sm max-w-xs text-center">{t.wrappedAlbumsCountLoading}</p>
+                                </div>
+                            ) : (
+                                <p className="font-display text-7xl sm:text-8xl font-black text-white animate-number-pop">{nfWrapped(albumStats.albumUnici)}</p>
+                            )}
                             <p className="text-white text-lg font-bold">{t.wrappedAlbumsCountTitle}</p>
-                            <p className="text-white/70 text-sm max-w-xs">{t.wrappedAlbumsCountSub}</p>
+                            {!albumStats.loading && (
+                                <p className="text-white/70 text-sm max-w-xs">{t.wrappedAlbumsCountSub}</p>
+                            )}
                         </div>
                     )
                 });
