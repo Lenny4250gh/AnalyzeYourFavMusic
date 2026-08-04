@@ -1890,7 +1890,13 @@
                 });
                 const trackToAlbumName = {};
                 Object.keys(trackKnownAlbumVotes).forEach(chiaveBrano => {
-                    const voti = Object.entries(trackKnownAlbumVotes[chiaveBrano]).sort((x, y) => y[1] - x[1]);
+                    const voti = Object.entries(trackKnownAlbumVotes[chiaveBrano]).sort((x, y) => {
+                        if (y[1] !== x[1]) return y[1] - x[1];
+                        return x[0].localeCompare(y[0], undefined, {
+                            sensitivity: "base",
+                            numeric: true
+                        });
+                    });
                     trackToAlbumName[chiaveBrano] = voti[0][0];
                 });
 
@@ -1903,9 +1909,27 @@
                     braniCount[chiaveBrano] = (braniCount[chiaveBrano] || 0) + 1;
 
                     const nomeAlbumNoto = a.album || trackToAlbumName[chiaveBrano] || null;
+
                     if (nomeAlbumNoto) {
-                        albumCount[`${nomeAlbumNoto} -|- ${a.artista}`] = (albumCount[`${nomeAlbumNoto} -|- ${a.artista}`] || 0) + 1;
-                    } else {
+
+                        const albumNormalizzato = nomeAlbumNoto
+                            .trim()
+                            .replace(/\s+/g, " ")
+                            .replace(/\((deluxe|expanded|special|collector'?s?|anniversary|remaster(ed)?|bonus).*?\)/gi, "")
+                            .replace(/\[(deluxe|expanded|special|collector'?s?|anniversary|remaster(ed)?|bonus).*?\]/gi, "")
+                            .trim()
+                            .toLowerCase();
+
+                        const artistaNormalizzato = a.artista
+                            .trim()
+                            .replace(/\s+/g, " ")
+                            .toLowerCase();
+
+                        const chiaveAlbum = `${albumNormalizzato} -|- ${artistaNormalizzato}`;
+
+                        albumCount[chiaveAlbum] = (albumCount[chiaveAlbum] || 0) + 1;
+                    }
+                    else {
                         unknownAlbumTrackCount[chiaveBrano] = (unknownAlbumTrackCount[chiaveBrano] || 0) + 1;
                         unknownAlbumTrackInfo[chiaveBrano] = { artista: a.artista, titolo: a.titolo };
                     }
@@ -1928,7 +1952,22 @@
                     fasceCount[fasciaIdx] = (fasceCount[fasciaIdx] || 0) + 1;
                 });
 
-                const sortObject = (obj) => Object.entries(obj).sort((a, b) => b[1] - a[1]);
+                const sortObject = (obj) => {
+                    return Object.entries(obj).sort((a, b) => {
+                        // prima per numero di ascolti
+                        if (b[1] !== a[1]) return b[1] - a[1];
+
+                        // poi alfabeticamente (ordinamento stabile)
+                        return String(a[0]).localeCompare(
+                            String(b[0]),
+                            undefined,
+                            {
+                                sensitivity: "base",
+                                numeric: true
+                            }
+                        );
+                    });
+                };
 
                 const topMeseRaw = sortObject(mesiCount)[0];
                 let topMeseNome = t.na;
@@ -1955,7 +1994,13 @@
                     const countsThisMonth = mesiArtistiCount[key];
                     const ranking = top5NamesForRace
                         .map(n => ({ artist: n, total: countsThisMonth[n] || 0 }))
-                        .sort((a, b) => b.total - a.total);
+                        .sort((a, b) => {
+                            if (b.total !== a.total) return b.total - a.total;
+                            return a.artist.localeCompare(b.artist, undefined, {
+                                sensitivity: "base",
+                                numeric: true
+                            });
+                        });
                     return {
                         key,
                         label: `${t.months[meseM].slice(0, 3)} ${annoM}`,
@@ -2882,7 +2927,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.3</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.4</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -2989,7 +3034,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.3</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.4</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -3236,7 +3281,7 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.2.3</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.2.4</span></p>
                             </footer>
                         </div>
                     </div>
