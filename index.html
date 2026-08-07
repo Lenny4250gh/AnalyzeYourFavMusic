@@ -588,13 +588,28 @@
             100% { transform: translate(var(--particle-x, 24px), -360px) scale(1) rotate(180deg); opacity: 0; }
         }
 
-        /* --- Variante "anelli": cerchi concentrici che ruotano lentamente in senso opposto --- */
-        .wrapped-ring { position: absolute; top: 50%; left: 50%; border-radius: 9999px; border: 1.5px solid rgba(255,255,255,0.32); opacity: 1 !important; }
-        .wrapped-ring-1 { width: 210px; height: 210px; margin: -105px 0 0 -105px; animation: wrappedRingSpin 15s linear infinite !important; }
-        .wrapped-ring-2 { width: 300px; height: 300px; margin: -150px 0 0 -150px; border-color: rgba(255,255,255,0.2); animation: wrappedRingSpinRev 20s linear infinite !important; }
-        .wrapped-ring-3 { width: 390px; height: 390px; margin: -195px 0 0 -195px; border-color: rgba(255,255,255,0.12); border-style: dashed; animation: wrappedRingSpin 28s linear infinite !important; }
+        /* --- Variante "anelli": cerchi concentrici che ruotano lentamente in senso opposto,
+           E "respirano" con un pulsare di luce/scala (wrapper esterno) indipendente dalla
+           rotazione (elemento interno) — le due animazioni vivono su due elementi diversi
+           perché entrambe toccano "transform" e non si possono comporre su un solo elemento. --- */
+        .wrapped-ring-wrap { position: absolute; top: 50%; left: 50%; border-radius: 9999px; }
+        .wrapped-ring-wrap-1 { width: 210px; height: 210px; margin: -105px 0 0 -105px; animation: wrappedRingGlowA 4.5s ease-in-out infinite !important; }
+        .wrapped-ring-wrap-2 { width: 300px; height: 300px; margin: -150px 0 0 -150px; animation: wrappedRingGlowB 5.5s ease-in-out infinite !important; animation-delay: -1.5s !important; }
+        .wrapped-ring-wrap-3 { width: 390px; height: 390px; margin: -195px 0 0 -195px; animation: wrappedRingGlowA 6.8s ease-in-out infinite !important; animation-delay: -3.2s !important; }
+        .wrapped-ring { position: absolute; inset: 0; border-radius: 9999px; border: 1.5px solid rgba(255,255,255,0.32); opacity: 1 !important; }
+        .wrapped-ring-1 { animation: wrappedRingSpin 15s linear infinite !important; }
+        .wrapped-ring-2 { border-color: rgba(255,255,255,0.2); animation: wrappedRingSpinRev 20s linear infinite !important; }
+        .wrapped-ring-3 { border-color: rgba(255,255,255,0.12); border-style: dashed; animation: wrappedRingSpin 28s linear infinite !important; }
         @keyframes wrappedRingSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes wrappedRingSpinRev { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+        @keyframes wrappedRingGlowA {
+            0%, 100% { transform: scale(0.94); opacity: 0.4; filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
+            50% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 16px rgba(255,255,255,0.5)); }
+        }
+        @keyframes wrappedRingGlowB {
+            0%, 100% { transform: scale(0.96); opacity: 0.35; filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
+            50% { transform: scale(1.1); opacity: 0.9; filter: drop-shadow(0 0 20px rgba(255,255,255,0.4)); }
+        }
 
         /* --- Variante "onde": equalizzatore silenzioso che pulsa sullo sfondo, in fondo alla storia --- */
         .wrapped-wave-bar {
@@ -866,6 +881,8 @@
                 wrappedQuizTapContinue: 'Tocca per continuare',
                 wrappedMonthlyArtistsTitle: 'La corsa dei tuoi Top 5',
                 wrappedMonthlyArtistsSub: 'Guarda i tuoi artisti più ascoltati ogni mese',
+                wrappedTopMonthLabel: 'Il tuo mese più musicale',
+                wrappedTopMonthSub: (n) => `${n} ascolti in questo mese`,
                 wrappedMonthlySkip: 'Salta',
                 wrappedMonthlyBack: 'Indietro',
                 wrappedMonthlyNew: 'NUOVO',
@@ -1035,6 +1052,8 @@
                 wrappedQuizTapContinue: 'Tap to continue',
                 wrappedMonthlyArtistsTitle: 'Your Top 5 race',
                 wrappedMonthlyArtistsSub: 'See your most-listened-to artists each month',
+                wrappedTopMonthLabel: 'Your most musical month',
+                wrappedTopMonthSub: (n) => `${n} plays that month`,
                 wrappedMonthlySkip: 'Skip',
                 wrappedMonthlyBack: 'Back',
                 wrappedMonthlyNew: 'NEW',
@@ -2317,9 +2336,9 @@
             } else if (variant === 'rings') {
                 deco = (
                     <div className="wrapped-bgfx-rings absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-                        <div className="wrapped-ring wrapped-ring-1"></div>
-                        <div className="wrapped-ring wrapped-ring-2"></div>
-                        <div className="wrapped-ring wrapped-ring-3"></div>
+                        <div className="wrapped-ring-wrap wrapped-ring-wrap-1"><div className="wrapped-ring wrapped-ring-1"></div></div>
+                        <div className="wrapped-ring-wrap wrapped-ring-wrap-2"><div className="wrapped-ring wrapped-ring-2"></div></div>
+                        <div className="wrapped-ring-wrap wrapped-ring-wrap-3"><div className="wrapped-ring wrapped-ring-3"></div></div>
                     </div>
                 );
             } else if (variant === 'waves') {
@@ -3325,16 +3344,35 @@
                     });
                 }
 
+                // 9.5. Mese con più riproduzioni
+                if (stats.date.meseTop && stats.date.meseTop !== t.na) {
+                    slides.push({
+                        gradient: 'from-teal-500 to-emerald-700',
+                        bgVariant: 'orbs',
+                        content: (
+                            <div className="flex flex-col items-center gap-4">
+                                <IconClock className="w-8 h-8 text-white/80 animate-float-icon" />
+                                <p className="text-white/80 text-sm uppercase tracking-wider font-semibold">{t.wrappedTopMonthLabel}</p>
+                                <p className="font-wrapped text-3xl sm:text-4xl font-black text-white text-center px-2 break-words animate-number-pop">{stats.date.meseTop}</p>
+                                <p className="text-white/80 text-sm">{t.wrappedTopMonthSub(nfWrapped(stats.date.meseCount))}</p>
+                            </div>
+                        )
+                    });
+                }
+
                 // 10. Top artista più ascoltato
                 if (stats.topArtisti.length > 0) {
                     const [artistName, artistCount] = stats.topArtisti[0];
                     slides.push({
                         gradient: 'from-orange-500 to-red-700',
+                        bgVariant: 'rings',
                         content: (
                             <div className="flex flex-col items-center gap-4">
                                 <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
                                 <p className="text-white/80 text-sm uppercase tracking-wider font-semibold">{t.wrappedTopArtistLabel}</p>
-                                <EntityImageBox artist={artistName} type="artist" altText={artistName} boxClassName="w-36 h-36 rounded-full overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center animate-float-cover" imgClassName="w-full h-full rounded-full" />
+                                <div className="relative w-36 h-36">
+                                    <EntityImageBox artist={artistName} type="artist" altText={artistName} boxClassName="relative w-full h-full rounded-full overflow-hidden bg-white/10 shadow-xl flex items-center justify-center animate-float-cover" imgClassName="w-full h-full rounded-full object-cover" />
+                                </div>
                                 <p className="font-wrapped text-3xl sm:text-4xl font-black text-white text-center px-2 break-words">{artistName}</p>
                                 <p className="text-white/80 text-sm">{t.wrappedTopArtistSub(nfWrapped(artistCount))}</p>
                             </div>
@@ -3865,7 +3903,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.7.1</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.8</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -3976,7 +4014,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.7.1</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.8</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -4223,7 +4261,7 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.2.7.1</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.2.8</span></p>
                             </footer>
                         </div>
                     </div>
@@ -4267,7 +4305,7 @@
                         // Ruota la variante di sfondo animato (orbs/particelle/anelli/onde) e il modo in cui
                         // gli elementi della storia appaiono, così ogni storia del Wrapped ha un look diverso,
                         // proprio come le transizioni sempre diverse del Wrapped di Spotify.
-                        const wrappedBgVariant = WRAPPED_BG_VARIANTS[wrappedIndex % WRAPPED_BG_VARIANTS.length];
+                        const wrappedBgVariant = wrappedSlides[wrappedIndex]?.bgVariant || WRAPPED_BG_VARIANTS[wrappedIndex % WRAPPED_BG_VARIANTS.length];
                         const wrappedItemVariant = ['a', 'b', 'c', 'd', 'e'][wrappedIndex % 5];
                         return (
                         <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-3 sm:p-6 animate-fadebg">
