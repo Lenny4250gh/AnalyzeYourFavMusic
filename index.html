@@ -3312,8 +3312,12 @@
                     });
                 }
 
+                AreThereMultipleMonths = false
+
                 // 9. Corsa tra i Top 5 artisti mese dopo mese (se il periodo copre più mesi) - si superano a vicenda
                 if (stats.monthlyArtistRace && stats.monthlyArtistRace.length > 1) {
+                    AreThereMultipleMonths = true
+
                     slides.push({
                         gradient: 'from-indigo-600 to-blue-800',
                         isMonthly: true,
@@ -3345,7 +3349,7 @@
                 }
 
                 // 9.5. Mese con più riproduzioni
-                if (stats.date.meseTop && stats.date.meseTop !== t.na) {
+                if (stats.date.meseTop && stats.date.meseTop !== t.na && AreThereMultipleMonths) {
                     slides.push({
                         gradient: 'from-teal-500 to-emerald-700',
                         bgVariant: 'orbs',
@@ -3384,6 +3388,7 @@
                 if (stats.topArtisti.length >= 3) {
                     slides.push({
                         gradient: 'from-fuchsia-700 to-indigo-800',
+                        bgVariant: 'blob',
                         content: (
                             <div className="flex flex-col items-center gap-5 w-full">
                                 <p className="text-white text-xl font-bold mb-2">{t.wrappedTopArtistsListTitle}</p>
