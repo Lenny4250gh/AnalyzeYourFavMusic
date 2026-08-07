@@ -730,6 +730,22 @@
            rompe l'estetica "a schermo intero" tipica delle storie */
         .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+        /* Nel formato Wrapped "Scroll" non si tocca per avanzare: nascondiamo l'hint "tocca per
+           iniziare" della storia di copertina (pensato per il formato Storie) e mostriamo al suo
+           posto l'hint "scorri per iniziare". */
+        .wrapped-scroll-root .wrapped-nav-hint { display: none; }
+        .wrapped-scroll-root .wrapped-scroll-hint { display: block !important; }
+        /* Rimuove le barre delle storie e delle sotto-storie (Race) solo nel formato Scroll */
+        .wrapped-scroll-root .story-progress-container,
+        .wrapped-scroll-root .race-progress-bar-container,
+        .wrapped-scroll-root [class*="story-progress"] {
+            display: none !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        .wrapped-scroll-container { scrollbar-width: none; -ms-overflow-style: none; scroll-behavior: smooth; }
+        .wrapped-scroll-container::-webkit-scrollbar { display: none; width: 0; height: 0; }
         input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.7; cursor: pointer; }
     </style>
 </head>
@@ -765,6 +781,8 @@
         const IconRankDown = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg>;
         const IconRankSame = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path></svg>;
         const IconSparkle = ({ className, style }) => <svg className={className} style={style} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c.6 4.8 2.2 6.4 7 7-4.8.6-6.4 2.2-7 7-.6-4.8-2.2-6.4-7-7 4.8-.6 6.4-2.2 7-7Z"></path></svg>;
+        // Freccia verso il basso, usata per il formato "Scroll" del Wrapped (scelta stile + hint di scorrimento)
+        const IconChevronDown = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>;
 
         const Logo = ({ className }) => (
             <svg className={className} viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
@@ -902,6 +920,13 @@
                 wrappedCoverTitle: 'Il Tuo Wrapped',
                 wrappedCoverSubtitle: (f, tt) => `Dal ${f} al ${tt}`,
                 wrappedTapHint: 'Tocca per iniziare →',
+                wrappedScrollHint: 'Scorri per iniziare ↓',
+                wrappedStylePickerTitle: 'Come vuoi vivere il tuo Wrapped?',
+                wrappedStylePickerSubtitle: 'Scegli il formato che preferisci: puoi sempre chiuderlo e riaprirlo con l\'altro.',
+                wrappedStyleScrollTitle: 'Scroll',
+                wrappedStyleScrollDesc: 'Una storia a schermo intero alla volta, scorri con il dito per passare alla successiva, come un feed di video brevi (TikTok/Reels/Shorts).',
+                wrappedStyleStoriesTitle: 'Storie',
+                wrappedStyleStoriesDesc: 'Una storia alla volta a schermo intero, tocca per avanzare, come le storie di Instagram/Spotify Wrapped 2024.',
                 wrappedPreparingTitle: 'Sto preparando il tuo Wrapped',
                 wrappedPreparingSubtitle: 'Sto raccogliendo foto, generi e album...',
                 wrappedPreparingStats: 'Sto calcolando generi e album...',
@@ -955,6 +980,7 @@
                 wrappedDownload: 'Scarica immagine',
                 wrappedDownloading: 'Generazione...',
                 wrappedBtn: 'Guarda il tuo Wrapped',
+                tryDefaultData: 'Prova con dati di esempio',
             },
             en: {
                 brand: 'WrapYourFavMusic',
@@ -1076,6 +1102,13 @@
                 wrappedCoverTitle: 'Your Wrapped',
                 wrappedCoverSubtitle: (f, tt) => `From ${f} to ${tt}`,
                 wrappedTapHint: 'Tap to start →',
+                wrappedScrollHint: 'Scroll to start ↓',
+                wrappedStylePickerTitle: 'How do you want to experience your Wrapped?',
+                wrappedStylePickerSubtitle: 'Pick the format you prefer — you can always close it and reopen it in the other one.',
+                wrappedStyleScrollTitle: 'Scroll',
+                wrappedStyleScrollDesc: 'One full-screen story at a time, scroll/swipe to move to the next, like a short-video feed (TikTok/Reels/Shorts).',
+                wrappedStyleStoriesTitle: 'Stories',
+                wrappedStyleStoriesDesc: 'One full-screen story at a time, tap to advance, like Instagram Stories/Spotify Wrapped 2024.',
                 wrappedPreparingTitle: 'Preparing your Wrapped',
                 wrappedPreparingSubtitle: 'Gathering photos, genres and albums...',
                 wrappedPreparingStats: 'Crunching genres and albums...',
@@ -1129,6 +1162,7 @@
                 wrappedDownload: 'Download image',
                 wrappedDownloading: 'Generating...',
                 wrappedBtn: 'View your Wrapped',
+                tryDefaultData: 'Try with sample data',
             }
         };
 
@@ -2372,6 +2406,103 @@
             );
         });
 
+        // ============================================================
+        // WRAPPED — FORMATO "SCROLL" (feed verticale stile TikTok/Reels/Shorts)
+        // ============================================================
+        // Alternativa al formato "Storie": invece di toccare per passare alla storia
+        // successiva, si scorre verticalmente come in un feed di video brevi — ogni storia
+        // occupa l'intero schermo (o l'intera "card" telefono) e lo scroll si aggancia
+        // (snap) a una storia alla volta, una sola per swipe, esattamente come TikTok/
+        // Reels/Shorts. Riusa esattamente lo stesso array `slides` (stesso `content`/
+        // `gradient`/`bgVariant` per storia) generato per il formato Storie, così le due
+        // modalità restano sempre in sincrono: cambia solo la presentazione, non i dati.
+        const WrappedScrollView = ({ slides, bgVariants, onClose }) => {
+            const containerRef = useRef(null);
+            const sectionRefs = useRef([]);
+            const [activeIndex, setActiveIndex] = useState(0);
+            // Ogni storia si "rivela" (monta il proprio contenuto, facendo partire la sua
+            // cascata di animazioni) solo la prima volta che diventa quella a schermo intero,
+            // invece di animare tutte insieme al semplice apertura del Wrapped.
+            const [revealed, setRevealed] = useState(() => new Set([0]));
+
+            useEffect(() => {
+                const root = containerRef.current;
+                const els = sectionRefs.current.filter(Boolean);
+                if (!root || els.length === 0) return;
+                // Root esplicita sul contenitore scrollabile (la "card"), non sul viewport:
+                // altrimenti l'intersezione verrebbe calcolata sull'intera finestra invece
+                // che sull'area effettivamente visibile del feed.
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        const idx = Number(entry.target.dataset.idx);
+                        if (!entry.isIntersecting) return;
+                        setRevealed(prev => {
+                            if (prev.has(idx)) return prev;
+                            const next = new Set(prev);
+                            next.add(idx);
+                            return next;
+                        });
+                        if (entry.intersectionRatio > 0.6) {
+                            setActiveIndex(idx);
+                        }
+                    });
+                }, { root, threshold: [0.25, 0.6, 0.9] });
+                els.forEach(el => observer.observe(el));
+                return () => observer.disconnect();
+            }, [slides.length]);
+            
+            return (
+                <div className="wrapped-scroll-root fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-3 sm:p-6 animate-fadebg">
+                    <div className="relative w-full max-w-sm h-full sm:h-[85vh] sm:max-h-[820px] rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden shadow-2xl">
+                        {/* Barra di avanzamento in stile Storie, ma legata alla storia attiva nel feed */}
+                        <div className="absolute top-3 left-3 right-3 z-30 flex gap-1.5">
+                            {slides.map((_, i) => (
+                                <div key={i} className="flex-1 h-1 rounded-full bg-white/25 overflow-hidden">
+                                    <div className={`h-full bg-white transition-[width] duration-300 ${i <= activeIndex ? 'w-full' : 'w-0'}`}></div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <button
+                            onClick={onClose}
+                            className="absolute top-7 right-3 z-30 bg-black/30 hover:bg-black/50 p-2 rounded-full text-white/80 hover:text-white transition-colors"
+                        >
+                            <IconX className="w-5 h-5" />
+                        </button>
+
+                        {/* Feed verticale: una storia per schermata intera, aggancio (snap) di una
+                            sola storia alla volta ad ogni swipe/scroll, proprio come un feed di
+                            video brevi. */}
+                        <div
+                            ref={containerRef}
+                            className="wrapped-scroll-container absolute inset-0 overflow-y-auto snap-y snap-mandatory"
+                        >
+                            {slides.map((slide, i) => {
+                                const bgVariant = slide.bgVariant || bgVariants[i % bgVariants.length];
+                                const itemVariant = ['a', 'b', 'c', 'd', 'e'][i % 5];
+                                const isRevealed = revealed.has(i);
+                                return (
+                                    <section
+                                        key={i}
+                                        data-idx={i}
+                                        ref={(el) => { sectionRefs.current[i] = el; }}
+                                        className={`snap-start snap-always relative w-full h-full flex items-center justify-center text-center bg-gradient-to-br ${slide.gradient} overflow-hidden`}
+                                    >
+                                        <div
+                                            className={`wrapped-slide-content story-ambient wrapped-variant-${itemVariant} relative z-10 w-full h-full flex flex-col items-center justify-center text-center p-8 sm:p-10 overflow-hidden`}
+                                        >
+                                            <WrappedBgFX variant={bgVariant} />
+                                            {isRevealed && slide.content}
+                                        </div>
+                                    </section>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         function App() {
             const [lang, setLang] = useState(detectLang());
             const t = DICT[lang];
@@ -2394,6 +2525,12 @@
             const [quizHistory, setQuizHistory] = useState({});
             const [postLoadChoiceMade, setPostLoadChoiceMade] = useState(false);
             const [showWrapped, setShowWrapped] = useState(false);
+            // Formato scelto per il Wrapped: 'scroll' (racconto continuo, stile Spotify Wrapped 2025)
+            // oppure 'stories' (una storia a schermo intero alla volta, stile Spotify Wrapped 2024).
+            const [wrappedStyle, setWrappedStyle] = useState('stories');
+            // Vera quando è visibile lo schermo di scelta dello stile, mostrato prima di iniziare
+            // a preparare il Wrapped vero e proprio.
+            const [showWrappedStylePicker, setShowWrappedStylePicker] = useState(false);
             const [wrappedPreparing, setWrappedPreparing] = useState(false);
             // Descrizione mostrata durante la preparazione del Wrapped, aggiornata via via in base
             // a cosa si sta effettivamente caricando (statistiche, copertine, foto artista...).
@@ -3091,7 +3228,8 @@
                             </div>
                             <h2 className="font-wrapped text-4xl sm:text-5xl font-black text-white leading-tight">{t.wrappedCoverTitle}</h2>
                             <p className="text-white/80 text-sm sm:text-base">{t.wrappedCoverSubtitle(dateFmt(stats.date.inizio), dateFmt(stats.date.fine))}</p>
-                            <p className="text-white/60 text-xs mt-10 animate-pulse">{t.wrappedTapHint}</p>
+                            <p className="wrapped-nav-hint text-white/60 text-xs mt-10 animate-pulse">{t.wrappedTapHint}</p>
+                            <p className="wrapped-scroll-hint hidden text-white/60 text-xs mt-10 animate-pulse">{t.wrappedScrollHint}</p>
                         </div>
                     )
                 });
@@ -3650,6 +3788,17 @@
                 return jobs;
             };
 
+            // Prima di preparare davvero il Wrapped, mostriamo uno schermo per scegliere il formato
+            // (Scroll o Storie): la preparazione (generi, album, immagini) è identica per entrambi,
+            // solo la presentazione finale cambia.
+            const openWrappedStylePicker = () => {
+                setShowWrappedStylePicker(true);
+            };
+            const chooseWrappedStyle = (style) => {
+                setWrappedStyle(style);
+                setShowWrappedStylePicker(false);
+                openWrapped();
+            };
             const openWrapped = () => {
                 setWrappedIndex(0);
                 setMonthlyStoryIdx(0);
@@ -3664,6 +3813,7 @@
             const closeWrapped = () => {
                 setShowWrapped(false);
                 setWrappedPreparing(false);
+                setShowWrappedStylePicker(false);
                 if (outgoingWrappedTimeoutRef.current) clearTimeout(outgoingWrappedTimeoutRef.current);
                 setOutgoingWrappedSlide(null);
             };
@@ -4029,7 +4179,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.9</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.0</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -4106,7 +4256,7 @@
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                                     <button
-                                        onClick={() => { setPostLoadChoiceMade(true); openWrapped(); }}
+                                        onClick={() => { setPostLoadChoiceMade(true); openWrappedStylePicker(); }}
                                         className="group text-left bg-white/[0.03] hover:bg-white/[0.1] backdrop-blur-xl border border-white/10 hover:border-fuchsia-400/40 rounded-3xl p-6 sm:p-8 transition-all active:scale-[0.98]"
                                     >
                                         <div className="w-12 h-12 rounded-2xl bg-fuchsia-500/20 flex items-center justify-center mb-4 group-hover:bg-fuchsia-500/30 transition-colors">
@@ -4140,7 +4290,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.9</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.0</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -4221,7 +4371,7 @@
                             
                             {stats && (
                                 <div className="space-y-6 sm:space-y-8">
-                                   <button onClick={openWrapped} className="w-full text-left bg-white/[0.03] hover:bg-white/[0.1] border border-white/[0.15] hover:border-purple-500 rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex items-center justify-between gap-4 hover:-translate-y-1 transition-all duration-300 group">
+                                   <button onClick={openWrappedStylePicker} className="w-full text-left bg-white/[0.03] hover:bg-white/[0.1] border border-white/[0.15] hover:border-purple-500 rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex items-center justify-between gap-4 hover:-translate-y-1 transition-all duration-300 group">
                                         <div className="flex items-center gap-4 min-w-0">
                                             <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/10 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-white/20">
                                                 <IconMusic className="w-6 h-6 text-fuchsia-300" />
@@ -4387,11 +4537,51 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.2.9</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.0</span></p>
                             </footer>
                         </div>
                     </div>
                     
+                    {/* Schermata di scelta del formato del Wrapped: Scroll (racconto continuo) o
+                        Storie (una alla volta a schermo intero). Mostrata prima di iniziare a
+                        preparare generi/album/immagini, che sono comunque identici per entrambi. */}
+                    {showWrappedStylePicker && (
+                        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center p-6 animate-fadebg">
+                            <button
+                                onClick={() => setShowWrappedStylePicker(false)}
+                                className="absolute top-6 right-6 z-30 bg-white/10 hover:bg-white/20 p-2 rounded-full text-white/80 hover:text-white transition-colors"
+                            >
+                                <IconX className="w-5 h-5" />
+                            </button>
+                            <div className="w-full max-w-md animate-pop-in">
+                                <h3 className="font-display text-2xl sm:text-3xl font-black text-white text-center mb-2">{t.wrappedStylePickerTitle}</h3>
+                                <p className="text-gray-400 text-sm text-center mb-8 max-w-sm mx-auto">{t.wrappedStylePickerSubtitle}</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <button
+                                        onClick={() => chooseWrappedStyle('scroll')}
+                                        className="text-left bg-white/[0.04] hover:bg-white/[0.1] border-2 border-white/10 hover:border-purple-500 rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 group"
+                                    >
+                                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-fuchsia-600 to-purple-700 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                            <IconChevronDown className="w-6 h-6 text-white" />
+                                        </div>
+                                        <p className="font-display font-bold text-lg text-white mb-1">{t.wrappedStyleScrollTitle}</p>
+                                        <p className="text-gray-400 text-sm leading-snug">{t.wrappedStyleScrollDesc}</p>
+                                    </button>
+                                    <button
+                                        onClick={() => chooseWrappedStyle('stories')}
+                                        className="text-left bg-white/[0.04] hover:bg-white/[0.1] border-2 border-white/10 hover:border-purple-500 rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 group"
+                                    >
+                                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-700 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                            <IconSparkle className="w-6 h-6 text-white" />
+                                        </div>
+                                        <p className="font-display font-bold text-lg text-white mb-1">{t.wrappedStyleStoriesTitle}</p>
+                                        <p className="text-gray-400 text-sm leading-snug">{t.wrappedStyleStoriesDesc}</p>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Schermata di caricamento del Wrapped: mostrata PRIMA di aprire le storie, mentre
                         generi, album e tutte le immagini necessarie vengono preparati in blocco */}
                     {wrappedPreparing && !showWrapped && (
@@ -4419,8 +4609,18 @@
                         </div>
                     )}
 
+                    {/* Modal del Wrapped in formato Scroll: un unico racconto continuo, si scorre
+                        con il dito invece di toccare per avanzare, stile Spotify Wrapped 2025 */}
+                    {showWrapped && wrappedStyle === 'scroll' && wrappedSlides.length > 0 && (
+                        <WrappedScrollView
+                            slides={wrappedSlides}
+                            bgVariants={WRAPPED_BG_VARIANTS}
+                            onClose={closeWrapped}
+                        />
+                    )}
+
                     {/* Modal del Wrapped a storie, stile Spotify */}
-                    {showWrapped && wrappedSlides.length > 0 && (() => {
+                    {showWrapped && wrappedStyle === 'stories' && wrappedSlides.length > 0 && (() => {
                         const currentWrappedSlide = wrappedSlides[wrappedIndex];
                         // Vero finché la storia corrente è una domanda del quiz senza risposta: blocca il tap per avanzare
                         const wrappedQuizLocked = !!(currentWrappedSlide && currentWrappedSlide.qid && storyQuizAnswers[currentWrappedSlide.qid] === undefined);
