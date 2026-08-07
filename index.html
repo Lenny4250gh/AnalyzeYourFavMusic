@@ -2537,6 +2537,94 @@
                 setIsProcessing(false);
             };
 
+            const loadDemoData = useCallback(() => {
+                setError('');
+                const demoArtists = [
+                    { artista: 'The Weeknd', tracks: [
+                        { titolo: 'Blinding Lights', album: 'After Hours' },
+                        { titolo: 'Save Your Tears', album: 'After Hours' },
+                        { titolo: 'Die For You', album: 'Starboy' },
+                    ]},
+                    { artista: 'Dua Lipa', tracks: [
+                        { titolo: 'Levitating', album: 'Future Nostalgia' },
+                        { titolo: "Don't Start Now", album: 'Future Nostalgia' },
+                        { titolo: 'Houdini', album: 'Radical Optimism' },
+                    ]},
+                    { artista: 'Coldplay', tracks: [
+                        { titolo: 'Yellow', album: 'Parachutes' },
+                        { titolo: 'Viva la Vida', album: 'Viva la Vida' },
+                        { titolo: 'My Universe', album: 'Music of the Spheres' },
+                    ]},
+                    { artista: 'Billie Eilish', tracks: [
+                        { titolo: 'Bad Guy', album: 'When We All Fall Asleep' },
+                        { titolo: 'Birds of a Feather', album: 'Hit Me Hard and Soft' },
+                        { titolo: 'Ocean Eyes', album: "Don't Smile at Me" },
+                    ]},
+                    { artista: 'Ariana Grande', tracks: [
+                        { titolo: '7 rings', album: 'Thank U, Next' },
+                        { titolo: 'Positions', album: 'Positions' },
+                        { titolo: 'We Can\'t Be Friends', album: 'Eternal Sunshine' },
+                    ]},
+                    { artista: 'Drake', tracks: [
+                        { titolo: 'God\'s Plan', album: 'Scorpion' },
+                        { titolo: 'One Dance', album: 'Views' },
+                    ]},
+                    { artista: 'Taylor Swift', tracks: [
+                        { titolo: 'Cruel Summer', album: 'Lover' },
+                        { titolo: 'Anti-Hero', album: 'Midnights' },
+                        { titolo: 'Style', album: '1989' },
+                    ]},
+                    { artista: 'Kendrick Lamar', tracks: [
+                        { titolo: 'HUMBLE.', album: 'DAMN.' },
+                        { titolo: 'Not Like Us', album: 'Single' },
+                    ]},
+                    { artista: 'Bad Bunny', tracks: [
+                        { titolo: 'Tití Me Preguntó', album: 'Un Verano Sin Ti' },
+                        { titolo: 'Monaco', album: 'Nadie Sabe Lo Que Va a Pasar Mañana' },
+                    ]},
+                    { artista: 'Imagine Dragons', tracks: [
+                        { titolo: 'Believer', album: 'Evolve' },
+                        { titolo: 'Radioactive', album: 'Night Visions' },
+                    ]},
+                    { artista: 'Sabrina Carpenter', tracks: [
+                        { titolo: 'Espresso', album: 'Short n\' Sweet' },
+                        { titolo: 'Please Please Please', album: 'Short n\' Sweet' },
+                    ]},
+                    { artista: 'Kanye West', tracks: [
+                        { titolo: 'Stronger', album: 'Graduation' },
+                        { titolo: 'Runaway', album: 'My Beautiful Dark Twisted Fantasy' },
+                    ]},
+                ];
+
+                // Alcuni artisti sono ascoltati molto più spesso di altri (distribuzione realistica)
+                const weights = demoArtists.map((_, i) => Math.pow(0.8, i));
+                const totalWeight = weights.reduce((a, b) => a + b, 0);
+
+                const now = new Date();
+                const startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+                const demo = [];
+                const N = 2800;
+
+                for (let i = 0; i < N; i++) {
+                    let r = Math.random() * totalWeight;
+                    let idx = 0;
+                    while (r > weights[idx] && idx < weights.length - 1) {
+                        r -= weights[idx];
+                        idx++;
+                    }
+                    const artistObj = demoArtists[idx];
+                    const track = artistObj.tracks[Math.floor(Math.random() * artistObj.tracks.length)];
+                    const randomTime = startDate.getTime() + Math.random() * (now.getTime() - startDate.getTime());
+                    const data = new Date(randomTime);
+                    const ms_played = Math.round(60000 + Math.random() * 180000);
+                    const fonte = Math.random() < 0.8 ? 'Spotify' : 'YTMusic';
+                    demo.push({ fonte, artista: artistObj.artista, titolo: track.titolo, album: track.album, data, ms_played });
+                }
+
+                demo.sort((a, b) => a.data - b.data);
+                setAscolti(demo);
+            }, []);
+
             const handleDrop = useCallback((e) => {
                 e.preventDefault();
                 processFiles(Array.from(e.dataTransfer.files));
@@ -3929,6 +4017,15 @@
                                         <IconAlert className="w-5 h-5 flex-shrink-0" />
                                         <p>{error}</p>
                                     </div>
+                                )}
+
+                                {!isProcessing && (
+                                    <button
+                                        onClick={loadDemoData}
+                                        className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-400/40 rounded-full text-sm font-semibold text-gray-300 hover:text-white transition-all"
+                                    >
+                                        ✨ Prova con dati di esempio
+                                    </button>
                                 )}
                             </div>
 
