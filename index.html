@@ -92,6 +92,7 @@
 
         .animate-pop-in {
         animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        will-change: opacity, transform;
         }
 
         .animate-glow {
@@ -924,9 +925,9 @@
                 wrappedStylePickerTitle: 'Come vuoi vivere il tuo Wrapped?',
                 wrappedStylePickerSubtitle: 'Scegli il formato che preferisci: puoi sempre chiuderlo e riaprirlo con l\'altro.',
                 wrappedStyleScrollTitle: 'Scroll',
-                wrappedStyleScrollDesc: 'Una storia a schermo intero alla volta, scorri con il dito per passare alla successiva, come un feed di video brevi (TikTok/Reels/Shorts).',
+                wrappedStyleScrollDesc: 'Scorri per passare da una storia all\'altra, come un feed di video brevi (TikTok/Reels/Shorts).',
                 wrappedStyleStoriesTitle: 'Storie',
-                wrappedStyleStoriesDesc: 'Una storia alla volta a schermo intero, tocca per avanzare, come le storie di Instagram/Spotify Wrapped 2024.',
+                wrappedStyleStoriesDesc: 'Tocca ai lati per passare da una storia all\'altra, come nelle storie dei social (es. Instagram).',
                 wrappedPreparingTitle: 'Sto preparando il tuo Wrapped',
                 wrappedPreparingSubtitle: 'Sto raccogliendo foto, generi e album...',
                 wrappedPreparingStats: 'Sto calcolando generi e album...',
@@ -1106,9 +1107,9 @@
                 wrappedStylePickerTitle: 'How do you want to experience your Wrapped?',
                 wrappedStylePickerSubtitle: 'Pick the format you prefer — you can always close it and reopen it in the other one.',
                 wrappedStyleScrollTitle: 'Scroll',
-                wrappedStyleScrollDesc: 'One full-screen story at a time, scroll/swipe to move to the next, like a short-video feed (TikTok/Reels/Shorts).',
+                wrappedStyleScrollDesc: 'Swipe to switch between stories, like a short-video feed (TikTok/Reels/Shorts).',
                 wrappedStyleStoriesTitle: 'Stories',
-                wrappedStyleStoriesDesc: 'One full-screen story at a time, tap to advance, like Instagram Stories/Spotify Wrapped 2024.',
+                wrappedStyleStoriesDesc: 'Tap the sides to switch between stories, just like in social media stories (e.g., Instagram).',
                 wrappedPreparingTitle: 'Preparing your Wrapped',
                 wrappedPreparingSubtitle: 'Gathering photos, genres and albums...',
                 wrappedPreparingStats: 'Crunching genres and albums...',
@@ -2416,7 +2417,7 @@
         // Reels/Shorts. Riusa esattamente lo stesso array `slides` (stesso `content`/
         // `gradient`/`bgVariant` per storia) generato per il formato Storie, così le due
         // modalità restano sempre in sincrono: cambia solo la presentazione, non i dati.
-        const WrappedScrollView = ({ slides, bgVariants, onClose }) => {
+        const WrappedScrollView = ({ slides, bgVariants, onClose, isSlideLocked, storyQuizAnswers }) => {
             const containerRef = useRef(null);
             const sectionRefs = useRef([]);
             const [activeIndex, setActiveIndex] = useState(0);
@@ -2424,6 +2425,14 @@
             // cascata di animazioni) solo la prima volta che diventa quella a schermo intero,
             // invece di animare tutte insieme al semplice apertura del Wrapped.
             const [revealed, setRevealed] = useState(() => new Set([0]));
+            // Tiene traccia dell'indice attivo anche in modo sincrono (non solo via stato React),
+            // così i listener di wheel/touch/scroll — che devono decidere "al volo" se bloccare
+            // lo scorrimento — leggono sempre il valore più aggiornato senza dover essere
+            // ricreati ad ogni cambio di storia.
+            const activeIndexRef = useRef(0);
+            useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
+            const isSlideLockedRef = useRef(isSlideLocked);
+            useEffect(() => { isSlideLockedRef.current = isSlideLocked; }, [isSlideLocked]);
 
             useEffect(() => {
                 const root = containerRef.current;
@@ -2450,22 +2459,98 @@
                 els.forEach(el => observer.observe(el));
                 return () => observer.disconnect();
             }, [slides.length]);
-            
+
+            // Scorre in automatico (con animazione) alla storia successiva del feed.
+            const scrollToIndex = useCallback((idx) => {
+                const el = sectionRefs.current[idx];
+                if (el && typeof el.scrollIntoView === 'function') {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, []);
+
+            // BLOCCO DELLO SCROLL VERSO IL BASSO: quando la storia attiva è "bloccata" (mini-quiz
+            // ancora senza risposta, oppure macro-storia con sotto-storie — mese/artista — non
+            // ancora viste tutte fino in fondo), impediamo di proseguire con la storia successiva.
+            // Intercettiamo sia la rotellina (desktop) sia lo swipe (touch): preventDefault() sul
+            // gesto stesso, così lo scroll non parte nemmeno, invece di lasciarlo partire e poi
+            // "correggerlo" a scatti.
+            useEffect(() => {
+                const root = containerRef.current;
+                if (!root) return;
+
+                const isLockedNow = () => {
+                    const fn = isSlideLockedRef.current;
+                    return typeof fn === 'function' && fn(activeIndexRef.current);
+                };
+
+                const handleWheel = (e) => {
+                    if (e.deltaY > 0 && isLockedNow()) {
+                        e.preventDefault();
+                    }
+                };
+
+                let touchStartY = 0;
+                const handleTouchStart = (e) => {
+                    touchStartY = e.touches[0] ? e.touches[0].clientY : 0;
+                };
+                const handleTouchMove = (e) => {
+                    if (!e.touches[0]) return;
+                    const deltaY = touchStartY - e.touches[0].clientY; // positivo = dito che scorre verso l'alto = storia successiva
+                    if (deltaY > 0 && isLockedNow()) {
+                        e.preventDefault();
+                    }
+                };
+
+                // Rete di sicurezza: se nonostante tutto lo scroll è comunque avanzato oltre la
+                // storia bloccata (es. inerzia del touch su iOS), lo riportiamo indietro alla
+                // storia corrente invece di lasciar intravedere quella successiva.
+                const handleScroll = () => {
+                    if (!isLockedNow()) return;
+                    const activeEl = sectionRefs.current[activeIndexRef.current];
+                    if (!activeEl) return;
+                    const targetTop = activeEl.offsetTop;
+                    if (root.scrollTop > targetTop + 4) {
+                        root.scrollTop = targetTop;
+                    }
+                };
+
+                root.addEventListener('wheel', handleWheel, { passive: false });
+                root.addEventListener('touchstart', handleTouchStart, { passive: true });
+                root.addEventListener('touchmove', handleTouchMove, { passive: false });
+                root.addEventListener('scroll', handleScroll, { passive: true });
+                return () => {
+                    root.removeEventListener('wheel', handleWheel);
+                    root.removeEventListener('touchstart', handleTouchStart);
+                    root.removeEventListener('touchmove', handleTouchMove);
+                    root.removeEventListener('scroll', handleScroll);
+                };
+            }, []);
+
+            // Una volta risposto al mini-quiz della storia attiva, dopo una breve pausa (per far
+            // vedere se la risposta era giusta o sbagliata) scorriamo automaticamente alla storia
+            // successiva, esattamente come nel formato "Storie" a tap.
+            const autoAdvancedQuizIdsRef = useRef(new Set());
+            useEffect(() => {
+                const slide = slides[activeIndex];
+                if (
+                    slide && slide.qid &&
+                    storyQuizAnswers && storyQuizAnswers[slide.qid] !== undefined &&
+                    !autoAdvancedQuizIdsRef.current.has(slide.qid)
+                ) {
+                    autoAdvancedQuizIdsRef.current.add(slide.qid);
+                    const timeoutId = setTimeout(() => {
+                        scrollToIndex(activeIndex + 1);
+                    }, 1000);
+                    return () => clearTimeout(timeoutId);
+                }
+            }, [activeIndex, storyQuizAnswers, slides, scrollToIndex]);
+
             return (
                 <div className="wrapped-scroll-root fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-3 sm:p-6 animate-fadebg">
                     <div className="relative w-full max-w-sm h-full sm:h-[85vh] sm:max-h-[820px] rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden shadow-2xl">
-                        {/* Barra di avanzamento in stile Storie, ma legata alla storia attiva nel feed */}
-                        <div className="absolute top-3 left-3 right-3 z-30 flex gap-1.5">
-                            {slides.map((_, i) => (
-                                <div key={i} className="flex-1 h-1 rounded-full bg-white/25 overflow-hidden">
-                                    <div className={`h-full bg-white transition-[width] duration-300 ${i <= activeIndex ? 'w-full' : 'w-0'}`}></div>
-                                </div>
-                            ))}
-                        </div>
-
                         <button
                             onClick={onClose}
-                            className="absolute top-7 right-3 z-30 bg-black/30 hover:bg-black/50 p-2 rounded-full text-white/80 hover:text-white transition-colors"
+                            className="absolute top-3 right-3 z-30 bg-black/30 hover:bg-black/50 p-2 rounded-full text-white/80 hover:text-white transition-colors"
                         >
                             <IconX className="w-5 h-5" />
                         </button>
@@ -2494,6 +2579,36 @@
                                             <WrappedBgFX variant={bgVariant} />
                                             {isRevealed && slide.content}
                                         </div>
+
+                                        {/* Nel formato Scroll l'avanzamento tra le MACRO-storie resta affidato solo
+                                            allo scroll/swipe. Ma per le storie con SOTTO-storie (mese per mese,
+                                            top 5 artisti casuali) riattiviamo qui anche il tap sinistra/destra tipico
+                                            del formato Storie, solo per muoversi tra le sotto-storie: tocco a destra
+                                            = sotto-storia successiva, tocco a sinistra = precedente. Se si è già
+                                            all'ultima sotto-storia il tap a destra non fa nulla: il passaggio alla
+                                            storia successiva resta comunque affidato allo scroll. */}
+                                        {(slide.isMonthly || slide.isRandomTop) && isRevealed && (
+                                            <>
+                                                <div
+                                                    className="absolute inset-y-0 left-0 w-1/3 z-20 cursor-pointer"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (slide.subStoryIdx > 0 && typeof slide.onSubStoryChange === 'function') {
+                                                            slide.onSubStoryChange(slide.subStoryIdx - 1);
+                                                        }
+                                                    }}
+                                                ></div>
+                                                <div
+                                                    className="absolute inset-y-0 right-0 w-2/3 z-20 cursor-pointer"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (slide.subStoryIdx < slide.subStoryMax && typeof slide.onSubStoryChange === 'function') {
+                                                            slide.onSubStoryChange(slide.subStoryIdx + 1);
+                                                        }
+                                                    }}
+                                                ></div>
+                                            </>
+                                        )}
                                     </section>
                                 );
                             })}
@@ -3518,6 +3633,11 @@
                     slides.push({
                         gradient: 'from-violet-600 to-indigo-800',
                         isRandomTop: true,
+                        // Usati dal formato Scroll per far funzionare il tap sinistra/destra tra le
+                        // sotto-storie (un artista alla volta) anche lì, esattamente come nel formato Storie.
+                        subStoryIdx: randomArtistStoryIdx,
+                        subStoryMax: shuffledTop5Artists.length - 1,
+                        onSubStoryChange: setRandomArtistStoryIdx,
                         content: (
                             <RandomTopArtistsStory
                                 artists={shuffledTop5Artists}
@@ -3553,6 +3673,11 @@
                     slides.push({
                         gradient: 'from-indigo-600 to-blue-800',
                         isMonthly: true,
+                        // Usati dal formato Scroll per far funzionare il tap sinistra/destra tra le
+                        // sotto-storie (un mese alla volta) anche lì, esattamente come nel formato Storie.
+                        subStoryIdx: monthlyStoryIdx,
+                        subStoryMax: stats.monthlyArtistRace.length - 1,
+                        onSubStoryChange: setMonthlyStoryIdx,
                         content: (
                             <MonthlyArtistRaceStory
                                 months={stats.monthlyArtistRace}
@@ -3797,7 +3922,18 @@
             const chooseWrappedStyle = (style) => {
                 setWrappedStyle(style);
                 setShowWrappedStylePicker(false);
-                openWrapped();
+                // openWrapped() azzera wrappedIndex/monthlyStoryIdx/randomArtistStoryIdx/storyQuizAnswers,
+                // che sono tutte dipendenze del useMemo pesante che ricostruisce l'intero array di storie
+                // del Wrapped (con tutte le sue immagini/JSX). Chiamandolo nello stesso click il browser
+                // deve chiudere la modale E ricalcolare tutte le storie nello stesso frame, con un
+                // "congelamento" percepibile. Rimandandolo al frame successivo (doppio requestAnimationFrame,
+                // per essere certi che almeno un frame venga dipinto nel mezzo), il click chiude subito la
+                // scelta del formato e solo dopo parte il ricalcolo pesante.
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        openWrapped();
+                    });
+                });
             };
             const openWrapped = () => {
                 setWrappedIndex(0);
@@ -3902,6 +4038,25 @@
                     setOutgoingWrappedSlide(null);
                 }, 420);
             };
+
+            // Dice se la storia "i" del Wrapped è ancora "bloccata" per l'avanzamento: mini-quiz
+            // senza risposta, oppure macro-storia con sotto-storie (mese/artista) non ancora viste
+            // tutte fino in fondo. Usata sia dal tap nel formato Storie sia dallo scroll nel
+            // formato Scroll, così le due modalità restano coerenti tra loro.
+            const isWrappedSlideLocked = useCallback((i) => {
+                const slide = wrappedSlides[i];
+                if (!slide) return false;
+                if (slide.qid && storyQuizAnswers[slide.qid] === undefined) return true;
+                if (slide.isMonthly && stats?.monthlyArtistRace?.length > 0) {
+                    const maxIdx = stats.monthlyArtistRace.length - 1;
+                    if (monthlyStoryIdx < maxIdx) return true;
+                }
+                if (slide.isRandomTop && shuffledTop5Artists.length > 0) {
+                    const maxIdx = shuffledTop5Artists.length - 1;
+                    if (randomArtistStoryIdx < maxIdx) return true;
+                }
+                return false;
+            }, [wrappedSlides, storyQuizAnswers, stats, monthlyStoryIdx, randomArtistStoryIdx, shuffledTop5Artists]);
 
             const nextWrappedSlide = () => {
                 const currentSlide = wrappedSlides[wrappedIndex];
@@ -4546,20 +4701,20 @@
                         Storie (una alla volta a schermo intero). Mostrata prima di iniziare a
                         preparare generi/album/immagini, che sono comunque identici per entrambi. */}
                     {showWrappedStylePicker && (
-                        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center p-6 animate-fadebg">
+                        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center p-6 animate-fadebg" style={{ transform: 'translateZ(0)', isolation: 'isolate' }}>
                             <button
                                 onClick={() => setShowWrappedStylePicker(false)}
-                                className="absolute top-6 right-6 z-30 bg-white/10 hover:bg-white/20 p-2 rounded-full text-white/80 hover:text-white transition-colors"
+                                className="absolute top-6 right-6 z-30 bg-white/10 hover:bg-white/20 p-2 rounded-full text-white/80 hover:text-white transition-colors transform-gpu"
                             >
                                 <IconX className="w-5 h-5" />
                             </button>
-                            <div className="w-full max-w-md animate-pop-in">
+                            <div className="w-full max-w-md animate-pop-in" style={{ transform: 'translateZ(0)' }}>
                                 <h3 className="font-display text-2xl sm:text-3xl font-black text-white text-center mb-2">{t.wrappedStylePickerTitle}</h3>
                                 <p className="text-gray-400 text-sm text-center mb-8 max-w-sm mx-auto">{t.wrappedStylePickerSubtitle}</p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <button
                                         onClick={() => chooseWrappedStyle('scroll')}
-                                        className="text-left bg-white/[0.04] hover:bg-white/[0.1] border-2 border-white/10 hover:border-purple-500 rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 group"
+                                        className="text-left bg-white/[0.04] hover:bg-white/[0.1] border-2 border-white/10 hover:border-purple-500 rounded-2xl p-5 transition-[background-color,border-color,transform] duration-300 hover:-translate-y-1 transform-gpu group"
                                     >
                                         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-fuchsia-600 to-purple-700 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                             <IconChevronDown className="w-6 h-6 text-white" />
@@ -4569,7 +4724,7 @@
                                     </button>
                                     <button
                                         onClick={() => chooseWrappedStyle('stories')}
-                                        className="text-left bg-white/[0.04] hover:bg-white/[0.1] border-2 border-white/10 hover:border-purple-500 rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 group"
+                                        className="text-left bg-white/[0.04] hover:bg-white/[0.1] border-2 border-white/10 hover:border-purple-500 rounded-2xl p-5 transition-[background-color,border-color,transform] duration-300 hover:-translate-y-1 transform-gpu group"
                                     >
                                         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-700 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                             <IconSparkle className="w-6 h-6 text-white" />
@@ -4616,6 +4771,8 @@
                             slides={wrappedSlides}
                             bgVariants={WRAPPED_BG_VARIANTS}
                             onClose={closeWrapped}
+                            isSlideLocked={isWrappedSlideLocked}
+                            storyQuizAnswers={storyQuizAnswers}
                         />
                     )}
 
