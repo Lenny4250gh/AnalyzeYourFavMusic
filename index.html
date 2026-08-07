@@ -948,7 +948,8 @@
                 wrappedTopTrackLabel: 'Il tuo brano #1',
                 wrappedTopTrackSub: (n) => `${n} ascolti`,
                 wrappedTopTracksListTitle: 'I tuoi Top 5 brani',
-                wrappedHabitsTitle: 'Le tue abitudini',
+                wrappedHabitsTitle: 'Le tue abitudini d\'ascolto',
+                wrappedHabitsRecordDay: 'Giorno da record',
                 wrappedHabitsWeekday: 'Giorno preferito',
                 wrappedHabitsTimeSlot: 'Fascia preferita',
                 wrappedHabitsMonth: 'Mese top',
@@ -1132,7 +1133,8 @@
                 wrappedTopTrackLabel: 'Your #1 track',
                 wrappedTopTrackSub: (n) => `${n} plays`,
                 wrappedTopTracksListTitle: 'Your Top 5 tracks',
-                wrappedHabitsTitle: 'Your habits',
+                wrappedHabitsTitle: 'Your listening habits',
+                wrappedHabitsRecordDay: 'Record day',
                 wrappedHabitsWeekday: 'Favorite day',
                 wrappedHabitsTimeSlot: 'Favorite time',
                 wrappedHabitsMonth: 'Top month',
@@ -3939,6 +3941,54 @@
                     });
                 }
 
+                // 11.5. Abitudini d'ascolto: giorno da record, giorno della settimana preferito, fascia oraria top
+                if (stats.date.giornoTop) {
+                    const [recAnno, recMese, recGiorno] = stats.date.giornoTop.data.split('-');
+                    const recordDayLabel = lang === 'it' ? `${recGiorno}/${recMese}/${recAnno}` : `${recMese}/${recGiorno}/${recAnno}`;
+                    slides.push({
+                        gradient: 'from-indigo-700 to-purple-800',
+                        bgVariant: 'orbs',
+                        content: (
+                            <div className="flex flex-col items-center gap-5 w-full">
+                                <IconCalendar className="w-8 h-8 text-white/80 animate-float-icon" />
+                                <p className="text-white text-xl font-bold -mt-1 mb-1">{t.wrappedHabitsTitle}</p>
+                                <div className="w-full max-w-xs flex flex-col gap-3">
+                                    <div className="flex items-center gap-4 bg-white/10 rounded-2xl px-4 py-3.5 animate-float-card" style={{ animationDelay: '0s' }}>
+                                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                                            <IconCalendar className="w-5 h-5 text-white/80" />
+                                        </div>
+                                        <div className="flex-1 text-left min-w-0">
+                                            <p className="text-white/60 text-xs uppercase tracking-wide">{t.wrappedHabitsRecordDay}</p>
+                                            <p className="text-white font-bold text-base truncate">{recordDayLabel}</p>
+                                            <p className="text-white/70 text-xs mt-0.5">{t.nListens(stats.date.giornoTop.count)}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 bg-white/10 rounded-2xl px-4 py-3.5 animate-float-card" style={{ animationDelay: '0.15s' }}>
+                                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                                            <IconTag className="w-5 h-5 text-white/80" />
+                                        </div>
+                                        <div className="flex-1 text-left min-w-0">
+                                            <p className="text-white/60 text-xs uppercase tracking-wide">{t.wrappedHabitsWeekday}</p>
+                                            <p className="text-white font-bold text-base truncate">{stats.date.giornoSettimanaTop}</p>
+                                            <p className="text-white/70 text-xs mt-0.5">{t.weekdaySub}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 bg-white/10 rounded-2xl px-4 py-3.5 animate-float-card" style={{ animationDelay: '0.3s' }}>
+                                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                                            <IconClock className="w-5 h-5 text-white/80" />
+                                        </div>
+                                        <div className="flex-1 text-left min-w-0">
+                                            <p className="text-white/60 text-xs uppercase tracking-wide">{t.wrappedHabitsTimeSlot}</p>
+                                            <p className="text-white font-bold text-base truncate">{stats.date.fasciaTop}</p>
+                                            <p className="text-white/70 text-xs mt-0.5">{t.timeSlotSub}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    });
+                }
+
                 // 12. Riassunto finale
                 const topArtistNameW = stats.topArtisti[0] ? stats.topArtisti[0][0] : t.na;
                 const topTrackKeyW = stats.topBrani[0] ? stats.topBrani[0][0] : null;
@@ -3964,7 +4014,7 @@
                     isRecap: true,
                     content: (
                         <div className="w-full h-full flex items-center justify-center">
-                            <div ref={wrappedCardRef} className="relative flex flex-col w-full max-w-[360px] bg-[#f4f2ec] text-black rounded-2xl overflow-hidden">
+                            <div ref={wrappedCardRef} className="relative flex flex-col w-full max-w-[360px] bg-[#f4f2ec] text-black rounded-2xl overflow-hidden shadow-[inset_0_0_0_1px_rgba(0,0,0,0.015)]">
                                 <div
                                     className="absolute inset-0 !opacity-[0.05] pointer-events-none"
                                     style={{ backgroundImage: 'repeating-linear-gradient(135deg, #000 0px, #000 2px, transparent 2px, transparent 16px)' }}
@@ -4510,7 +4560,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.1</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.2</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -4621,7 +4671,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.1</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.2</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -4900,7 +4950,7 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.1</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.2</span></p>
                             </footer>
                         </div>
                     </div>
