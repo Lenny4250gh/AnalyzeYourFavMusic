@@ -870,7 +870,7 @@
                 choiceWrapped: 'Guarda il tuo Wrapped',
                 choiceWrappedSub: 'Il riassunto del tuo anno in musica, in stile storie',
                 choiceViewData: 'Vedi i miei dati',
-                choiceViewDataSub: 'Esplora statistiche, classifiche e grafici',
+                choiceViewDataSub: 'Esplora statistiche (con dati approfonditi), classifiche e grafici',
                 choiceStartQuiz: 'Fai subito il quiz',
                 choiceStartQuizSub: 'Mettiti alla prova senza vedere prima i dati',
                 quizBtn: 'Gioca',
@@ -895,6 +895,8 @@
                 quizFinishMeh: 'Sembra che la tua musica ti sorprenda ancora! 🎲',
                 quizPlayAgain: 'Rigioca',
                 quizClose: 'Chiudi',
+                quizPreparingTitle: 'Sto preparando il quiz',
+                quizPreparingSubtitle: 'Sto caricando le immagini delle domande...',
                 quizNotEnoughData: 'Servono più dati per generare il quiz: prova a rimuovere i filtri o a caricare più cronologia.',
                 wrappedQuizChoose: 'Tocca una risposta',
                 wrappedQuizTapContinue: 'Tocca per continuare',
@@ -924,7 +926,7 @@
                 wrappedScrollHint: 'Scorri per iniziare ↓',
                 wrappedStylePickerTitle: 'Come vuoi vivere il tuo Wrapped?',
                 wrappedStylePickerSubtitle: 'Scegli il formato che preferisci: puoi sempre chiuderlo e riaprirlo con l\'altro.',
-                wrappedStyleScrollTitle: 'Scroll',
+                wrappedStyleScrollTitle: 'Scroll (consigliato)',
                 wrappedStyleScrollDesc: 'Scorri per passare da una storia all\'altra, come un feed di video brevi (TikTok/Reels/Shorts).',
                 wrappedStyleStoriesTitle: 'Storie',
                 wrappedStyleStoriesDesc: 'Tocca ai lati per passare da una storia all\'altra, come nelle storie dei social (es. Instagram).',
@@ -1052,7 +1054,7 @@
                 choiceWrapped: 'Watch your Wrapped',
                 choiceWrappedSub: 'Your year in music, story-style',
                 choiceViewData: 'View my data',
-                choiceViewDataSub: 'Explore stats, rankings and charts',
+                choiceViewDataSub: 'Explore stats (with in-depth data), rankings, and charts',
                 choiceStartQuiz: 'Take the quiz now',
                 choiceStartQuizSub: 'Test yourself before seeing the data',
                 quizBtn: 'Play',
@@ -1077,6 +1079,8 @@
                 quizFinishMeh: 'Looks like your music still surprises you! 🎲',
                 quizPlayAgain: 'Play again',
                 quizClose: 'Close',
+                quizPreparingTitle: 'Preparing your quiz',
+                quizPreparingSubtitle: 'Loading the question images...',
                 quizNotEnoughData: 'Not enough data to generate the quiz: try removing filters or uploading more history.',
                 wrappedQuizChoose: 'Tap an answer',
                 wrappedQuizTapContinue: 'Tap to continue',
@@ -1106,7 +1110,7 @@
                 wrappedScrollHint: 'Scroll to start ↓',
                 wrappedStylePickerTitle: 'How do you want to experience your Wrapped?',
                 wrappedStylePickerSubtitle: 'Pick the format you prefer — you can always close it and reopen it in the other one.',
-                wrappedStyleScrollTitle: 'Scroll',
+                wrappedStyleScrollTitle: 'Scrolling (recommended)',
                 wrappedStyleScrollDesc: 'Swipe to switch between stories, like a short-video feed (TikTok/Reels/Shorts).',
                 wrappedStyleStoriesTitle: 'Stories',
                 wrappedStyleStoriesDesc: 'Tap the sides to switch between stories, just like in social media stories (e.g., Instagram).',
@@ -1800,6 +1804,96 @@
         // così è facile seguirlo mentre supera gli altri, mese dopo mese
         const RACE_COLORS = ['#a855f7', '#ec4899', '#f59e0b', '#22d3ee', '#22c55e', '#f43f5e'];
 
+        // Colore stabile per artista, usato sia per le barre della corsa sia per lo sfondo dinamico
+        // della storia "top del mese": l'indice è calcolato sull'ordine degli artisti nell'ULTIMO mese
+        // (la classifica finale), non su quello del mese corrente, così un dato artista ha sempre lo
+        // stesso colore in ogni mese in cui appare, non solo quando è primo.
+        const raceColorForArtist = (months, artist) => {
+            if (!months || months.length === 0 || !artist) return RACE_COLORS[0];
+            const finalMonth = months[months.length - 1];
+            const allNames = finalMonth.ranking.map(r => r.artist);
+            const colorIdx = allNames.indexOf(artist) % RACE_COLORS.length;
+            return RACE_COLORS[colorIdx >= 0 ? colorIdx : 0];
+        };
+
+        // Colore di sfondo per il mese all'indice "idx": quello del primo classificato di QUEL mese.
+        // Essendo raceColorForArtist deterministico (stesso artista -> stesso colore), se il primo
+        // resta lo stesso da un mese all'altro il colore restituito è identico e lo sfondo non cambia;
+        // cambia (con una transizione morbida) solo quando cambia davvero il leader della classifica.
+        const raceLeaderColor = (months, idx) => {
+            if (!months || months.length === 0) return null;
+            const current = months[Math.min(Math.max(idx, 0), months.length - 1)];
+            const leader = current?.ranking?.[0]?.artist;
+            return leader ? raceColorForArtist(months, leader) : null;
+        };
+
+        // Sfondo completo (radiale + lineare, sfumato verso il nero) costruito a partire dal colore
+        // del leader del mese, per sostituire il gradiente statico della slide "top del mese".
+        const raceLeaderBg = (color) => `radial-gradient(ellipse 90% 60% at 50% -5%, ${color}66, transparent 60%), linear-gradient(160deg, ${color}55, #0b0b0f 85%)`;
+
+        // Piccole utility per interpolare due colori esadecimali componente per componente (r,g,b)
+        const hexToRgb = (hex) => {
+            const h = hex.replace('#', '');
+            const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+            const n = parseInt(full, 16);
+            return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+        };
+        const rgbToHex = ({ r, g, b }) => '#' + [r, g, b].map(v => {
+            const c = Math.round(Math.max(0, Math.min(255, v)));
+            return c.toString(16).padStart(2, '0');
+        }).join('');
+        const mixHexColors = (colorA, colorB, t) => {
+            const a = hexToRgb(colorA), b = hexToRgb(colorB);
+            return rgbToHex({ r: a.r + (b.r - a.r) * t, g: a.g + (b.g - a.g) * t, b: a.b + (b.b - a.b) * t });
+        };
+
+        // Le due tecniche più ovvie per sfumare tra un raceLeaderBg(colore1) e raceLeaderBg(colore2)
+        // hanno entrambe un difetto: (1) una `transition: background` non funziona perché i browser
+        // non interpolano gradienti diversi, scatta di colpo; (2) un cross-fade a due strati impilati
+        // (vecchio sotto, nuovo sopra con opacità animata) sembra funzionare ma, siccome i gradienti
+        // sono semi-trasparenti, durante la dissolvenza il colore percepito è "arricchito" dalla somma
+        // dei due strati e appena quello vecchio viene tolto il colore risulta di scatto più scuro.
+        // La soluzione robusta è interpolare direttamente il colore (r,g,b) frame per frame con
+        // requestAnimationFrame e ricalcolare il gradiente ad ogni frame: un solo strato, sempre,
+        // niente compositing tra sfondi, quindi nessuno scatto finale.
+        const RaceLeaderBackdrop = ({ color, duration = 700 }) => {
+            const [displayColor, setDisplayColor] = useState(color);
+            const fromColorRef = useRef(color);
+            const rafRef = useRef(null);
+
+            useEffect(() => {
+                if (!color) return;
+                const from = fromColorRef.current || color;
+                if (from === color) { setDisplayColor(color); return; }
+
+                const startTime = performance.now();
+                const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+                const step = (now) => {
+                    const t = Math.min(1, (now - startTime) / duration);
+                    setDisplayColor(mixHexColors(from, color, easeOutCubic(t)));
+                    if (t < 1) {
+                        rafRef.current = requestAnimationFrame(step);
+                    } else {
+                        fromColorRef.current = color;
+                    }
+                };
+                rafRef.current = requestAnimationFrame(step);
+                return () => cancelAnimationFrame(rafRef.current);
+            }, [color, duration]);
+
+            if (!displayColor) return null;
+            return (
+                <div
+                    className="absolute inset-0 overflow-hidden -z-10 pointer-events-none"
+                    style={{ background: raceLeaderBg(displayColor) }}
+                />
+            );
+        };
+
+
+
+
         // Numero che si "conta" progressivamente dal valore precedente a quello nuovo, sincronizzato
         // con la stessa durata/curva della barra così crescono insieme mentre la sottostoria scorre
         const AnimatedCount = ({ value, duration = 1750, className, style }) => {
@@ -1832,11 +1926,15 @@
             return <span className={className} style={style}>{display.toLocaleString('it-IT')}</span>;
         };
 
-        const MonthlyArtistRaceStory = ({ months, title, subtitle, idx, onIdxChange, onFinish, onSkipAll, skipLabel, onGoBack, canGoBack, backLabel, newLabel }) => {
+        const MonthlyArtistRaceStory = ({ months, title, subtitle, idx, onIdxChange, onFinish, onSkipAll, skipLabel, onGoBack, canGoBack, backLabel, newLabel, active = true }) => {
             // Timer per avanzare automaticamente ogni 1.75 secondi tra i mesi.
             // Sull'ultimo mese il timer si ferma e NON passa da solo alla storia successiva del Wrapped:
             // resta in attesa di un tap/swipe manuale dell'utente.
+            // "active" indica se questa storia è davvero quella a schermo in questo momento (nel
+            // formato Scroll resta montata anche quando si scorre via): se non è attiva l'avanzamento
+            // automatico si ferma, e riparte da solo appena si torna a vederla.
             useEffect(() => {
+                if (!active) return;
                 if (!months || months.length <= 1) return;
                 if (idx >= months.length - 1) return;
 
@@ -1845,7 +1943,7 @@
                 }, 1750);
 
                 return () => clearInterval(interval);
-            }, [months, idx, onIdxChange]);
+            }, [months, idx, onIdxChange, active]);
 
             // Al montaggio della sottostoria (primo mese), le barre/i conteggi partono da 0 e si
             // "caricano" fino al valore reale, esattamente come accade nei sorpassi tra un mese e l'altro.
@@ -1872,11 +1970,7 @@
             const finalMonth = months[months.length - 1];
             const maxFinalTotal = Math.max(1, ...months.flatMap(m => m.ranking.map(r => r.total)));
             // Un colore stabile per ogni artista (stesso artista = stesso colore in ogni mese)
-            const colorForArtist = (artist) => {
-                const allNames = finalMonth.ranking.map(r => r.artist);
-                const colorIdx = allNames.indexOf(artist) % RACE_COLORS.length;
-                return RACE_COLORS[colorIdx >= 0 ? colorIdx : 0];
-            };
+            const colorForArtist = (artist) => raceColorForArtist(months, artist);
 
             // Posizione di ciascun artista nel mese precedente, per calcolare di quanto è "salito"
             // o "sceso" in classifica e mostrare il badge con la freccia accanto al numero
@@ -2120,12 +2214,16 @@
             </div>
         );
 
-        const RandomTopArtistsStory = ({ artists, title, subtitle, idx, onIdxChange, onFinish, onSkipAll, skipLabel, onGoBack, canGoBack, backLabel }) => {
+        const RandomTopArtistsStory = ({ artists, title, subtitle, idx, onIdxChange, onFinish, onSkipAll, skipLabel, onGoBack, canGoBack, backLabel, active = true }) => {
             // Stessa logica della storia "artista del mese": avanzamento automatico ogni 1.75s,
             // ma qui ogni sotto-storia è uno dei Top 5 artisti mostrati in ordine casuale.
             // Sull'ultimo artista il timer si ferma e NON passa da solo alla storia successiva del Wrapped:
             // resta in attesa di un tap/swipe manuale dell'utente.
+            // "active" indica se questa storia è davvero quella a schermo in questo momento (nel
+            // formato Scroll resta montata anche quando si scorre via): se non è attiva l'avanzamento
+            // automatico si ferma, e riparte da solo appena si torna a vederla.
             useEffect(() => {
+                if (!active) return;
                 if (!artists || artists.length <= 1) return;
                 if (idx >= artists.length - 1) return;
 
@@ -2134,7 +2232,7 @@
                 }, 1750);
 
                 return () => clearInterval(interval);
-            }, [artists, idx, onIdxChange]);
+            }, [artists, idx, onIdxChange, active]);
 
             // Direzione dell'ultima transizione tra sotto-storie (avanti/indietro), per animare la card
             // dell'artista con lo stesso stile "slide" direzionale usato per le macro-storie del Wrapped:
@@ -2571,13 +2669,18 @@
                                         key={i}
                                         data-idx={i}
                                         ref={(el) => { sectionRefs.current[i] = el; }}
-                                        className={`snap-start snap-always relative w-full h-full flex items-center justify-center text-center bg-gradient-to-br ${slide.gradient} overflow-hidden`}
+                                        className={`snap-start snap-always relative w-full h-full flex items-center justify-center text-center overflow-hidden ${slide.bgOverrideColor ? '' : `bg-gradient-to-br ${slide.gradient}`}`}
                                     >
+                                        {slide.bgOverrideColor && <RaceLeaderBackdrop color={slide.bgOverrideColor} />}
                                         <div
                                             className={`wrapped-slide-content story-ambient wrapped-variant-${itemVariant} relative z-10 w-full h-full flex flex-col items-center justify-center text-center p-8 sm:p-10 overflow-hidden`}
                                         >
                                             <WrappedBgFX variant={bgVariant} />
-                                            {isRevealed && slide.content}
+                                            {isRevealed && (
+                                                (slide.isMonthly || slide.isRandomTop)
+                                                    ? React.cloneElement(slide.content, { active: i === activeIndex })
+                                                    : slide.content
+                                            )}
                                         </div>
 
                                         {/* Nel formato Scroll l'avanzamento tra le MACRO-storie resta affidato solo
@@ -3211,11 +3314,22 @@
                 setAnswered(false);
             };
 
+            // Le domande del quiz del modal cambiano ad ogni partita (nuovo quizSeed → nuove
+            // opzioni), quindi non possono essere precaricate in anticipo come quelle del Wrapped.
+            // Appena si preme "Inizia il quiz" passiamo per una breve fase 'loading' che scarica le
+            // immagini di TUTTE le opzioni della partita appena generata, così durante il gioco non
+            // ci sono più skeleton che compaiono a scatti sulle risposte. Molte di queste immagini
+            // sono già in cache (dashboard/Wrapped le hanno probabilmente già scaricate), quindi
+            // nella maggior parte dei casi questa fase dura pochissimo o è invisibile.
+            const [quizPreparing, setQuizPreparing] = useState(false);
+            const [quizLoadingLabel, setQuizLoadingLabel] = useState('');
+
             const startQuiz = () => {
                 clearAutoAdvance();
                 if (quizQuestions && quizQuestions.length > 0) {
                     setQuizSeed(s => s + 1);
-                    setQuizPhase('playing');
+                    setQuizPhase('loading');
+                    setQuizPreparing(true);
                     setQuizIndex(0);
                     setQuizScore(0);
                     setSelectedOption(null);
@@ -3225,6 +3339,59 @@
                     setQuizPhase('no_data');
                 }
             };
+
+            useEffect(() => {
+                if (!quizPreparing) return;
+
+                let cancelled = false;
+                (async () => {
+                    const jobs = [];
+                    const seen = new Set();
+                    const addJob = (artist, title, type) => {
+                        if (!artist) return;
+                        const key = `${type}-${artist}-${title || ''}`;
+                        if (seen.has(key)) return;
+                        seen.add(key);
+                        jobs.push({ artist, title, type });
+                    };
+
+                    quizQuestions.forEach(q => {
+                        if (!['artist', 'track', 'album', 'compare'].includes(q.id)) return;
+                        (q.options || []).forEach(option => {
+                            let optArtist = null;
+                            let optTitle = null;
+                            if (q.id === 'track' || q.id === 'album') {
+                                const parts = String(option).split(' -|- ');
+                                optTitle = parts[0];
+                                if (parts.length > 1) optArtist = parts[1];
+                            } else {
+                                optArtist = option;
+                            }
+                            addJob(optArtist, optTitle, q.id === 'artist' || q.id === 'compare' ? 'artist' : q.id);
+                        });
+                    });
+
+                    setQuizLoadingLabel(t.quizPreparingSubtitle);
+                    const IMAGE_LOAD_CONCURRENCY = 4;
+                    let nextIdx = 0;
+                    const worker = async () => {
+                        while (nextIdx < jobs.length) {
+                            if (cancelled) return;
+                            const job = jobs[nextIdx++];
+                            await fetchArtwork(job.artist, job.title, job.type);
+                        }
+                    };
+                    await Promise.all(
+                        Array.from({ length: Math.min(IMAGE_LOAD_CONCURRENCY, jobs.length) }, worker)
+                    );
+                    if (cancelled) return;
+
+                    setQuizPhase('playing');
+                    setQuizPreparing(false);
+                })();
+
+                return () => { cancelled = true; };
+            }, [quizPreparing, quizQuestions]);
 
             const autoAdvanceTimeoutRef = useRef(null);
 
@@ -3296,6 +3463,11 @@
             const closeQuiz = () => {
                 clearAutoAdvance();
                 setShowQuiz(false);
+                // Se il modal viene chiuso mentre le immagini della partita sono ancora in
+                // caricamento, annulla quella preparazione: altrimenti, riaprendo il quiz (che
+                // riparte sempre da 'intro'), il caricamento in sospeso potrebbe completarsi da
+                // solo e catapultare l'utente dritto in 'playing' senza che abbia premuto Inizia.
+                setQuizPreparing(false);
             };
 
             const nfWrapped = (n) => Math.round(n).toLocaleString(lang === 'it' ? 'it-IT' : 'en-US');
@@ -3384,7 +3556,7 @@
                     slides.push({
                         gradient: 'from-[#1DB954] to-emerald-700',
                         content: (
-                            <div className="flex flex-col items-center gap-5 w-full">
+                            <div className="flex flex-col items-center gap-5 w-full -mt-12">
                                 <p className="text-white text-xl font-bold -mt-1 mb-1">{t.wrappedTopGenresListTitle}</p>
                                 <div className="w-full max-w-xs flex flex-col gap-3">
                                     {genreStats.top5.map(([name], idx) => (
@@ -3573,7 +3745,7 @@
                     slides.push({
                         gradient: 'from-fuchsia-600 to-indigo-700',
                         content: (
-                            <div className="flex flex-col items-center gap-4">
+                            <div className="flex flex-col items-center gap-4 -mt-12">
                                 <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
                                 <p className="text-white/80 text-sm uppercase tracking-wider font-semibold">{t.wrappedTopAlbumLabel}</p>
                                 <EntityImageBox artist={albumArtistW} title={albumTitleW} type="album" altText={albumTitleW} boxClassName="w-36 h-36 rounded-2xl overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center animate-float-cover" imgClassName="w-full h-full" />
@@ -3673,6 +3845,9 @@
                     slides.push({
                         gradient: 'from-indigo-600 to-blue-800',
                         isMonthly: true,
+                        // Colore di sfondo dinamico: quello del primo classificato del mese corrente.
+                        // Resta invariato finché il leader non cambia da un mese all'altro.
+                        bgOverrideColor: raceLeaderColor(stats.monthlyArtistRace, monthlyStoryIdx),
                         // Usati dal formato Scroll per far funzionare il tap sinistra/destra tra le
                         // sotto-storie (un mese alla volta) anche lì, esattamente come nel formato Storie.
                         subStoryIdx: monthlyStoryIdx,
@@ -4033,6 +4208,7 @@
                     key: `out-${wrappedIndex}-${Date.now()}`,
                     content: slide.content,
                     gradient: slide.gradient,
+                    bgOverrideColor: slide.bgOverrideColor,
                 });
                 outgoingWrappedTimeoutRef.current = setTimeout(() => {
                     setOutgoingWrappedSlide(null);
@@ -4334,7 +4510,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.0</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.1</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -4445,7 +4621,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.0</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.1</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -4575,7 +4751,7 @@
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8">
                                         <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-5 sm:p-8 backdrop-blur-sm">
                                             <div className="flex items-center gap-3 mb-5 sm:mb-6">
                                                 <IconMic className="text-purple-400 w-5 h-5 sm:w-6 sm:h-6" />
@@ -4635,6 +4811,38 @@
                                                 }) : <p className="text-gray-400 text-center py-10 text-sm">{t.notEnoughTracks}</p>}
                                             </div>
                                         </div>
+
+                                        <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-5 sm:p-8 backdrop-blur-sm">
+                                            <div className="flex items-center gap-3 mb-5 sm:mb-6">
+                                                <IconDisc className="text-amber-400 w-5 h-5 sm:w-6 sm:h-6" />
+                                                <h2 className="font-display text-xl sm:text-2xl font-bold">{t.topAlbums}</h2>
+                                            </div>
+                                            <div className="space-y-3">
+                                                {albumStats.topAlbum.length > 0 ? albumStats.topAlbum.map((album, index) => {
+                                                    const [titolo, artista] = album[0].split(' -|- ');
+                                                    const maxCount = albumStats.topAlbum[0][1];
+                                                    const width = `${(album[1] / maxCount) * 100}%`;
+                                                    return (
+                                                        <div key={index} className="relative group overflow-hidden rounded-xl bg-white/[0.02] hover:bg-white/[0.03] transition-colors border border-transparent hover:border-white/5">
+                                                            <div className="flex justify-between items-center z-10 relative px-3 sm:px-4 py-2.5 sm:py-3 gap-3">
+                                                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                    <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0 text-sm">{index + 1}</span>
+                                                                    <EntityImage artist={artista} title={titolo} type="album" altText={titolo} className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex-shrink-0 border border-white/10" />
+                                                                    <div className="truncate min-w-0 flex-1">
+                                                                        <p className="font-bold truncate text-gray-100 text-sm sm:text-base">{titolo}</p>
+                                                                        <p className="text-xs text-gray-400 truncate mt-0.5">{artista}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <span className="text-amber-300 font-mono text-xs sm:text-sm whitespace-nowrap flex-shrink-0">{album[1]} <span className="hidden sm:inline">{t.listens}</span></span>
+                                                            </div>
+                                                            <div className="absolute top-0 left-0 h-full w-full pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity">
+                                                                <div className="h-full bg-amber-500 transition-all duration-1000" style={{ width }}></div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                }) : <p className="text-gray-400 text-center py-10 text-sm">{albumStats.loading ? t.wrappedAlbumsCountLoading : t.noAlbumData}</p>}
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-500/20 rounded-3xl p-5 sm:p-8">
@@ -4692,7 +4900,7 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.0</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.1</span></p>
                             </footer>
                         </div>
                     </div>
@@ -4836,17 +5044,21 @@
                                     <div
                                         key={outgoingWrappedSlide.key}
                                         aria-hidden="true"
-                                        className={`wrapped-slide-outgoing absolute inset-0 flex flex-col items-center justify-center text-center p-8 sm:p-10 bg-gradient-to-br ${outgoingWrappedSlide.gradient} animate-story-fadeout overflow-hidden pointer-events-none`}
+                                        className={`wrapped-slide-outgoing absolute inset-0 flex flex-col items-center justify-center text-center p-8 sm:p-10 overflow-hidden pointer-events-none animate-story-fadeout ${outgoingWrappedSlide.bgOverrideColor ? '' : `bg-gradient-to-br ${outgoingWrappedSlide.gradient}`}`}
+                                        style={outgoingWrappedSlide.bgOverrideColor ? { background: raceLeaderBg(outgoingWrappedSlide.bgOverrideColor) } : undefined}
                                     >
-                                        {outgoingWrappedSlide.content}
+                                        {(outgoingWrappedSlide.isMonthly || outgoingWrappedSlide.isRandomTop)
+                                            ? React.cloneElement(outgoingWrappedSlide.content, { active: false })
+                                            : outgoingWrappedSlide.content}
                                     </div>
                                 )}
 
                                 {/* Contenuto della slide corrente */}
                                 <div
                                     key={wrappedIndex}
-                                    className={`wrapped-slide-content story-ambient wrapped-variant-${wrappedItemVariant} absolute inset-0 flex flex-col items-center justify-center text-center p-8 sm:p-10 bg-gradient-to-br ${wrappedSlides[wrappedIndex].gradient} ${wrappedDirection >= 0 ? 'animate-story-fwd' : 'animate-story-back'} overflow-hidden`}
+                                    className={`wrapped-slide-content story-ambient wrapped-variant-${wrappedItemVariant} absolute inset-0 flex flex-col items-center justify-center text-center p-8 sm:p-10 overflow-hidden ${wrappedSlides[wrappedIndex].bgOverrideColor ? '' : `bg-gradient-to-br ${wrappedSlides[wrappedIndex].gradient}`} ${wrappedDirection >= 0 ? 'animate-story-fwd' : 'animate-story-back'}`}
                                 >
+                                    {wrappedSlides[wrappedIndex].bgOverrideColor && <RaceLeaderBackdrop color={wrappedSlides[wrappedIndex].bgOverrideColor} />}
                                     <WrappedBgFX variant={wrappedBgVariant} />
                                     {wrappedSlides[wrappedIndex].content}
                                 </div>
@@ -4887,6 +5099,23 @@
                                         <button onClick={startQuiz} className="w-full sm:w-auto px-10 py-4 bg-white text-black active:scale-95 rounded-full font-bold text-lg transition-transform transform-gpu">
                                             {t.quizStart}
                                         </button>
+                                    </div>
+                                )}
+
+                                {quizPhase === 'loading' && (
+                                    <div className="flex flex-col items-center justify-center py-16 animate-fadein">
+                                        <div className="relative flex items-center justify-center mb-6">
+                                            <div className="loader-ring"></div>
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <div className="music-loader">
+                                                    <span></span><span></span><span></span><span></span><span></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p className="font-display font-bold text-lg sm:text-xl text-white mb-2 text-center">
+                                            {t.quizPreparingTitle}<span className="loader-dot">.</span><span className="loader-dot">.</span><span className="loader-dot">.</span>
+                                        </p>
+                                        <p className="text-gray-400 text-sm text-center max-w-xs">{quizLoadingLabel || t.quizPreparingSubtitle}</p>
                                     </div>
                                 )}
 
