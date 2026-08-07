@@ -13,7 +13,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800;900&family=Inter:wght@400;500;600;700&family=Unbounded:wght@500;700;800;900&display=swap" rel="stylesheet">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -120,6 +120,32 @@
         .animate-story-back {
             animation: storySlideInBack 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
             will-change: opacity, transform, filter;
+        }
+        /* Uscita della slide precedente: dissolvenza morbida (invece di sparire di colpo),
+           usata per l'istantanea "wrapped-slide-outgoing" mentre la storia nuova entra sopra. */
+        @keyframes storySlideOutFade {
+            0% { opacity: 1; filter: blur(0); }
+            100% { opacity: 0; filter: blur(3px); }
+        }
+        .animate-story-fadeout {
+            animation: storySlideOutFade 0.4s ease-out both;
+            will-change: opacity, filter;
+        }
+        /* Stessa correzione di stacking della slide corrente: il layer decorativo resta dietro
+           al contenuto anche nell'istantanea in dissolvenza. */
+        .wrapped-slide-outgoing > .wrapped-bgfx-layer {
+            z-index: 0;
+        }
+        .wrapped-slide-outgoing > div:not(.wrapped-bgfx-layer) {
+            position: relative;
+            z-index: 1;
+        }
+        /* Evita che gli elementi della storia uscente (numeri, icone...) rigiochino la loro
+           animazione di ingresso mentre l'intera slide sta sfumando via. */
+        .wrapped-slide-outgoing > div:not(.wrapped-bgfx-layer) > * {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
         }
 
         /* Ingresso "a cascata" del ritratto tondo dell'artista: rimbalza leggermente in scala,
@@ -331,7 +357,73 @@
         animation: rankPop 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
+        /* ============================================================
+           MONTHLY TOP RACE — bagliore del leader, badge di scalata,
+           medaglie argento/bronzo e scintille attorno alla foto in testa
+           ============================================================ */
+
+        /* Pillola luminosa dietro alla riga del leader del mese: respira lentamente in oro */
+        @keyframes championRowGlow {
+            0%, 100% { box-shadow: 0 0 0 1px rgba(250,204,21,0.0), 0 8px 30px rgba(250,204,21,0.0); background-color: rgba(250,204,21,0.0); }
+            50% { box-shadow: 0 0 0 1px rgba(250,204,21,0.35), 0 8px 30px rgba(250,204,21,0.22); background-color: rgba(250,204,21,0.07); }
+        }
+        .race-row-champion {
+            border-radius: 20px;
+            animation: championRowGlow 2.6s ease-in-out infinite;
+        }
+
+        /* Anello dorato pulsante dietro la foto del primo classificato, oltre al bordo statico */
+        @keyframes championRingPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(250,204,21,0.55); }
+            50% { box-shadow: 0 0 0 6px rgba(250,204,21,0); }
+        }
+        .race-avatar-champion { animation: championRingPulse 2s ease-out infinite; }
+
+        /* Scintille che luccicano attorno alla foto del leader, sfasate tra loro */
+        @keyframes sparkleTwinkle {
+            0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+            50% { opacity: 1; transform: scale(1) rotate(25deg); }
+        }
+        .race-sparkle {
+            position: absolute; color: #fde047; pointer-events: none;
+            filter: drop-shadow(0 0 4px rgba(250,204,21,0.85));
+            animation: sparkleTwinkle 1.8s ease-in-out infinite;
+        }
+
+        /* Badge tondo che indica la variazione di posizione rispetto al mese precedente:
+           entra con un piccolo "pop" ogni volta che cambia mese */
+        @keyframes rankBadgePop {
+            0% { opacity: 0; transform: scale(0.4) translateY(3px); }
+            60% { opacity: 1; transform: scale(1.15) translateY(0); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .rank-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 9999px; flex-shrink: 0;
+            animation: rankBadgePop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+        .rank-badge-up { background: rgba(34,197,94,0.22); color: #4ade80; }
+        .rank-badge-down { background: rgba(244,63,94,0.22); color: #fb7185; }
+        .rank-badge-same { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.55); }
+        .rank-badge-new { background: rgba(168,85,247,0.28); color: #d8b4fe; }
+
+        /* Sfondo a medaglia dietro al numero di posizione: oro/argento/bronzo per i primi tre */
+        .rank-medal-1 { background: linear-gradient(145deg, #fde68a, #f59e0b); color: #422006 !important; }
+        .rank-medal-2 { background: linear-gradient(145deg, #e5e7eb, #9ca3af); color: #1f2937 !important; }
+        .rank-medal-3 { background: linear-gradient(145deg, #fdba74, #b45309); color: #2b1503 !important; }
+
+        /* Piccolo "sobbalzo" quando una riga cambia posizione rispetto al mese precedente */
+        @keyframes raceRowShift {
+            0% { transform: scale(1); }
+            35% { transform: scale(1.035); }
+            100% { transform: scale(1); }
+        }
+        .animate-race-row-shift { animation: raceRowShift 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
         .font-display { font-family: 'Outfit', 'Inter', system-ui, sans-serif; }
+        /* Font usato SOLO dentro le storie del Wrapped: molto vicino allo stile bold/arrotondato
+           tipografico usato da Spotify nel proprio Wrapped (numeri enormi, tracking stretto). */
+        .font-wrapped { font-family: 'Unbounded', 'Outfit', 'Inter', system-ui, sans-serif; letter-spacing: -0.02em; }
         .animate-spin-slow { animation: spin 2.2s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
@@ -359,8 +451,250 @@
         }
         .animate-badge-pop { animation: badgePop 0.45s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 
+        /* ============================================================
+           WRAPPED — SFONDI VIVI stile Spotify Wrapped
+           Un layer di effetti dietro ogni storia: mesh di luce che si
+           muove di continuo, un raggio di luce che spazza in diagonale,
+           e 4 "varianti" decorative (orbs / particelle / anelli / onde)
+           che ruotano storia dopo storia, così ogni slide sembra diversa.
+           Tutto è puramente decorativo (aria-hidden, pointer-events:none)
+           e isolato dalla cascata di ingresso del contenuto reale.
+           ============================================================ */
+
+        /* Il layer decorativo (mesh/grana/raggio/deco) non deve seguire la cascata generica di
+           ingresso testo (che lo renderebbe position:relative e opacity:0 finché non tocca il turno):
+           qui lo forziamo sempre a schermo intero e visibile, lasciando poi ad ognuno la propria
+           animazione continua definita più sotto. */
+        .wrapped-slide-content > .wrapped-bgfx-layer > * {
+            opacity: 1 !important;
+            transform: none !important;
+            position: absolute !important;
+        }
+        /* Il layer decorativo è posizionato in absolute ma senza z-index: per le regole di stacking
+           CSS un discendente positioned "sale" comunque sopra i fratelli non-positioned, quindi senza
+           questa regola i pallini/cerchi/onde finiscono sopra il testo della storia. Diamo quindi uno
+           z-index esplicito più basso al layer decorativo e uno più alto al blocco di contenuto reale,
+           così il testo resta sempre sopra le forme animate. */
+        .wrapped-slide-content > .wrapped-bgfx-layer {
+            z-index: 0;
+        }
+        .wrapped-slide-content > div:not(.wrapped-bgfx-layer) {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* "Liquid glass": i riquadri semi-trasparenti dentro le storie (righe delle classifiche,
+           opzioni del mini-quiz, cornici delle immagini) ora hanno lo sfondo sfocato invece che
+           lasciar intravedere nitidi i pallini/le forme decorative dietro — più leggibili e con
+           un effetto vetro smerigliato invece che semplice trasparenza piatta. */
+        .wrapped-slide-content [class*="bg-white/10"],
+        .wrapped-slide-outgoing [class*="bg-white/10"] {
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            background-color: rgba(255, 255, 255, 0.14) !important;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+        }
+
+        /* (Il raggio di luce diagonale "sweep" è stato rimosso su richiesta: non piaceva) */
+
+        /* --- Variante "circles": cerchi pieni e netti (bordo + ombra), che rimbalzano ruotando
+           su se stessi, come le sfere rosse che rotolano nel Wrapped di Spotify --- */
+        .wrapped-circle {
+            position: absolute; border-radius: 9999px;
+            background: rgba(255,255,255,0.16);
+            border: 2px solid rgba(255,255,255,0.55);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+            opacity: 1 !important;
+        }
+        .wrapped-circle-1 { width: 84px; height: 84px; top: 10%; left: -8%; animation: wrappedCircleRollA 6s ease-in-out infinite !important; }
+        .wrapped-circle-2 { width: 46px; height: 46px; top: 68%; right: 8%; background: rgba(255,255,255,0.3); border-color: transparent; animation: wrappedCircleRollB 5.2s ease-in-out infinite !important; animation-delay: -1.4s !important; }
+        .wrapped-circle-3 { width: 130px; height: 130px; bottom: -10%; right: -12%; animation: wrappedCircleRollC 8s ease-in-out infinite !important; animation-delay: -3s !important; }
+        .wrapped-circle-4 { width: 30px; height: 30px; top: 30%; right: 20%; background: rgba(255,255,255,0.3); border-color: transparent; animation: wrappedCircleRollB 4.4s ease-in-out infinite !important; animation-delay: -0.6s !important; }
+        .wrapped-circle-5 { width: 58px; height: 58px; bottom: 18%; left: 6%; animation: wrappedCircleRollA 7s ease-in-out infinite !important; animation-delay: -2.4s !important; }
+        @keyframes wrappedCircleRollA { 0%, 100% { transform: translate(0,0) rotate(0deg); } 50% { transform: translate(26px, -34px) rotate(160deg); } }
+        @keyframes wrappedCircleRollB { 0%, 100% { transform: translate(0,0) rotate(0deg) scale(1); } 50% { transform: translate(-22px, 20px) rotate(-140deg) scale(1.15); } }
+        @keyframes wrappedCircleRollC { 0%, 100% { transform: translate(0,0) rotate(0deg); } 50% { transform: translate(-30px, -22px) rotate(120deg); } }
+
+        /* --- Variante "blob": una forma morbida e organica che ruota e cambia leggermente
+           forma nel tempo, come le macchie astratte animate dei visual Spotify. Tenuta molto
+           trasparente e spostata verso gli angoli, per non passare mai sopra al testo centrale
+           della storia (icona/numero/titolo sono sempre al centro). --- */
+        .wrapped-blob {
+            position: absolute; top: 22%; left: 8%; width: 240px; height: 240px; margin: -120px 0 0 -120px;
+            background: rgba(255,255,255,0.08);
+            opacity: 1 !important;
+            animation: wrappedBlobMorph 10s ease-in-out infinite !important;
+        }
+        .wrapped-blob-2 {
+            position: absolute; top: 85%; left: 88%; width: 170px; height: 170px; margin: -85px 0 0 -85px;
+            background: rgba(255,255,255,0.14);
+            opacity: 1 !important;
+            animation: wrappedBlobMorphRev 8s ease-in-out infinite !important;
+        }
+        @keyframes wrappedBlobMorph {
+            0%, 100% { border-radius: 42% 58% 65% 35% / 45% 40% 60% 55%; transform: rotate(0deg) scale(1); }
+            33% { border-radius: 65% 35% 40% 60% / 55% 65% 35% 45%; transform: rotate(60deg) scale(1.08); }
+            66% { border-radius: 35% 65% 55% 45% / 40% 50% 50% 60%; transform: rotate(-45deg) scale(0.96); }
+        }
+        @keyframes wrappedBlobMorphRev {
+            0%, 100% { border-radius: 55% 45% 40% 60% / 50% 55% 45% 50%; transform: rotate(0deg) scale(1); }
+            50% { border-radius: 40% 60% 60% 40% / 55% 40% 60% 45%; transform: rotate(-70deg) scale(1.12); }
+        }
+
+        /* --- Variante "scura": usata solo sulla storia di riepilogo finale, che ha uno sfondo
+           chiarissimo (quasi bianco) — le forme bianche di default sarebbero invisibili sopra,
+           quindi qui si passa a forme scure molto leggere, sempre ben visibili ma discrete. --- */
+        .wrapped-bgfx-dark .wrapped-circle { border-color: rgba(0,0,0,0.18); background: rgba(0,0,0,0.05); box-shadow: 0 10px 24px rgba(0,0,0,0.06); }
+        .wrapped-bgfx-dark .wrapped-circle-2, .wrapped-bgfx-dark .wrapped-circle-4 { background: rgba(0,0,0,0.16); }
+        .wrapped-bgfx-dark .wrapped-blob { background: rgba(0,0,0,0.05); }
+        .wrapped-bgfx-dark .wrapped-blob-2 { background: rgba(0,0,0,0.09); }
+        .wrapped-bgfx-dark .wrapped-particle { background: rgba(0,0,0,0.32); }
+        .wrapped-bgfx-dark .wrapped-ring { border-color: rgba(0,0,0,0.16); }
+        .wrapped-bgfx-dark .wrapped-wave-bar { background: rgba(0,0,0,0.22); }
+        .wrapped-bgfx-dark .wrapped-orb-1, .wrapped-bgfx-dark .wrapped-orb-2, .wrapped-bgfx-dark .wrapped-orb-3, .wrapped-bgfx-dark .wrapped-orb-4 {
+            background: radial-gradient(circle, rgba(0,0,0,0.12), transparent 70%);
+        }
+
+        /* --- Variante "orbs": sfere di luce più grandi e numerose che fluttuano --- */
+        .wrapped-orb {
+            position: absolute; border-radius: 9999px; filter: blur(16px);
+            opacity: 1 !important;
+        }
+        .wrapped-orb-1 { width: 170px; height: 170px; top: 6%; left: -18%; background: radial-gradient(circle, rgba(255,255,255,0.55), transparent 70%); animation: wrappedOrbFloatA 7s ease-in-out infinite !important; }
+        .wrapped-orb-2 { width: 130px; height: 130px; bottom: 8%; right: -12%; background: radial-gradient(circle, rgba(255,255,255,0.4), transparent 70%); animation: wrappedOrbFloatB 8.5s ease-in-out infinite !important; animation-delay: -2s !important; }
+        .wrapped-orb-3 { width: 95px; height: 95px; top: 48%; right: 12%; background: radial-gradient(circle, rgba(255,255,255,0.32), transparent 70%); animation: wrappedOrbFloatC 6.2s ease-in-out infinite !important; animation-delay: -1s !important; }
+        .wrapped-orb-4 { width: 60px; height: 60px; top: 20%; right: 30%; background: radial-gradient(circle, rgba(255,255,255,0.4), transparent 70%); animation: wrappedOrbFloatC 5.4s ease-in-out infinite !important; animation-delay: -3s !important; }
+        @keyframes wrappedOrbFloatA { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px, 30px) scale(1.2); } }
+        @keyframes wrappedOrbFloatB { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-38px, -26px) scale(1.18); } }
+        @keyframes wrappedOrbFloatC { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(22px, -28px) scale(1.12); } }
+
+        /* --- Variante "particelle": coriandoli pieni e netti che salgono dal basso --- */
+        .wrapped-particle {
+            position: absolute; bottom: -8%; border-radius: 9999px;
+            background: rgba(255,255,255,0.92);
+            /* Niente "opacity: 1 !important" qui: una dichiarazione !important vince sempre sulla
+               keyframe per quella proprietà, quindi bloccherebbe l'opacità a 1 per tutto il ciclo
+               e il pallino non si dissolverebbe mai in cima — al riavvio del loop salterebbe di
+               scatto giù in fondo (fuori schermo), sembrando "despawnare" invece di sparire con
+               una dissolvenza. Lasciamo che sia la keyframe wrappedParticleRise a controllarla.  */
+            animation-name: wrappedParticleRise !important;
+            animation-timing-function: ease-in !important;
+            animation-iteration-count: infinite !important;
+        }
+        @keyframes wrappedParticleRise {
+            0% { transform: translate(0, 0) scale(0.5) rotate(0deg); opacity: 0; }
+            6% { opacity: 1; }
+            88% { opacity: 0.9; }
+            100% { transform: translate(var(--particle-x, 24px), -360px) scale(1) rotate(180deg); opacity: 0; }
+        }
+
+        /* --- Variante "anelli": cerchi concentrici che ruotano lentamente in senso opposto --- */
+        .wrapped-ring { position: absolute; top: 50%; left: 50%; border-radius: 9999px; border: 1.5px solid rgba(255,255,255,0.32); opacity: 1 !important; }
+        .wrapped-ring-1 { width: 210px; height: 210px; margin: -105px 0 0 -105px; animation: wrappedRingSpin 15s linear infinite !important; }
+        .wrapped-ring-2 { width: 300px; height: 300px; margin: -150px 0 0 -150px; border-color: rgba(255,255,255,0.2); animation: wrappedRingSpinRev 20s linear infinite !important; }
+        .wrapped-ring-3 { width: 390px; height: 390px; margin: -195px 0 0 -195px; border-color: rgba(255,255,255,0.12); border-style: dashed; animation: wrappedRingSpin 28s linear infinite !important; }
+        @keyframes wrappedRingSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes wrappedRingSpinRev { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+
+        /* --- Variante "onde": equalizzatore silenzioso che pulsa sullo sfondo, in fondo alla storia --- */
+        .wrapped-wave-bar {
+            display: inline-block; width: 5px; border-radius: 4px;
+            background: rgba(255,255,255,0.5);
+            height: 18%;
+            opacity: 1 !important;
+            animation-name: wrappedWaveBar !important;
+            animation-timing-function: ease-in-out !important;
+            animation-iteration-count: infinite !important;
+        }
+        @keyframes wrappedWaveBar { 0%, 100% { height: 14%; } 50% { height: 88%; } }
+
+        /* Varianti di ingresso per gli elementi di ogni storia: cambiano da una storia all'altra
+           così l'occhio percepisce sempre un modo diverso in cui "le cose appaiono", non sempre
+           lo stesso fade-up. Specificità (2 classi + tipo) maggiore della cascata di base, quindi
+           sovrascrive sempre l'animation-name senza toccare i delay già calcolati. */
+        @keyframes wrappedItemInDrop {
+            0% { opacity: 0; transform: translateY(-34px) scale(0.92); }
+            60% { opacity: 1; transform: translateY(6px) scale(1.03); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes wrappedItemInSlide {
+            0% { opacity: 0; transform: translateX(-30px) rotate(-2deg); }
+            100% { opacity: 1; transform: translateX(0) rotate(0deg); }
+        }
+        @keyframes wrappedItemInSpin {
+            0% { opacity: 0; transform: rotate(-14deg) scale(0.8); }
+            65% { opacity: 1; transform: rotate(3deg) scale(1.06); }
+            100% { opacity: 1; transform: rotate(0deg) scale(1); }
+        }
+        @keyframes wrappedItemInZoom {
+            0% { opacity: 0; transform: scale(1.35); filter: blur(4px); }
+            100% { opacity: 1; transform: scale(1); filter: blur(0); }
+        }
+        .wrapped-slide-content.wrapped-variant-b > div > * { animation-name: wrappedItemInDrop; }
+        .wrapped-slide-content.wrapped-variant-c > div > * { animation-name: wrappedItemInSlide; }
+        .wrapped-slide-content.wrapped-variant-d > div > * { animation-name: wrappedItemInSpin; }
+        .wrapped-slide-content.wrapped-variant-e > div > * { animation-name: wrappedItemInZoom; }
+
+        /* Bagliore pulsante extra sui numeri "hero" già animati da .animate-number-pop:
+           dopo il pop iniziale, il testo resta con un respiro di luce continuo */
+        @keyframes wrappedNumberGlowLoop {
+            0%, 100% { text-shadow: 0 0 18px rgba(255,255,255,0.25); }
+            50% { text-shadow: 0 0 34px rgba(255,255,255,0.55); }
+        }
+        /* Galleggiamento leggerissimo (2-3px) aggiunto ai numeri "hero" dopo il pop e il glow:
+           parte solo quando l'entrata è conclusa, così non interferisce col rimbalzo iniziale */
+        @keyframes wrappedNumberFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-3px); }
+        }
+        .animate-number-pop {
+            animation: numberPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both, wrappedNumberGlowLoop 2.4s ease-in-out 0.7s infinite, wrappedNumberFloat 5s ease-in-out 0.7s infinite !important;
+            animation-delay: 0.15s, 0.85s, 0.85s !important;
+        }
+
         @keyframes floatY { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
         .animate-float { animation: floatY 4s ease-in-out infinite; }
+
+        /* ============================================================
+           VARIANTI DI GALLEGGIAMENTO PER LE STORIE DEL WRAPPED
+           Ampiezze/durate leggermente diverse tra loro così più elementi
+           nella stessa slide non si muovono tutti in modo identico e
+           sincronizzato (che risulterebbe innaturale/meccanico).
+           Applicate solo a elementi fermi (icone, copertine, card),
+           MAI durante l'animazione di ingresso della slide.
+           ============================================================ */
+
+        /* Icona in cima alla slide (orologio, tag, nota, trofeo...) */
+        @keyframes wrappedIconFloat {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-5px) rotate(-2deg); }
+        }
+        .animate-float-icon {
+            animation: wrappedIconFloat 3.8s ease-in-out infinite;
+            will-change: transform;
+        }
+
+        /* Copertina/foto principale (top brano, top artista, top album) */
+        @keyframes wrappedCoverFloat {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-7px) rotate(1deg); }
+        }
+        .animate-float-cover {
+            animation: wrappedCoverFloat 5.2s ease-in-out infinite;
+            will-change: transform;
+        }
+
+        /* Card nelle liste Top 5 (generi/brani/album/artisti): stesso movimento,
+           ma il delay viene impostato inline in base alla posizione nella lista
+           per ottenere un effetto "onda" invece che un dondolio sincronizzato */
+        @keyframes wrappedCardFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-4px); }
+        }
+        .animate-float-card {
+            animation: wrappedCardFloat 3.4s ease-in-out infinite;
+            will-change: transform;
+        }
 
         /* Coroncina animata sulla foto del primo classificato nella corsa: fluttua leggermente e brilla */
         @keyframes crownFloat {
@@ -411,6 +745,11 @@
         const IconX = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
         const IconSpotify = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.376 0 0 5.376 0 12s5.376 12 12 12 12-5.376 12-12S18.624 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.48.66.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141 4.38-1.32 9.84-.66 13.44 1.56.42.24.54.84.301 1.261zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.18-1.38-.72-.18-.6.18-1.2.72-1.38 4.26-1.26 11.28-1.02 15.72 1.62.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>;
         const IconYTMusic = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.5a10.5 10.5 0 1 0 0 21 10.5 10.5 0 0 0 0-21zm0 2a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17zm-2.25 4.5v8l7-4-7-4z"/></svg>;
+        // Piccole icone per i badge di scalata in classifica nella storia "top del mese"
+        const IconRankUp = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg>;
+        const IconRankDown = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg>;
+        const IconRankSame = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path></svg>;
+        const IconSparkle = ({ className, style }) => <svg className={className} style={style} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c.6 4.8 2.2 6.4 7 7-4.8.6-6.4 2.2-7 7-.6-4.8-2.2-6.4-7-7 4.8-.6 6.4-2.2 7-7Z"></path></svg>;
 
         const Logo = ({ className }) => (
             <svg className={className} viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
@@ -529,6 +868,7 @@
                 wrappedMonthlyArtistsSub: 'Guarda i tuoi artisti più ascoltati ogni mese',
                 wrappedMonthlySkip: 'Salta',
                 wrappedMonthlyBack: 'Indietro',
+                wrappedMonthlyNew: 'NUOVO',
                 wrappedMonthlyPlaysLabel: (n) => `${n} ascolti questo mese`,
                 qArtistTitle: 'Qual è il tuo artista più ascoltato?',
                 qTrackTitle: 'Qual è il tuo brano più ascoltato?',
@@ -547,6 +887,10 @@
                 wrappedTapHint: 'Tocca per iniziare →',
                 wrappedPreparingTitle: 'Sto preparando il tuo Wrapped',
                 wrappedPreparingSubtitle: 'Sto raccogliendo foto, generi e album...',
+                wrappedPreparingStats: 'Sto calcolando generi e album...',
+                wrappedPreparingImageCategories: { track: 'le copertine dei brani', album: 'le copertine degli album', artist: 'le foto degli artisti' },
+                wrappedPreparingImages: (category, done, total) => total > 0 ? `Sto caricando ${category}... (${done}/${total})` : 'Sto caricando le immagini...',
+                wrappedPreparingArtistPhoto: 'Sto scaricando la foto del tuo artista principale...',
                 wrappedStreamsTitle: 'Streaming totali',
                 wrappedStreamsSub: 'volte hai premuto play quest\'anno',
                 wrappedMinutesTitle: 'Minuti ascoltati',
@@ -693,6 +1037,7 @@
                 wrappedMonthlyArtistsSub: 'See your most-listened-to artists each month',
                 wrappedMonthlySkip: 'Skip',
                 wrappedMonthlyBack: 'Back',
+                wrappedMonthlyNew: 'NEW',
                 wrappedMonthlyPlaysLabel: (n) => `${n} plays this month`,
                 qArtistTitle: 'Who is your most listened artist?',
                 qTrackTitle: 'What is your most played track?',
@@ -711,6 +1056,10 @@
                 wrappedTapHint: 'Tap to start →',
                 wrappedPreparingTitle: 'Preparing your Wrapped',
                 wrappedPreparingSubtitle: 'Gathering photos, genres and albums...',
+                wrappedPreparingStats: 'Crunching genres and albums...',
+                wrappedPreparingImageCategories: { track: 'track artwork', album: 'album artwork', artist: 'artist photos' },
+                wrappedPreparingImages: (category, done, total) => total > 0 ? `Loading ${category}... (${done}/${total})` : 'Loading images...',
+                wrappedPreparingArtistPhoto: "Downloading your top artist's photo...",
                 wrappedStreamsTitle: 'Total streams',
                 wrappedStreamsSub: 'times you hit play this year',
                 wrappedMinutesTitle: 'Minutes listened',
@@ -1423,7 +1772,7 @@
             return <span className={className} style={style}>{display.toLocaleString('it-IT')}</span>;
         };
 
-        const MonthlyArtistRaceStory = ({ months, title, subtitle, idx, onIdxChange, onFinish, onSkipAll, skipLabel, onGoBack, canGoBack, backLabel }) => {
+        const MonthlyArtistRaceStory = ({ months, title, subtitle, idx, onIdxChange, onFinish, onSkipAll, skipLabel, onGoBack, canGoBack, backLabel, newLabel }) => {
             // Timer per avanzare automaticamente ogni 1.75 secondi tra i mesi.
             // Sull'ultimo mese il timer si ferma e NON passa da solo alla storia successiva del Wrapped:
             // resta in attesa di un tap/swipe manuale dell'utente.
@@ -1469,6 +1818,15 @@
                 return RACE_COLORS[colorIdx >= 0 ? colorIdx : 0];
             };
 
+            // Posizione di ciascun artista nel mese precedente, per calcolare di quanto è "salito"
+            // o "sceso" in classifica e mostrare il badge con la freccia accanto al numero
+            const prevMonth = idx > 0 ? months[idx - 1] : null;
+            const prevRankOf = (artist) => {
+                if (!prevMonth) return null;
+                const i = prevMonth.ranking.findIndex(r => r.artist === artist);
+                return i === -1 ? null : i;
+            };
+
             const ROW_HEIGHT = 92;
             const BAR_MAX_WIDTH = 128;
             // Scala dimensionale in base alla posizione: il primo è il più grande, poi via via un po' più piccoli
@@ -1511,8 +1869,9 @@
                         <div className="w-full flex justify-center">
                             <div
                                 key={`label-${current.key || idx}`}
-                                className="animate-badge-pop inline-flex px-6 py-2 rounded-full border-2 border-white/80 font-black text-base text-white uppercase tracking-wide text-center"
+                                className="animate-badge-pop inline-flex items-center gap-2 px-6 py-2 rounded-full border-2 border-white/80 font-black text-base text-white uppercase tracking-wide text-center"
                             >
+                                <IconCalendar className="w-4 h-4 animate-float-icon opacity-80" />
                                 {current.fullLabel}
                             </div>
                         </div>
@@ -1534,35 +1893,74 @@
                             const scale = scaleForRank(rank);
                             const avatarSize = Math.round(54 * scale);
                             const barHeight = Math.round(17 * scale);
+                            const isChampion = rank === 0;
+                            const medalClass = rank === 0 ? 'rank-medal-1' : rank === 1 ? 'rank-medal-2' : rank === 2 ? 'rank-medal-3' : '';
+
+                            // Confronto con la posizione del mese precedente: determina il badge con la
+                            // freccia (salita/discesa/invariato) o l'etichetta "NEW" per un ingresso in classifica
+                            const prevRank = prevRankOf(r.artist);
+                            let rankBadge = null;
+                            if (prevMonth) {
+                                if (prevRank === null) {
+                                    rankBadge = { cls: 'rank-badge-new', icon: null, label: newLabel || 'NEW' };
+                                } else if (prevRank > rank) {
+                                    rankBadge = { cls: 'rank-badge-up', icon: <IconRankUp className="w-2 h-2" />, label: String(prevRank - rank) };
+                                } else if (prevRank < rank) {
+                                    rankBadge = { cls: 'rank-badge-down', icon: <IconRankDown className="w-2 h-2" />, label: String(rank - prevRank) };
+                                } else {
+                                    rankBadge = { cls: 'rank-badge-same', icon: <IconRankSame className="w-2 h-2" />, label: null };
+                                }
+                            }
+                            const hasShifted = prevMonth && prevRank !== null && prevRank !== rank;
+
                             return (
                                 <div
                                     key={r.artist}
-                                    className="absolute left-0 w-full flex items-center gap-2"
+                                    className={`absolute left-0 w-full flex items-center gap-2 ${isChampion ? 'race-row-champion py-1' : ''} ${hasShifted ? 'animate-race-row-shift' : ''}`}
                                     style={{
                                         top: rank * ROW_HEIGHT,
                                         height: ROW_HEIGHT - 10,
                                         transition: 'top 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
                                     }}
                                 >
-                                    {/* Numero di posizione */}
-                                    <span
-                                        className="text-white/50 font-black flex-shrink-0 text-center"
-                                        style={{ width: 22, fontSize: 16 * scale }}
-                                    >
-                                        {rank + 1}
-                                    </span>
+                                    {/* Numero di posizione, con sfondo a medaglia per il podio (oro/argento/bronzo)
+                                        e badge di scalata rispetto al mese precedente subito sotto */}
+                                    <div className="flex flex-col items-center flex-shrink-0" style={{ width: 24 }}>
+                                        <span
+                                            className={`font-black flex items-center justify-center rounded-full ${medalClass || 'text-white/50'}`}
+                                            style={{ width: 20, height: 20, fontSize: 12 * Math.max(scale, 0.85) }}
+                                        >
+                                            {rank + 1}
+                                        </span>
+                                        {rankBadge && (
+                                            <span
+                                                key={`badge-${current.key || idx}-${r.artist}`}
+                                                className={`rank-badge mt-1 gap-0.5 px-1 font-black ${rankBadge.cls}`}
+                                                style={{ fontSize: 8.5, height: 14, minWidth: rankBadge.label ? 17 : 14 }}
+                                            >
+                                                {rankBadge.icon}
+                                                {rankBadge.label && <span>{rankBadge.label}</span>}
+                                            </span>
+                                        )}
+                                    </div>
 
                                     {/* Foto tonda dell'artista, "testa" della barra. La coroncina del primo va FUORI dal
-                                        cerchio con overflow-hidden, altrimenti verrebbe tagliata via */}
+                                        cerchio con overflow-hidden, altrimenti verrebbe tagliata via. Attorno alla foto
+                                        del leader luccicano alcune scintille e l'anello dorato pulsa piano. */}
                                     <div className="relative flex-shrink-0" style={{ width: avatarSize, height: avatarSize }}>
-                                        {rank === 0 && (
-                                            <IconCrown
-                                                className="animate-crown absolute z-20 text-yellow-400"
-                                                style={{ top: -18, left: '50%', width: 24, height: 24 }}
-                                            />
+                                        {isChampion && (
+                                            <>
+                                                <IconCrown
+                                                    className="animate-crown absolute z-20 text-yellow-400"
+                                                    style={{ top: -18, left: '50%', width: 24, height: 24 }}
+                                                />
+                                                <IconSparkle className="race-sparkle" style={{ top: -4, right: -10, width: 12, height: 12, animationDelay: '0s' }} />
+                                                <IconSparkle className="race-sparkle" style={{ bottom: 4, left: -12, width: 9, height: 9, animationDelay: '0.6s' }} />
+                                                <IconSparkle className="race-sparkle" style={{ bottom: -8, right: 2, width: 10, height: 10, animationDelay: '1.1s' }} />
+                                            </>
                                         )}
                                         <div
-                                            className="relative w-full h-full rounded-full overflow-hidden border-2 z-10"
+                                            className={`relative w-full h-full rounded-full overflow-hidden border-2 z-10 ${isChampion ? 'race-avatar-champion' : ''}`}
                                             style={{ borderColor: color }}
                                         >
                                             <EntityImageBox
@@ -1579,11 +1977,19 @@
                                         La colonna del nome prende lo spazio disponibile nella riga (non più legata
                                         alla larghezza della barra, che con pochi ascolti può essere molto stretta):
                                         così il nome resta sempre leggibile, al massimo va su due righe invece di
-                                        essere tagliato con "...". */}
+                                        essere tagliato con "...". La barra ora ha un lieve gradiente (più intenso
+                                        e dorato per il leader) invece del colore piatto. */}
                                     <div className="flex flex-col items-start flex-1 min-w-0" style={{ marginTop: -9 }}>
                                         <div
                                             className="race-bar-transition rounded-full"
-                                            style={{ width: widthPx, height: barHeight, backgroundColor: color }}
+                                            style={{
+                                                width: widthPx,
+                                                height: barHeight,
+                                                backgroundImage: isChampion
+                                                    ? 'linear-gradient(90deg, #f59e0b, #fde047)'
+                                                    : `linear-gradient(90deg, ${color}cc, ${color})`,
+                                                boxShadow: isChampion ? '0 0 16px rgba(250,204,21,0.55)' : 'none',
+                                            }}
                                         />
                                         <span
                                             className="text-white/90 font-bold mt-1 leading-tight text-left line-clamp-2 break-words"
@@ -1599,7 +2005,7 @@
                                     <AnimatedCount
                                         value={displayTotal}
                                         duration={1750}
-                                        className="text-white/80 font-bold flex-shrink-0 text-right"
+                                        className={`font-bold flex-shrink-0 text-right ${isChampion ? 'text-yellow-300' : 'text-white/80'}`}
                                         style={{ fontSize: 15 * scale, minWidth: 44 * scale, fontVariantNumeric: 'tabular-nums', display: 'inline-block' }}
                                     />
                                 </div>
@@ -1846,6 +2252,101 @@
             return shuffleArray(questions).slice(0, 8);
         };
 
+        // Posizioni pre-calcolate (non casuali ad ogni render, per evitare "salti" visivi) per le
+        // particelle di luce che salgono nella variante "particles" dello sfondo del Wrapped.
+        const WRAPPED_PARTICLE_PRESETS = [
+            { left: '6%', delay: '0s', dur: '5.2s', drift: '18px' },
+            { left: '16%', delay: '0.15s', dur: '6.1s', drift: '-14px' },
+            { left: '27%', delay: '0.5s', dur: '5.6s', drift: '22px' },
+            { left: '38%', delay: '0.08s', dur: '6.8s', drift: '-20px' },
+            { left: '49%', delay: '0.7s', dur: '5.0s', drift: '16px' },
+            { left: '60%', delay: '0.35s', dur: '6.4s', drift: '-18px' },
+            { left: '71%', delay: '0.12s', dur: '5.8s', drift: '24px' },
+            { left: '82%', delay: '0.6s', dur: '6.0s', drift: '-16px' },
+            { left: '91%', delay: '0.25s', dur: '5.4s', drift: '20px' },
+            { left: '12%', delay: '0.85s', dur: '6.6s', drift: '-22px' },
+            { left: '55%', delay: '1.0s', dur: '5.3s', drift: '14px' },
+            { left: '75%', delay: '0.75s', dur: '6.2s', drift: '-24px' },
+        ];
+        const WRAPPED_BG_VARIANTS = ['circles', 'particles', 'rings', 'waves', 'blob', 'orbs'];
+
+        // Sfondo animato dietro ogni storia del Wrapped: ruota tra 6 varianti decorative diverse
+        // (cerchi pieni che rimbalzano, coriandoli che salgono, anelli concentrici rotanti,
+        // equalizzatore silenzioso, una macchia organica che si deforma, sfere di luce morbide)
+        // così ogni storia sembra "vestita" in modo diverso, con forme nette e decise in stile
+        // Spotify Wrapped invece di nebbie o texture puntinate. Puramente decorativo: nessuna
+        // interazione, nessuna dipendenza da dati.
+        const WrappedBgFX = React.memo(({ variant, dark }) => {
+            let deco = null;
+            if (variant === 'circles') {
+                deco = (
+                    <div className="wrapped-bgfx-circles absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+                        <div className="wrapped-circle wrapped-circle-1"></div>
+                        <div className="wrapped-circle wrapped-circle-2"></div>
+                        <div className="wrapped-circle wrapped-circle-3"></div>
+                        <div className="wrapped-circle wrapped-circle-4"></div>
+                        <div className="wrapped-circle wrapped-circle-5"></div>
+                    </div>
+                );
+            } else if (variant === 'blob') {
+                deco = (
+                    <div className="wrapped-bgfx-blob absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+                        <div className="wrapped-blob"></div>
+                        <div className="wrapped-blob wrapped-blob-2"></div>
+                    </div>
+                );
+            } else if (variant === 'particles') {
+                deco = (
+                    <div className="wrapped-bgfx-particles absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+                        {WRAPPED_PARTICLE_PRESETS.map((p, i) => (
+                            <span
+                                key={i}
+                                className="wrapped-particle"
+                                style={{
+                                    left: p.left,
+                                    width: (i % 3 === 0) ? '7px' : '5px',
+                                    height: (i % 3 === 0) ? '7px' : '5px',
+                                    animationDelay: p.delay,
+                                    animationDuration: p.dur,
+                                    '--particle-x': p.drift,
+                                }}
+                            ></span>
+                        ))}
+                    </div>
+                );
+            } else if (variant === 'rings') {
+                deco = (
+                    <div className="wrapped-bgfx-rings absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+                        <div className="wrapped-ring wrapped-ring-1"></div>
+                        <div className="wrapped-ring wrapped-ring-2"></div>
+                        <div className="wrapped-ring wrapped-ring-3"></div>
+                    </div>
+                );
+            } else if (variant === 'waves') {
+                deco = (
+                    <div className="wrapped-bgfx-waves absolute inset-x-0 bottom-0 h-36 overflow-hidden pointer-events-none flex items-end justify-between gap-1 opacity-40" aria-hidden="true">
+                        {Array.from({ length: 28 }).map((_, i) => (
+                            <span key={i} className="wrapped-wave-bar" style={{ animationDelay: (i * 0.06) + 's', animationDuration: (1.1 + (i % 4) * 0.15) + 's' }}></span>
+                        ))}
+                    </div>
+                );
+            } else {
+                deco = (
+                    <div className="wrapped-bgfx-orbs absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+                        <div className="wrapped-orb wrapped-orb-1"></div>
+                        <div className="wrapped-orb wrapped-orb-2"></div>
+                        <div className="wrapped-orb wrapped-orb-3"></div>
+                        <div className="wrapped-orb wrapped-orb-4"></div>
+                    </div>
+                );
+            }
+            return (
+                <div className={`wrapped-bgfx-layer absolute inset-0 ${dark ? 'wrapped-bgfx-dark' : ''}`} aria-hidden="true">
+                    {deco}
+                </div>
+            );
+        });
+
         function App() {
             const [lang, setLang] = useState(detectLang());
             const t = DICT[lang];
@@ -1869,12 +2370,20 @@
             const [postLoadChoiceMade, setPostLoadChoiceMade] = useState(false);
             const [showWrapped, setShowWrapped] = useState(false);
             const [wrappedPreparing, setWrappedPreparing] = useState(false);
+            // Descrizione mostrata durante la preparazione del Wrapped, aggiornata via via in base
+            // a cosa si sta effettivamente caricando (statistiche, copertine, foto artista...).
+            const [wrappedLoadingLabel, setWrappedLoadingLabel] = useState('');
             // Vero durante l'attesa (1s) tra la risposta al quiz-storia e l'avanzamento automatico
             // alla storia successiva: blocca il tap "avanti" manuale in quella finestra, per evitare
             // di saltare due storie insieme (un avanzamento manuale + quello automatico in arrivo).
             const [quizAutoAdvancing, setQuizAutoAdvancing] = useState(false);
             const [wrappedIndex, setWrappedIndex] = useState(0);
             const [wrappedDirection, setWrappedDirection] = useState(1); // 1 = avanti, -1 = indietro (per l'animazione direzionale delle storie)
+            // Istantanea della storia che si sta lasciando (contenuto + sfondo animato), tenuta
+            // montata per una manciata di ms e dissolta in uscita: senza questo, cambiando storia
+            // il layer decorativo (es. i pallini che salgono) sparirebbe di scatto invece che sfumare.
+            const [outgoingWrappedSlide, setOutgoingWrappedSlide] = useState(null);
+            const outgoingWrappedTimeoutRef = useRef(null);
             const wrappedCardRef = useRef(null);
 
             useEffect(() => {
@@ -2425,6 +2934,21 @@
             };
 
             const nfWrapped = (n) => Math.round(n).toLocaleString(lang === 'it' ? 'it-IT' : 'en-US');
+            const truncateWrapped = (str, max = 40) => {
+                if (!str) return str;
+                return str.length > max ? str.slice(0, max).trimEnd() + '…' : str;
+            };
+
+            // Riduce la dimensione dei numeri "hero" del Wrapped quando le cifre sono tante,
+            // per evitare che con numeri alti (es. minuti totali) il testo sia enorme e vada
+            // fuori dai margini o si spezzi male su schermi piccoli.
+            const heroNumClass = (str) => {
+                const len = String(str).replace(/[^0-9]/g, '').length;
+                if (len >= 7) return 'text-4xl sm:text-6xl';
+                if (len >= 6) return 'text-5xl sm:text-7xl';
+                if (len >= 5) return 'text-6xl sm:text-7xl';
+                return 'text-7xl sm:text-8xl';
+            };
 
             // Indice della "sotto-storia" corrente all'interno della slide "artista del mese"
             const [monthlyStoryIdx, setMonthlyStoryIdx] = useState(0);
@@ -2446,13 +2970,13 @@
 
                 // 0. Copertina
                 slides.push({
-                    gradient: 'from-purple-600 via-fuchsia-600 to-pink-600',
+                    gradient: 'from-fuchsia-600 to-purple-700',
                     content: (
                         <div className="flex flex-col items-center justify-center gap-6">
                             <div className="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center animate-float">
                                 <IconMusic className="w-10 h-10 text-white" />
                             </div>
-                            <h2 className="font-display text-4xl sm:text-5xl font-black text-white leading-tight">{t.wrappedCoverTitle}</h2>
+                            <h2 className="font-wrapped text-4xl sm:text-5xl font-black text-white leading-tight">{t.wrappedCoverTitle}</h2>
                             <p className="text-white/80 text-sm sm:text-base">{t.wrappedCoverSubtitle(dateFmt(stats.date.inizio), dateFmt(stats.date.fine))}</p>
                             <p className="text-white/60 text-xs mt-10 animate-pulse">{t.wrappedTapHint}</p>
                         </div>
@@ -2463,11 +2987,11 @@
                 const hoursW = Math.round(stats.minutiTotali / 60);
                 const daysW = Math.floor(stats.minutiTotali / 1440);
                 slides.push({
-                    gradient: 'from-indigo-600 via-blue-600 to-cyan-500',
+                    gradient: 'from-blue-600 to-indigo-700',
                     content: (
                         <div className="flex flex-col items-center gap-4">
-                            <IconClock className="w-10 h-10 text-white/80" />
-                            <p className="font-display text-7xl sm:text-8xl font-black text-white animate-number-pop">{nfWrapped(stats.minutiTotali)}</p>
+                            <IconClock className="w-10 h-10 text-white/80 animate-float-icon" />
+                            <p className={`font-wrapped ${heroNumClass(nfWrapped(stats.minutiTotali))} font-black text-white animate-number-pop`}>{nfWrapped(stats.minutiTotali)}</p>
                             <p className="text-white text-lg font-bold">{t.wrappedMinutesTitle}</p>
                             <p className="text-white/70 text-sm max-w-xs">{t.wrappedMinutesSub(nfWrapped(hoursW), nfWrapped(daysW))}</p>
                         </div>
@@ -2476,11 +3000,11 @@
 
                 // 2. Numero generi ascoltati
                 slides.push({
-                    gradient: 'from-teal-500 via-cyan-500 to-blue-500',
+                    gradient: 'from-cyan-500 to-blue-600',
                     content: (
                         <div className="flex flex-col items-center gap-4">
-                            <IconTag className="w-8 h-8 text-white/70 mt-1" />
-                            <p className="font-display text-7xl sm:text-8xl font-black text-white animate-number-pop">
+                            <IconTag className="w-8 h-8 text-white/70 mt-1 animate-float-icon" />
+                            <p className={`font-wrapped ${heroNumClass(genreStats.loading ? '' : (genreStats.count > 0 ? nfWrapped(genreStats.count) : ''))} font-black text-white animate-number-pop`}>
                                 {genreStats.loading ? '…' : (genreStats.count > 0 ? nfWrapped(genreStats.count) : t.na)}
                             </p>
                             <p className="text-white text-lg font-bold">{t.wrappedGenresTitle}</p>
@@ -2492,14 +3016,14 @@
                 // 3. Top 5 generi ascoltati
                 if (genreStats.top5.length > 0) {
                     slides.push({
-                        gradient: 'from-emerald-500 via-teal-500 to-cyan-600',
+                        gradient: 'from-[#1DB954] to-emerald-700',
                         content: (
                             <div className="flex flex-col items-center gap-5 w-full">
                                 <p className="text-white text-xl font-bold -mt-1 mb-1">{t.wrappedTopGenresListTitle}</p>
                                 <div className="w-full max-w-xs flex flex-col gap-3">
                                     {genreStats.top5.map(([name], idx) => (
-                                        <div key={name} className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-2.5">
-                                            <span className="font-display text-xl font-black text-white/70 w-5">{idx + 1}</span>
+                                        <div key={name} className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-2.5 animate-float-card" style={{ animationDelay: `${idx * 0.15}s` }}>
+                                            <span className="font-wrapped text-xl font-black text-white/70 w-5">{idx + 1}</span>
                                             <span className="flex-1 text-white font-semibold text-sm text-left truncate">{name}</span>
                                         </div>
                                     ))}
@@ -2511,11 +3035,11 @@
 
                 // 4. Numero brani ascoltati
                 slides.push({
-                    gradient: 'from-red-500 via-rose-500 to-pink-600',
+                    gradient: 'from-rose-600 to-red-700',
                     content: (
                         <div className="flex flex-col items-center gap-4">
-                            <IconMusic className="w-8 h-8 text-white/70 mt-1" />
-                            <p className="font-display text-7xl sm:text-8xl font-black text-white animate-number-pop">{nfWrapped(stats.braniUnici)}</p>
+                            <IconMusic className="w-8 h-8 text-white/70 mt-1 animate-float-icon" />
+                            <p className={`font-wrapped ${heroNumClass(nfWrapped(stats.braniUnici))} font-black text-white animate-number-pop`}>{nfWrapped(stats.braniUnici)}</p>
                             <p className="text-white text-lg font-bold">{t.wrappedTracksCountTitle}</p>
                             <p className="text-white/70 text-sm max-w-xs">{t.wrappedTracksCountSub}</p>
                         </div>
@@ -2530,12 +3054,12 @@
                     const isEntityQ = ['artist', 'track', 'album', 'compare'].includes(q.id);
 
                     slides.push({
-                        gradient: 'from-violet-700 via-purple-700 to-fuchsia-700',
+                        gradient: 'from-violet-700 to-fuchsia-800',
                         qid: q.id,
                         content: (
                             <div className="flex flex-col items-center justify-center gap-4 w-full h-full" onClick={(e) => { if (answeredQ) return; e.stopPropagation(); }}>
                                 <p className="text-white/70 text-xs uppercase tracking-widest font-bold">{t.quizQuestionOf(qi + 1, storyQuizQuestions.length)}</p>
-                                <h3 className="font-display text-xl sm:text-2xl font-black text-white leading-tight px-2">{q.question}</h3>
+                                <h3 className="font-wrapped text-xl sm:text-2xl font-black text-white leading-tight px-2">{q.question}</h3>
                                 <div className="w-full flex flex-col gap-2.5 px-1 max-h-[48vh] overflow-y-auto no-scrollbar">
                                     {q.options.map((option, idx) => {
                                         let displayTitleQ = option;
@@ -2600,13 +3124,13 @@
                     const [trackKeyW, trackCountW] = stats.topBrani[0];
                     const [trackTitleW, trackArtistW] = trackKeyW.split(' -|- ');
                     slides.push({
-                        gradient: 'from-rose-500 via-red-500 to-orange-500',
+                        gradient: 'from-orange-500 to-rose-600',
                         content: (
                             <div className="flex flex-col items-center gap-4">
-                                <IconTrophy className="w-8 h-8 text-white/90" />
+                                <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
                                 <p className="text-white/80 text-sm uppercase tracking-wider font-semibold">{t.wrappedTopTrackLabel}</p>
-                                <EntityImageBox artist={trackArtistW} title={trackTitleW} type="track" altText={trackTitleW} boxClassName="w-36 h-36 rounded-2xl overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center" imgClassName="w-full h-full" />
-                                <p className="font-display text-3xl sm:text-4xl font-black text-white text-center px-4 break-words">{trackTitleW}</p>
+                                <EntityImageBox artist={trackArtistW} title={trackTitleW} type="track" altText={trackTitleW} boxClassName="w-36 h-36 rounded-2xl overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center animate-float-cover" imgClassName="w-full h-full" />
+                                <p className="font-wrapped text-3xl sm:text-4xl font-black text-white text-center px-4 break-words">{truncateWrapped(trackTitleW, 40)}</p>
                                 {trackArtistW && <p className="text-white/70 text-sm font-semibold">{trackArtistW}</p>}
                                 <p className="text-white/80 text-sm">{t.wrappedTopTrackSub(nfWrapped(trackCountW))}</p>
                             </div>
@@ -2617,7 +3141,7 @@
                 // 6. Top 5 brani più ascoltati
                 if (stats.topBrani.length >= 3) {
                     slides.push({
-                        gradient: 'from-cyan-600 via-sky-600 to-blue-600',
+                        gradient: 'from-sky-500 to-blue-700',
                         content: (
                             <div className="flex flex-col items-center gap-5 w-full">
                                 <p className="text-white text-xl font-bold mb-2">{t.wrappedTopTracksListTitle}</p>
@@ -2625,8 +3149,8 @@
                                     {stats.topBrani.slice(0, 5).map(([keyT, count], idx) => {
                                         const [title, artist] = keyT.split(' -|- ');
                                         return (
-                                            <div key={keyT} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2.5">
-                                                <span className="font-display text-xl font-black text-white/70 w-5 flex-shrink-0">{idx + 1}</span>
+                                            <div key={keyT} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2.5 animate-float-card" style={{ animationDelay: `${idx * 0.15}s` }}>
+                                                <span className="font-wrapped text-xl font-black text-white/70 w-5 flex-shrink-0">{idx + 1}</span>
                                                 <EntityImageBox artist={artist} title={title} type="track" altText={title} boxClassName="w-11 h-11 rounded-lg overflow-hidden bg-white/10 flex-shrink-0" imgClassName="w-full h-full" />
                                                 <span className="flex-1 min-w-0 text-left">
                                                     <span className="block text-white font-semibold text-sm truncate">{title}</span>
@@ -2652,10 +3176,10 @@
                 // si mostra un indicatore invece del numero: il totale che l'utente vede è sempre quello
                 // definitivo (per quella sessione), mai un valore a metà.
                 slides.push({
-                    gradient: 'from-fuchsia-500 via-pink-500 to-rose-500',
+                    gradient: 'from-pink-500 to-fuchsia-700',
                     content: (
                         <div className="flex flex-col items-center gap-4">
-                            <IconDisc className={`w-8 h-8 text-white/70 mt-1 ${albumStats.loading ? 'animate-spin-slower' : ''}`} />
+                            <IconDisc className={`w-8 h-8 text-white/70 mt-1 ${albumStats.loading ? 'animate-spin-slower' : 'animate-float-icon'}`} />
                             {albumStats.loading ? (
                                 <div className="flex flex-col items-center gap-3 py-4">
                                     <div className="flex gap-1.5">
@@ -2666,7 +3190,7 @@
                                     <p className="text-white/70 text-sm max-w-xs text-center">{t.wrappedAlbumsCountLoading}</p>
                                 </div>
                             ) : (
-                                <p className="font-display text-7xl sm:text-8xl font-black text-white animate-number-pop">{nfWrapped(albumStats.albumUnici)}</p>
+                                <p className={`font-wrapped ${heroNumClass(nfWrapped(albumStats.albumUnici))} font-black text-white animate-number-pop`}>{nfWrapped(albumStats.albumUnici)}</p>
                             )}
                             <p className="text-white text-lg font-bold">{t.wrappedAlbumsCountTitle}</p>
                             {!albumStats.loading && (
@@ -2681,13 +3205,13 @@
                     const [albumKeyW, albumCountW] = albumStats.topAlbum[0];
                     const [albumTitleW, albumArtistW] = albumKeyW.split(' -|- ');
                     slides.push({
-                        gradient: 'from-pink-600 via-fuchsia-600 to-purple-600',
+                        gradient: 'from-fuchsia-600 to-indigo-700',
                         content: (
                             <div className="flex flex-col items-center gap-4">
-                                <IconTrophy className="w-8 h-8 text-white/90" />
+                                <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
                                 <p className="text-white/80 text-sm uppercase tracking-wider font-semibold">{t.wrappedTopAlbumLabel}</p>
-                                <EntityImageBox artist={albumArtistW} title={albumTitleW} type="album" altText={albumTitleW} boxClassName="w-36 h-36 rounded-2xl overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center" imgClassName="w-full h-full" />
-                                <p className="font-display text-3xl sm:text-4xl font-black text-white text-center px-4 break-words">{albumTitleW}</p>
+                                <EntityImageBox artist={albumArtistW} title={albumTitleW} type="album" altText={albumTitleW} boxClassName="w-36 h-36 rounded-2xl overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center animate-float-cover" imgClassName="w-full h-full" />
+                                <p className="font-wrapped text-3xl sm:text-4xl font-black text-white text-center px-4 break-words">{truncateWrapped(albumTitleW, 40)}</p>
                                 {albumArtistW && <p className="text-white/70 text-sm font-semibold">{albumArtistW}</p>}
                                 <p className="text-white/80 text-sm">{t.wrappedTopAlbumSub(nfWrapped(albumCountW))}</p>
                             </div>
@@ -2698,7 +3222,7 @@
                 // 6d. Top 5 album più ascoltati
                 if (albumStats.topAlbum.length >= 3) {
                     slides.push({
-                        gradient: 'from-purple-600 via-pink-600 to-rose-600',
+                        gradient: 'from-purple-600 to-rose-600',
                         content: (
                             <div className="flex flex-col items-center gap-5 w-full">
                                 <p className="text-white text-xl font-bold mb-2">{t.wrappedTopAlbumsListTitle}</p>
@@ -2706,8 +3230,8 @@
                                     {albumStats.topAlbum.slice(0, 5).map(([keyA, count], idx) => {
                                         const [title, artist] = keyA.split(' -|- ');
                                         return (
-                                            <div key={keyA} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2.5">
-                                                <span className="font-display text-xl font-black text-white/70 w-5 flex-shrink-0">{idx + 1}</span>
+                                            <div key={keyA} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2.5 animate-float-card" style={{ animationDelay: `${idx * 0.15}s` }}>
+                                                <span className="font-wrapped text-xl font-black text-white/70 w-5 flex-shrink-0">{idx + 1}</span>
                                                 <EntityImageBox artist={artist} title={title} type="album" altText={title} boxClassName="w-11 h-11 rounded-lg overflow-hidden bg-white/10 flex-shrink-0" imgClassName="w-full h-full" />
                                                 <span className="flex-1 min-w-0 text-left">
                                                     <span className="block text-white font-semibold text-sm truncate">{title}</span>
@@ -2725,11 +3249,11 @@
 
                 // 7. Numero artisti ascoltati
                 slides.push({
-                    gradient: 'from-orange-500 via-amber-500 to-yellow-400',
+                    gradient: 'from-amber-400 to-orange-600',
                     content: (
                         <div className="flex flex-col items-center gap-4">
                             <IconMic className="w-8 h-8 text-white/70 mt-1" />
-                            <p className="font-display text-7xl sm:text-8xl font-black text-white animate-number-pop">{nfWrapped(stats.artistiUnici)}</p>
+                            <p className={`font-wrapped ${heroNumClass(nfWrapped(stats.artistiUnici))} font-black text-white animate-number-pop`}>{nfWrapped(stats.artistiUnici)}</p>
                             <p className="text-white text-lg font-bold">{t.wrappedArtistsCountTitle}</p>
                             <p className="text-white/70 text-sm max-w-xs">{t.wrappedArtistsCountSub}</p>
                         </div>
@@ -2741,7 +3265,7 @@
                 // (shuffledTop5Artists è calcolato una sola volta fuori da questo useMemo, per non essere rimescolato ad ogni avanzamento)
                 if (shuffledTop5Artists.length >= 3) {
                     slides.push({
-                        gradient: 'from-purple-500 via-violet-500 to-indigo-500',
+                        gradient: 'from-violet-600 to-indigo-800',
                         isRandomTop: true,
                         content: (
                             <RandomTopArtistsStory
@@ -2772,7 +3296,7 @@
                 // 9. Corsa tra i Top 5 artisti mese dopo mese (se il periodo copre più mesi) - si superano a vicenda
                 if (stats.monthlyArtistRace && stats.monthlyArtistRace.length > 1) {
                     slides.push({
-                        gradient: 'from-violet-600 via-indigo-600 to-blue-600',
+                        gradient: 'from-indigo-600 to-blue-800',
                         isMonthly: true,
                         content: (
                             <MonthlyArtistRaceStory
@@ -2784,6 +3308,7 @@
                                 onFinish={() => nextWrappedSlide()}
                                 skipLabel={t.wrappedMonthlySkip}
                                 backLabel={t.wrappedMonthlyBack}
+                                newLabel={t.wrappedMonthlyNew}
                                 canGoBack={wrappedIndex > 0}
                                 onGoBack={() => {
                                     // Torna alla storia precedente del Wrapped (macro-storia), non al mese precedente
@@ -2804,13 +3329,13 @@
                 if (stats.topArtisti.length > 0) {
                     const [artistName, artistCount] = stats.topArtisti[0];
                     slides.push({
-                        gradient: 'from-amber-500 via-orange-500 to-red-500',
+                        gradient: 'from-orange-500 to-red-700',
                         content: (
                             <div className="flex flex-col items-center gap-4">
-                                <IconTrophy className="w-8 h-8 text-white/90" />
+                                <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
                                 <p className="text-white/80 text-sm uppercase tracking-wider font-semibold">{t.wrappedTopArtistLabel}</p>
-                                <EntityImageBox artist={artistName} type="artist" altText={artistName} boxClassName="w-36 h-36 rounded-full overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center" imgClassName="w-full h-full rounded-full" />
-                                <p className="font-display text-3xl sm:text-4xl font-black text-white text-center px-4 break-words">{artistName}</p>
+                                <EntityImageBox artist={artistName} type="artist" altText={artistName} boxClassName="w-36 h-36 rounded-full overflow-hidden bg-white/10 border-4 border-white/30 shadow-xl flex items-center justify-center animate-float-cover" imgClassName="w-full h-full rounded-full" />
+                                <p className="font-wrapped text-3xl sm:text-4xl font-black text-white text-center px-2 break-words">{artistName}</p>
                                 <p className="text-white/80 text-sm">{t.wrappedTopArtistSub(nfWrapped(artistCount))}</p>
                             </div>
                         )
@@ -2820,14 +3345,14 @@
                 // 11. Top 5 artisti più ascoltati (in ordine)
                 if (stats.topArtisti.length >= 3) {
                     slides.push({
-                        gradient: 'from-fuchsia-600 via-purple-600 to-indigo-600',
+                        gradient: 'from-fuchsia-700 to-indigo-800',
                         content: (
                             <div className="flex flex-col items-center gap-5 w-full">
                                 <p className="text-white text-xl font-bold mb-2">{t.wrappedTopArtistsListTitle}</p>
                                 <div className="w-full max-w-xs flex flex-col gap-3">
                                     {stats.topArtisti.slice(0, 5).map(([name, count], idx) => (
-                                        <div key={name} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2.5">
-                                            <span className="font-display text-xl font-black text-white/70 w-5 flex-shrink-0">{idx + 1}</span>
+                                        <div key={name} className="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2.5 animate-float-card" style={{ animationDelay: `${idx * 0.15}s` }}>
+                                            <span className="font-wrapped text-xl font-black text-white/70 w-5 flex-shrink-0">{idx + 1}</span>
                                             <EntityImageBox artist={name} type="artist" altText={name} boxClassName="w-11 h-11 rounded-full overflow-hidden bg-white/10 flex-shrink-0" imgClassName="w-full h-full" />
                                             <span className="flex-1 text-white font-semibold text-sm text-left truncate">{name}</span>
                                             <span className="text-white/60 text-xs flex-shrink-0">{nfWrapped(count)}</span>
@@ -2856,7 +3381,7 @@
                                 ></div>
 
                                 <div className="relative flex flex-col px-5 pt-5">
-                                    <div className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-black/10 mb-5 flex-shrink-0 flex items-center justify-center">
+                                    <div className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-black/10 mb-4 flex-shrink-0 flex items-center justify-center">
                                         {topArtistNameW && topArtistNameW !== t.na ? (
                                             <RecapArtistPhoto artist={topArtistNameW} altText={topArtistNameW} className="w-full h-full grayscale" />
                                         ) : (
@@ -2864,25 +3389,25 @@
                                         )}
                                     </div>
 
-                                    <div className="flex gap-4 text-left mb-6">
+                                    <div className="flex gap-4 text-left mb-5">
                                         <div className="flex-1 min-w-0 overflow-hidden">
-                                            <p className="text-[10px] font-bold uppercase tracking-wide text-black/50 mb-2 whitespace-nowrap">{t.wrappedRecapTopArtists}</p>
+                                            <p className="text-[9px] font-bold uppercase tracking-wide text-black/50 mb-2 whitespace-nowrap">{t.wrappedRecapTopArtists}</p>
                                             <div className="flex flex-col gap-1.5">
                                                 {stats.topArtisti.slice(0, 5).map(([name], idx) => (
-                                                    <div key={name} className="flex items-baseline gap-1.5 overflow-hidden">
-                                                        <span className="text-black/40 text-xs font-bold flex-shrink-0">{idx + 1}</span>
-                                                        <span className="text-xs sm:text-sm font-bold whitespace-nowrap overflow-hidden text-ellipsis">{name}</span>
+                                                    <div key={name} className="flex items-baseline gap-1.5">
+                                                        <span className="text-black/40 text-[10px] font-bold flex-shrink-0">{idx + 1}</span>
+                                                        <span className="text-[13px] font-semibold leading-snug truncate">{name}</span>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
                                         <div className="flex-1 min-w-0 overflow-hidden">
-                                            <p className="text-[10px] font-bold uppercase tracking-wide text-black/50 mb-2 whitespace-nowrap">{t.wrappedRecapTopTracks}</p>
+                                            <p className="text-[9px] font-bold uppercase tracking-wide text-black/50 mb-2 whitespace-nowrap">{t.wrappedRecapTopTracks}</p>
                                             <div className="flex flex-col gap-1.5">
                                                 {stats.topBrani.slice(0, 5).map(([keyT]) => keyT.split(' -|- ')[0]).map((title, idx) => (
-                                                    <div key={`${title}-${idx}`} className="flex items-baseline gap-1.5 overflow-hidden">
-                                                        <span className="text-black/40 text-xs font-bold flex-shrink-0">{idx + 1}</span>
-                                                        <span className="text-xs sm:text-sm font-bold whitespace-nowrap overflow-hidden text-ellipsis">{title}</span>
+                                                    <div key={`${title}-${idx}`} className="flex items-baseline gap-1.5">
+                                                        <span className="text-black/40 text-[10px] font-bold flex-shrink-0">{idx + 1}</span>
+                                                        <span className="text-[13px] font-semibold leading-snug truncate">{title}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -2890,22 +3415,22 @@
                                     </div>
 
                                     <div className="flex gap-4 text-left pb-5">
-                                        <div className="flex-1 min-w-0 overflow-hidden">
-                                            <p className="text-[10px] font-bold uppercase tracking-wide text-black/50 mb-1 whitespace-nowrap">{t.wrappedRecapMinutesListen}</p>
-                                            <p className="font-display text-2xl font-black whitespace-nowrap overflow-hidden text-ellipsis">{nfWrapped(stats.minutiTotali)}</p>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[9px] font-bold uppercase tracking-wide text-black/50 mb-1 whitespace-nowrap">{t.wrappedRecapMinutesListen}</p>
+                                            <p className="font-wrapped text-xl font-black leading-tight truncate">{nfWrapped(stats.minutiTotali)}</p>
                                         </div>
-                                        <div className="flex-1 min-w-0 overflow-hidden">
-                                            <p className="text-[10px] font-bold uppercase tracking-wide text-black/50 mb-1 whitespace-nowrap">{t.wrappedRecapGenre}</p>
-                                            <p className="font-display text-lg font-black whitespace-nowrap overflow-hidden text-ellipsis">{recapGenreW || (topArtistName ? '…' : t.na)}</p>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[9px] font-bold uppercase tracking-wide text-black/50 mb-1 whitespace-nowrap">{t.wrappedRecapGenre}</p>
+                                            <p className="font-wrapped text-sm font-black leading-tight truncate">{recapGenreW || (topArtistName ? '…' : t.na)}</p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="relative border-t border-black/10 px-5 py-3 flex items-center gap-2 flex-shrink-0">
-                                    <div className="w-7 h-7 rounded-full bg-black flex items-center justify-center flex-shrink-0">
-                                        <IconMusic className="w-4 h-4 text-white" />
+                                <div className="relative border-t border-black/10 px-5 py-3 flex items-center gap-2 flex-shrink-0 min-w-0">
+                                    <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center flex-shrink-0">
+                                        <IconMusic className="w-3.5 h-3.5 text-white" />
                                     </div>
-                                    <span className="font-display font-black text-[14px] tracking-wide whitespace-nowrap overflow-hidden text-ellipsis">{t.wrappedRecapLink}</span>
+                                    <span className="font-wrapped font-bold text-[11px] tracking-wide truncate min-w-0">{t.wrappedRecapLink}</span>
                                 </div>
                             </div>
                         </div>
@@ -2984,19 +3509,15 @@
             const closeWrapped = () => {
                 setShowWrapped(false);
                 setWrappedPreparing(false);
+                if (outgoingWrappedTimeoutRef.current) clearTimeout(outgoingWrappedTimeoutRef.current);
+                setOutgoingWrappedSlide(null);
             };
 
-            // Fase di preparazione del Wrapped: aspetta (con un limite massimo) che il calcolo di
-            // generi/album sia finito, poi precarica in blocco tutte le immagini che serviranno
-            // durante le storie, e solo a quel punto apre davvero il Wrapped.
-            // IMPORTANTE: l'abbinamento degli album per YouTube Music può essere lento (una richiesta
-            // ogni 300ms, in sequenza, per ogni brano non ancora risolto), quindi NON possiamo
-            // aspettare che finisca del tutto: se supera i pochi secondi di tolleranza qui sotto,
-            // apriamo comunque il Wrapped con i dati che ci sono — la slide "Album ascoltati" mostrerà
-            // il suo indicatore di caricamento come prima, ma tutto il resto (foto, generi, artisti)
-            // sarà già pronto e non ci saranno più attese "infinite".
-            const WRAPPED_STATS_MAX_WAIT_MS = 7000;
-            const WRAPPED_IMAGES_MAX_WAIT_MS = 5000;
+            // Fase di preparazione del Wrapped: aspetta che il calcolo di generi/album sia finito,
+            // poi precarica in blocco TUTTE le immagini che serviranno durante le storie (brani,
+            // album, artisti, opzioni del mini-quiz, foto dell'artista #1), e solo quando è tutto
+            // pronto apre davvero il Wrapped. Nessun tetto massimo di attesa: meglio uno spinner
+            // un po' più lungo che storie con copertine ancora da caricare a metà.
             useEffect(() => {
                 if (!wrappedPreparing) return;
                 if (!stats) { setWrappedPreparing(false); return; }
@@ -3005,29 +3526,78 @@
                 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
                 (async () => {
-                    const startedAt = Date.now();
-                    // Aspetta che generi/album finiscano, ma non oltre il tempo massimo concesso
+                    // Fase 1: generi e album. Nessun tetto massimo di attesa: il Wrapped si apre
+                    // solo quando i dati sono davvero pronti, non quando scade un timer.
+                    setWrappedLoadingLabel(t.wrappedPreparingStats);
                     while (
                         !cancelled &&
-                        (genreStatsRef.current.loading || albumStatsRef.current.loading) &&
-                        (Date.now() - startedAt) < WRAPPED_STATS_MAX_WAIT_MS
+                        (genreStatsRef.current.loading || albumStatsRef.current.loading)
                     ) {
                         await wait(150);
                     }
                     if (cancelled) return;
 
+                    // Fase 2: tutte le copertine/foto usate nelle storie (brani, album, artisti,
+                    // opzioni del mini-quiz). Le carichiamo a piccoli gruppi paralleli invece che
+                    // tutte insieme, così la descrizione può riflettere cosa si sta scaricando in
+                    // quel momento — ma solo per categoria (es. "copertine dei brani"), MAI con il
+                    // nome esatto: sono proprio le classifiche a sorpresa che l'utente scoprirà
+                    // dentro le storie, quindi qui non vanno anticipate. Aspettiamo che finiscano
+                    // TUTTE prima di continuare.
                     const jobs = getWrappedImageJobs();
-                    const preload = Promise.all(jobs.map(job => fetchArtwork(job.artist, job.title, job.type)))
-                        .then(() => stats.topArtisti && stats.topArtisti[0] ? getArtistPhotoDataUrl(stats.topArtisti[0][0]) : null);
-                    await Promise.race([preload, wait(WRAPPED_IMAGES_MAX_WAIT_MS)]);
-
+                    const total = jobs.length;
+                    let done = 0;
+                    let nextIdx = 0;
+                    const IMAGE_LOAD_CONCURRENCY = 4;
+                    const worker = async () => {
+                        while (nextIdx < jobs.length) {
+                            if (cancelled) return;
+                            const job = jobs[nextIdx++];
+                            const category = t.wrappedPreparingImageCategories[job.type] || t.wrappedPreparingImageCategories.track;
+                            setWrappedLoadingLabel(t.wrappedPreparingImages(category, done, total));
+                            await fetchArtwork(job.artist, job.title, job.type);
+                            done += 1;
+                        }
+                    };
+                    await Promise.all(
+                        Array.from({ length: Math.min(IMAGE_LOAD_CONCURRENCY, jobs.length) }, worker)
+                    );
                     if (cancelled) return;
+
+                    // Fase 3: foto dell'artista principale, usata nella storia di riepilogo finale
+                    // (anche qui senza nominarlo, per non anticipare la rivelazione).
+                    if (stats.topArtisti && stats.topArtisti[0]) {
+                        setWrappedLoadingLabel(t.wrappedPreparingArtistPhoto);
+                        await getArtistPhotoDataUrl(stats.topArtisti[0][0]);
+                    }
+                    if (cancelled) return;
+
                     setShowWrapped(true);
                     setWrappedPreparing(false);
                 })();
 
                 return () => { cancelled = true; };
             }, [wrappedPreparing, stats]);
+            // Salva un'istantanea del contenuto della storia corrente appena prima di cambiare
+            // wrappedIndex, così può restare in scena un attimo in più mentre sfuma via, invece di
+            // sparire di scatto. Il layer decorativo (pallini/cerchi/anelli...) NON viene incluso
+            // qui apposta: ricrearlo da zero per l'istantanea causava discontinuità visive (es. i
+            // pallini che saltavano in una posizione fissa prima di sparire), quindi durante questi
+            // ~420ms di dissolvenza si vede solo il contenuto reale della storia, senza sfondo animato.
+            const captureOutgoingWrappedSlide = () => {
+                const slide = wrappedSlides[wrappedIndex];
+                if (!slide) return;
+                if (outgoingWrappedTimeoutRef.current) clearTimeout(outgoingWrappedTimeoutRef.current);
+                setOutgoingWrappedSlide({
+                    key: `out-${wrappedIndex}-${Date.now()}`,
+                    content: slide.content,
+                    gradient: slide.gradient,
+                });
+                outgoingWrappedTimeoutRef.current = setTimeout(() => {
+                    setOutgoingWrappedSlide(null);
+                }, 420);
+            };
+
             const nextWrappedSlide = () => {
                 const currentSlide = wrappedSlides[wrappedIndex];
                 // Blocca l'avanzamento se la storia corrente è una domanda del quiz senza risposta
@@ -3052,6 +3622,7 @@
                     }
                 }
                 setWrappedDirection(1);
+                captureOutgoingWrappedSlide();
                 setWrappedIndex(i => {
                     const next = Math.min(i + 1, wrappedSlides.length - 1);
                     // Entrando nella storia mensile si riparte sempre dal primo mese
@@ -3078,6 +3649,7 @@
                     return;
                 }
                 setWrappedDirection(-1);
+                captureOutgoingWrappedSlide();
                 setWrappedIndex(i => {
                     const prevI = Math.max(i - 1, 0);
                     // Tornando dentro la storia mensile, si riparte dall'ultimo mese
@@ -3293,7 +3865,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.5</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.7</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -3404,7 +3976,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.5</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.2.7</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -3651,7 +4223,7 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.2.5</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.2.7</span></p>
                             </footer>
                         </div>
                     </div>
@@ -3678,7 +4250,7 @@
                                 <p className="font-display font-bold text-lg sm:text-xl text-white mb-2 text-center">
                                     {t.wrappedPreparingTitle}<span className="loader-dot">.</span><span className="loader-dot">.</span><span className="loader-dot">.</span>
                                 </p>
-                                <p className="text-gray-400 text-sm text-center max-w-xs">{t.wrappedPreparingSubtitle}</p>
+                                <p className="text-gray-400 text-sm text-center max-w-xs">{wrappedLoadingLabel || t.wrappedPreparingSubtitle}</p>
                             </div>
                         </div>
                     )}
@@ -3692,6 +4264,11 @@
                         // risposto al quiz: in questa finestra il tap "avanti" manuale resta disattivato,
                         // per non sommarsi all'avanzamento automatico in arrivo e saltare una storia.
                         const wrappedForwardLocked = wrappedQuizLocked || quizAutoAdvancing;
+                        // Ruota la variante di sfondo animato (orbs/particelle/anelli/onde) e il modo in cui
+                        // gli elementi della storia appaiono, così ogni storia del Wrapped ha un look diverso,
+                        // proprio come le transizioni sempre diverse del Wrapped di Spotify.
+                        const wrappedBgVariant = WRAPPED_BG_VARIANTS[wrappedIndex % WRAPPED_BG_VARIANTS.length];
+                        const wrappedItemVariant = ['a', 'b', 'c', 'd', 'e'][wrappedIndex % 5];
                         return (
                         <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-3 sm:p-6 animate-fadebg">
                             <div
@@ -3731,11 +4308,25 @@
                                     ></div>
                                 )}
 
+                                {/* Istantanea della storia appena lasciata: resta un attimo in scena sotto
+                                    quella nuova e sfuma via, così anche il suo sfondo animato (es. le
+                                    particelle) dissolve invece di sparire di colpo. */}
+                                {outgoingWrappedSlide && (
+                                    <div
+                                        key={outgoingWrappedSlide.key}
+                                        aria-hidden="true"
+                                        className={`wrapped-slide-outgoing absolute inset-0 flex flex-col items-center justify-center text-center p-8 sm:p-10 bg-gradient-to-br ${outgoingWrappedSlide.gradient} animate-story-fadeout overflow-hidden pointer-events-none`}
+                                    >
+                                        {outgoingWrappedSlide.content}
+                                    </div>
+                                )}
+
                                 {/* Contenuto della slide corrente */}
                                 <div
                                     key={wrappedIndex}
-                                    className={`wrapped-slide-content story-ambient absolute inset-0 flex flex-col items-center justify-center text-center p-8 sm:p-10 bg-gradient-to-br ${wrappedSlides[wrappedIndex].gradient} ${wrappedDirection >= 0 ? 'animate-story-fwd' : 'animate-story-back'} overflow-hidden`}
+                                    className={`wrapped-slide-content story-ambient wrapped-variant-${wrappedItemVariant} absolute inset-0 flex flex-col items-center justify-center text-center p-8 sm:p-10 bg-gradient-to-br ${wrappedSlides[wrappedIndex].gradient} ${wrappedDirection >= 0 ? 'animate-story-fwd' : 'animate-story-back'} overflow-hidden`}
                                 >
+                                    <WrappedBgFX variant={wrappedBgVariant} />
                                     {wrappedSlides[wrappedIndex].content}
                                 </div>
                             </div>
