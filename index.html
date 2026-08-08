@@ -3843,18 +3843,12 @@
                 // Tiene traccia dei brani già usati come sottofondo di una slide precedente, così
                 // le slide successive (album/artista) evitano di riproporre lo stesso identico brano
                 const usedAudioTrackKeys = new Set();
-                // Usiamo resolvedAudioCues (già verificato durante la preparazione: se il brano
-                // "preferito" non ha un'anteprima riproducibile su iTunes, la fase di preparazione ha
-                // già provato altri brani della Top 10 finché uno ha funzionato) invece del brano grezzo
-                // scelto qui sopra: prima si usava sempre e solo il brano grezzo, MAI verificato, quindi
-                // se quel brano specifico non aveva un'anteprima disponibile la copertina restava muta.
-                const introAudioCueResolved = resolvedAudioCues.intro || introAudioTrack;
-                if (introAudioCueResolved) usedAudioTrackKeys.add(trackAudioKey(introAudioCueResolved.title, introAudioCueResolved.artist));
+                if (introAudioTrack) usedAudioTrackKeys.add(trackAudioKey(introAudioTrack.title, introAudioTrack.artist));
 
                 // 0. Copertina
                 slides.push({
                     gradient: 'from-fuchsia-600 to-purple-700',
-                    audioCue: introAudioCueResolved ? { id: `intro-${introAudioCueResolved.title}-${introAudioCueResolved.artist}`, title: introAudioCueResolved.title, artist: introAudioCueResolved.artist } : null,
+                    audioCue: introAudioTrack ? { id: `intro-${introAudioTrack.title}-${introAudioTrack.artist}`, title: introAudioTrack.title, artist: introAudioTrack.artist } : null,
                     content: (
                         <div className="flex flex-col items-center justify-center gap-6">
                             <div className="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center animate-float">
@@ -4008,10 +4002,9 @@
                 if (stats.topBrani.length > 0) {
                     const [trackKeyW, trackCountW] = stats.topBrani[0];
                     const [trackTitleW, trackArtistW] = trackKeyW.split(' -|- ');
-                    const topTrackAudioCue = resolvedAudioCues.track || { title: trackTitleW, artist: trackArtistW };
                     slides.push({
                         gradient: 'from-orange-500 to-rose-600',
-                        audioCue: { id: `track-${topTrackAudioCue.title}-${topTrackAudioCue.artist}`, title: topTrackAudioCue.title, artist: topTrackAudioCue.artist },
+                        audioCue: { id: `track-${trackTitleW}-${trackArtistW}`, title: trackTitleW, artist: trackArtistW },
                         content: (
                             <div className="flex flex-col items-center gap-4">
                                 <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
@@ -4094,10 +4087,9 @@
                     const [albumTitleW, albumArtistW] = albumKeyW.split(' -|- ');
                     const albumTopTrackW = getTopTrackForAlbum(albumTitleW, albumArtistW, usedAudioTrackKeys);
                     if (albumTopTrackW) usedAudioTrackKeys.add(trackAudioKey(albumTopTrackW.title, albumTopTrackW.artist));
-                    const albumAudioCue = resolvedAudioCues.album || albumTopTrackW;
                     slides.push({
                         gradient: 'from-fuchsia-600 to-indigo-700',
-                        audioCue: albumAudioCue ? { id: `album-${albumAudioCue.title}-${albumAudioCue.artist}`, title: albumAudioCue.title, artist: albumAudioCue.artist } : null,
+                        audioCue: albumTopTrackW ? { id: `album-${albumTopTrackW.title}-${albumTopTrackW.artist}`, title: albumTopTrackW.title, artist: albumTopTrackW.artist } : null,
                         content: (
                             <div className="flex flex-col items-center gap-4 -mt-12">
                                 <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
@@ -4988,7 +4980,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3.3</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -5099,7 +5091,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3.3</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -5378,7 +5370,7 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3.3</span></p>
                             </footer>
                         </div>
                     </div>
