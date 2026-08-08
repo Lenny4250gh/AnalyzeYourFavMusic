@@ -1257,24 +1257,6 @@
             dataUrlCache.set(artist, promise);
             return promise;
         };
-        // CONFIGURAZIONE PROXY ITUNES
-        // --------------------------------------------------------------
-        // L'endpoint pubblico itunes.apple.com/search applica un rate-limit non documentato PER IP.
-        // Se questo sito è ospitato su hosting condiviso (GitHub Pages, Netlify, Vercel free, ecc.),
-        // le richieste escono dagli IP condivisi della piattaforma, usati da migliaia di altri siti:
-        // la quota può risultare già esaurita indipendentemente da quante richieste fa QUESTO sito
-        // (403 anche sulla primissima richiesta, per artisti notissimi).
-        //
-        // Per aggirarlo, tutte le chiamate passano da un piccolo proxy (Cloudflare Worker gratuito,
-        // vedi file itunes-proxy-worker.js) che inoltra la richiesta a iTunes da un altro IP e la
-        // mette in cache. Se non hai ancora fatto il deploy del Worker, lascia questa costante
-        // com'è: il codice chiamerà itunes.apple.com direttamente (stesso comportamento di prima,
-        // quindi soggetto allo stesso rate-limit condiviso).
-        //
-        // DOPO aver distribuito il Worker (vedi istruzioni in cima a itunes-proxy-worker.js),
-        // sostituisci il valore qui sotto con l'URL del tuo Worker, es.:
-        //   const ITUNES_SEARCH_BASE = 'https://itunes-proxy.tuonome.workers.dev/search';
-        const ITUNES_SEARCH_BASE = 'https://itunes-proxy.lenny4250.workers.dev/';
         // NOTA SUL RATE LIMIT DI iTunes: l'endpoint pubblico itunes.apple.com/search applica un limite
         // per IP non documentato ma piuttosto basso (circa 20 richieste/minuto). Quando viene superato,
         // iTunes risponde con un errore SENZA header CORS: il browser lo segnala come "blocked by CORS
@@ -1431,7 +1413,7 @@
             const cleanArtist = artist.replace(/ - Topic/gi, '').trim();
             
             const query = encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
-            const url = `${ITUNES_SEARCH_BASE}?term=${query}&entity=song&limit=1`;
+            const url = `https://itunes.apple.com/search?term=${query}&entity=song&limit=1`;
             
             try {
                 const response = await fetch(url);
@@ -1582,52 +1564,32 @@
         // trovato", e siccome QUALI richieste fallivano dipendeva dal carico/timing del momento, statistiche
         // come il totale degli album ascoltati risultavano diverse ad ogni ricarica pur partendo dagli
         // stessi dati. Il retry con backoff rende l'esito molto più stabile e riproducibile.
-        //
-        // "INTERRUTTORE" (circuit breaker): se apri il file direttamente con doppio click (origine
-        // file://), il browser blocca SEMPRE le richieste a itunes.apple.com per policy CORS (l'origine
-        // "null" non è mai autorizzata) — non è un limite temporaneo che si risolve aspettando, quindi
-        // ritentare con backoff su OGNI singola richiesta (copertine, generi, album, anteprime: possono
-        // essere decine) è solo tempo sprecato e rende il caricamento lentissimo. Dopo poche richieste
-        // fallite di fila, smettiamo di ritentare per un po' e falliamo all'istante, così il resto
-        // dell'app (statistiche, grafici, ecc., che non dipendono da iTunes) resta comunque veloce.
-        let itunesConsecutiveFailures = 0;
-        let itunesDisabledUntil = 0;
-        const ITUNES_FAILURE_THRESHOLD = 3;
-        const ITUNES_DISABLE_COOLDOWN_MS = 20000;
         const searchITunesResults = async (term, entity) => {
-            if (Date.now() < itunesDisabledUntil) return [];
-            const url = `${ITUNES_SEARCH_BASE}?term=${encodeURIComponent(term)}&entity=${entity}&limit=15`;
+            const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=${entity}&limit=15`;
             const data = await runQueued(async () => {
                 let lastErr = null;
-                const ATTEMPTS = 2;
+                const ATTEMPTS = 5;
                 for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
                     try {
                         if (attempt > 0) {
-                            // Backoff più breve di prima (500ms invece di 800ms-6400ms): con
-                            // l'interruttore sopra, un fallimento persistente non genera più
-                            // decine di attese lunghe in coda
-                            const backoff = 500 * Math.pow(2, attempt - 1);
-                            await wait(backoff + Math.random() * 200);
+                            // Backoff esponenziale (800ms, 1600ms, 3200ms, 6400ms) + un po' di jitter
+                            // casuale, per non far ripartire tutte le richieste in coda esattamente
+                            // nello stesso istante e rischiare di ricadere subito nello stesso rate-limit
+                            const backoff = 800 * Math.pow(2, attempt - 1);
+                            await wait(backoff + Math.random() * 300);
                         }
                         const res = await fetch(url);
                         if (!res.ok) throw new Error(`iTunes HTTP ${res.status}`);
-                        itunesConsecutiveFailures = 0;
                         return await res.json();
                     } catch (e) {
                         lastErr = e;
                     }
-                }
-                itunesConsecutiveFailures++;
-                if (itunesConsecutiveFailures >= ITUNES_FAILURE_THRESHOLD) {
-                    itunesDisabledUntil = Date.now() + ITUNES_DISABLE_COOLDOWN_MS;
-                    console.warn(`iTunes sembra irraggiungibile da questa origine (probabile blocco CORS se il file è aperto con file://): richieste sospese per ${ITUNES_DISABLE_COOLDOWN_MS / 1000}s`);
                 }
                 console.warn("Errore ricerca iTunes dopo i retry", lastErr);
                 return null;
             });
             return data?.results || [];
         };
-
 
         // Cache condivisa titolo+artista -> URL dell'anteprima audio di 30s (o null), usata per la
         // musica di sottofondo del Wrapped (copertina, top brano, top album, top artista).
@@ -2679,23 +2641,8 @@
                 const startVolume = audio.volume;
                 const startTime = performance.now();
                 const step = (now) => {
-                    // Il clamp su entrambi p e sul volume finale è necessario: per un normale
-                    // errore di arrotondamento in virgola mobile, il volume calcolato può uscire
-                    // leggermente dal range [0,1] (es. -0.0027). Impostare audio.volume fuori da
-                    // [0,1] lancia un IndexSizeError NON catturato, che interrompe silenziosamente
-                    // questo loop di dissolvenza a metà — con l'effetto che il volume resta bloccato
-                    // vicino a zero e il brano successivo sembra "non partire mai".
-                    const p = Math.max(0, Math.min(1, (now - startTime) / duration));
-                    const vol = Math.max(0, Math.min(1, startVolume + (targetVolume - startVolume) * p));
-                    if (audioElRef.current) {
-                        try {
-                            audioElRef.current.volume = vol;
-                        } catch (e) {
-                            // Non dovrebbe più accadere grazie al clamp sopra, ma in caso contrario
-                            // meglio fermare qui la dissolvenza che lasciare un'eccezione non gestita
-                            return;
-                        }
-                    }
+                    const p = Math.min(1, (now - startTime) / duration);
+                    if (audioElRef.current) audioElRef.current.volume = startVolume + (targetVolume - startVolume) * p;
                     if (p < 1) fadeRafRef.current = requestAnimationFrame(step);
                 };
                 fadeRafRef.current = requestAnimationFrame(step);
@@ -2709,24 +2656,8 @@
 
                 let cancelled = false;
                 (async () => {
-                    // Prova prima il brano "giusto" per questa slide; se l'anteprima non è
-                    // disponibile (iTunes in rate limit / CORS / 403...), prova in ordine i brani
-                    // di riserva (Top 10) allegati al cue finché uno restituisce un'anteprima
-                    // riproducibile, così la musica di sottofondo non resta muta. Se anche questo
-                    // fallisce del tutto, semplicemente non parte nulla (come prima).
-                    let previewUrl = await fetchTrackPreviewUrl(cue.title, cue.artist);
-                    if (!previewUrl && !cancelled) {
-                        const candidates = cue.candidates || [];
-                        for (let i = 0; i < candidates.length && !cancelled; i++) {
-                            const candidate = candidates[i];
-                            const candidateUrl = await fetchTrackPreviewUrl(candidate.title, candidate.artist);
-                            if (candidateUrl) { previewUrl = candidateUrl; break; }
-                        }
-                    }
+                    const previewUrl = await fetchTrackPreviewUrl(cue.title, cue.artist);
                     if (cancelled || !previewUrl || !audioElRef.current) return;
-                    // Se nel frattempo l'attivo audioCue è già cambiato (slide successiva), non
-                    // sovrascrivere: l'effect più recente si occuperà del brano corretto
-                    if (currentCueIdRef.current !== cue.id) return;
 
                     const swap = async () => {
                         const audio = audioElRef.current;
@@ -3844,31 +3775,6 @@
                 return { title, artist };
             }, [stats]);
 
-            // Pool di riserva (Top 10 brani) usato come fallback audio: se l'anteprima iTunes del
-            // brano "giusto" per una slide non è disponibile (rate limit, CORS, 403...), proviamo
-            // in ordine questi brani finché uno restituisce un'anteprima riproducibile, così la
-            // musica di sottofondo non resta muta. Appena l'anteprima corretta torna disponibile
-            // (es. cambiando slide e tornando indietro, o a un nuovo tentativo), viene usata quella.
-            const topAudioPool = useMemo(() => {
-                if (!stats || !stats.topBrani) return [];
-                return stats.topBrani.slice(0, 10).map(([key]) => {
-                    const [title, artist] = key.split(' -|- ');
-                    return { title, artist };
-                });
-            }, [stats]);
-
-            // Costruisce un audioCue con lista di brani di riserva (Top 10) allegata, escludendo
-            // il brano stesso dalla lista dei candidati di riserva
-            const buildAudioCue = (idPrefix, title, artist) => {
-                if (!title) return null;
-                return {
-                    id: `${idPrefix}-${title}-${artist}`,
-                    title,
-                    artist,
-                    candidates: topAudioPool.filter(c => !(c.title === title && c.artist === artist))
-                };
-            };
-
             const wrappedSlides = useMemo(() => {
                 if (!stats) return [];
                 const slides = [];
@@ -3881,7 +3787,7 @@
                 // 0. Copertina
                 slides.push({
                     gradient: 'from-fuchsia-600 to-purple-700',
-                    audioCue: introAudioTrack ? buildAudioCue('intro', introAudioTrack.title, introAudioTrack.artist) : null,
+                    audioCue: introAudioTrack ? { id: `intro-${introAudioTrack.title}-${introAudioTrack.artist}`, title: introAudioTrack.title, artist: introAudioTrack.artist } : null,
                     content: (
                         <div className="flex flex-col items-center justify-center gap-6">
                             <div className="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center animate-float">
@@ -4037,7 +3943,7 @@
                     const [trackTitleW, trackArtistW] = trackKeyW.split(' -|- ');
                     slides.push({
                         gradient: 'from-orange-500 to-rose-600',
-                        audioCue: buildAudioCue('track', trackTitleW, trackArtistW),
+                        audioCue: { id: `track-${trackTitleW}-${trackArtistW}`, title: trackTitleW, artist: trackArtistW },
                         content: (
                             <div className="flex flex-col items-center gap-4">
                                 <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
@@ -4122,7 +4028,7 @@
                     if (albumTopTrackW) usedAudioTrackKeys.add(trackAudioKey(albumTopTrackW.title, albumTopTrackW.artist));
                     slides.push({
                         gradient: 'from-fuchsia-600 to-indigo-700',
-                        audioCue: albumTopTrackW ? buildAudioCue('album', albumTopTrackW.title, albumTopTrackW.artist) : null,
+                        audioCue: albumTopTrackW ? { id: `album-${albumTopTrackW.title}-${albumTopTrackW.artist}`, title: albumTopTrackW.title, artist: albumTopTrackW.artist } : null,
                         content: (
                             <div className="flex flex-col items-center gap-4 -mt-12">
                                 <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
@@ -4283,7 +4189,7 @@
                     slides.push({
                         gradient: 'from-orange-500 to-red-700',
                         bgVariant: 'rings',
-                        audioCue: artistTopTrackW ? buildAudioCue('artist', artistTopTrackW.title, artistTopTrackW.artist) : null,
+                        audioCue: artistTopTrackW ? { id: `artist-${artistTopTrackW.title}-${artistTopTrackW.artist}`, title: artistTopTrackW.title, artist: artistTopTrackW.artist } : null,
                         content: (
                             <div className="flex flex-col items-center gap-4">
                                 <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
