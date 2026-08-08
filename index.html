@@ -13,7 +13,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800;900&family=Inter:wght@400;500;600;700&family=Unbounded:wght@500;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Unbounded:wght@500;700;800;900&display=swap" rel="stylesheet">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -45,7 +45,9 @@
             margin: 0;
             background-color: #0b0b0f;
             color: #f3f4f6;
-            font-family: 'Inter', system-ui, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
             background-image:
                 radial-gradient(ellipse 80% 50% at 15% -10%, rgba(168, 85, 247, 0.25), transparent),
                 radial-gradient(ellipse 60% 40% at 90% 10%, rgba(236, 72, 153, 0.18), transparent),
@@ -421,10 +423,13 @@
         }
         .animate-race-row-shift { animation: raceRowShift 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
-        .font-display { font-family: 'Outfit', 'Inter', system-ui, sans-serif; }
+        /* Font del "sito" (tutto tranne il Wrapped): stack di sistema in stile Apple/Xiaomi
+           (SF Pro / -apple-system su Mac/iOS, Inter come fallback web) invece di un font
+           decorativo da "template AI" — più sobrio, più leggibile, meno vistoso. */
+        .font-display { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif; letter-spacing: -0.015em; }
         /* Font usato SOLO dentro le storie del Wrapped: molto vicino allo stile bold/arrotondato
            tipografico usato da Spotify nel proprio Wrapped (numeri enormi, tracking stretto). */
-        .font-wrapped { font-family: 'Unbounded', 'Outfit', 'Inter', system-ui, sans-serif; letter-spacing: -0.02em; }
+        .font-wrapped { font-family: 'Unbounded', 'Inter', system-ui, sans-serif; letter-spacing: -0.02em; }
         .animate-spin-slow { animation: spin 2.2s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
@@ -778,6 +783,17 @@
         .reveal.is-in { opacity: 1; transform: translate3d(0, 0, 0); will-change: auto; }
         .reveal-scale { transform: translate3d(0, 14px, 0) scale(0.96); }
         .reveal-scale.is-in { transform: translate3d(0, 0, 0) scale(1); }
+
+        /* Macchia di luce ambientale e sfocata dietro le schermate principali (hero, guida...).
+           Statica (nessuna animazione continua) apposta: dà profondità senza costare un solo
+           frame di repaint extra durante lo scroll. */
+        .site-glow {
+            position: absolute;
+            border-radius: 9999px;
+            filter: blur(90px);
+            pointer-events: none;
+            z-index: 0;
+        }
 
         /* Card "vetro" moderna: superficie neutra, bordo sottile, ombra ampia e morbida
            invece di bagliori colorati sparsi. Al passaggio del mouse si solleva appena,
@@ -5083,7 +5099,7 @@
                                 )}
                             </div>
 
-                            <p className="reveal mt-8 text-center text-xs text-gray-500" style={{ transitionDelay: '0.2s' }}>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.4.1</span></p>
+                            <p className="reveal mt-8 text-center text-xs text-gray-500" style={{ transitionDelay: '0.2s' }}>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.4.2</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadebg" onClick={() => setShowGuide(false)}>
@@ -5136,7 +5152,7 @@
                 return (
                     <React.Fragment>
                         <div className="min-h-screen text-white flex flex-col items-center justify-start sm:justify-center p-6 pt-20 sm:pt-6 relative overflow-hidden">
-                            <div className="site-glow w-[480px] h-[480px] -top-36 -right-36 bg-fuchsia-500/15" aria-hidden="true"></div>
+                            <div className="site-glow w-[480px] h-[480px] -top-36 -right-36 bg-pink-500/15" aria-hidden="true"></div>
                             <div className="site-glow w-[420px] h-[420px] -bottom-32 -left-32 bg-purple-500/15" aria-hidden="true"></div>
 
                             <div className="absolute top-6 right-6 flex items-center gap-3 z-10">
@@ -5164,11 +5180,11 @@
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                                     <button
                                         onClick={() => { setPostLoadChoiceMade(true); openWrappedStylePicker(); }}
-                                        className="site-card site-card-lift animate-fadein group text-left backdrop-blur-xl rounded-3xl p-6 sm:p-8 hover:border-fuchsia-400/40"
+                                        className="site-card site-card-lift animate-fadein group text-left backdrop-blur-xl rounded-3xl p-6 sm:p-8 hover:border-pink-400/40"
                                         style={{ animationDelay: '0.15s' }}
                                     >
-                                        <div className="w-12 h-12 rounded-2xl bg-fuchsia-500/20 flex items-center justify-center mb-4 transition-all duration-500 group-hover:bg-fuchsia-500/30 group-hover:scale-110 group-hover:rotate-6">
-                                            <IconMusic className="w-6 h-6 text-fuchsia-300" />
+                                        <div className="w-12 h-12 rounded-2xl bg-pink-500/20 flex items-center justify-center mb-4 transition-all duration-500 group-hover:bg-pink-500/30 group-hover:scale-110 group-hover:rotate-6">
+                                            <IconMusic className="w-6 h-6 text-pink-300" />
                                         </div>
                                         <p className="font-display font-bold text-lg sm:text-xl text-white mb-1">{t.choiceWrapped}</p>
                                         <p className="text-gray-400 text-sm">{t.choiceWrappedSub}</p>
@@ -5200,7 +5216,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500 relative z-10">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.4.1</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500 relative z-10">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.4.2</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -5281,10 +5297,10 @@
                             
                             {stats && (
                                 <div className="space-y-6 sm:space-y-8">
-                                   <button onClick={openWrappedStylePicker} className="reveal site-card site-card-lift w-full text-left rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex items-center justify-between gap-4 hover:border-purple-500 group">
+                                   <button onClick={openWrappedStylePicker} className="reveal site-card site-card-lift w-full text-left rounded-2xl sm:rounded-[35px] hover:sm:rounded-2xl p-5 sm:p-6 flex items-center justify-between gap-4 hover:border-purple-500 group is-in transition-all duration-300">
                                         <div className="flex items-center gap-4 min-w-0">
                                             <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/10 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-white/20">
-                                                <IconMusic className="w-6 h-6 text-fuchsia-300" />
+                                                <IconMusic className="w-6 h-6 text-pink-300" />
                                             </div>
                                             <div className="min-w-0">
                                                 <p className="font-display text-base sm:text-lg font-bold text-white truncate">{t.wrappedCardTitle}</p>
@@ -5294,7 +5310,7 @@
                                         <span className="site-btn flex-shrink-0 hidden sm:inline-flex items-center gap-1.5 px-4 py-2 bg-white text-gray-900 rounded-full text-sm font-bold group-hover:scale-105">{t.wrappedCardCta}</span>
                                     </button>
 
-                                   <button onClick={openQuiz} className="reveal site-card site-card-lift w-full text-left rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex items-center justify-between gap-4 hover:border-yellow-300/40 group" style={{ transitionDelay: '0.06s' }}>
+                                   <button onClick={openQuiz} className="reveal site-card site-card-lift w-full text-left rounded-2xl sm:rounded-[35px] hover:sm:rounded-2xl p-5 sm:p-6 flex items-center justify-between gap-4 hover:border-yellow-300/80 group is-in transition-all duration-300" style={{ transitionDelay: '0.06s' }}>
                                         <div className="flex items-center gap-4 min-w-0">
                                             <div className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/10 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-white/20">
                                                 <IconTrophy className="w-6 h-6 text-yellow-300" />
@@ -5336,19 +5352,19 @@
                                                 <IconMic className="text-purple-400 w-5 h-5 sm:w-6 sm:h-6" />
                                                 <h2 className="font-display text-xl sm:text-2xl font-bold">{t.topArtists}</h2>
                                             </div>
-                                            <div className="space-y-3">
+                                            <div className="space-y-2">
                                                 {stats.topArtisti.map((artista, index) => {
                                                     const maxCount = stats.topArtisti[0][1];
                                                     const width = `${(artista[1] / maxCount) * 100}%`;
                                                     return (
-                                                        <div key={index} className="relative group overflow-hidden rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] transition-all duration-300 border border-transparent hover:border-white/10 hover:-translate-y-0.5">
+                                                        <div key={index} className="relative group overflow-hidden rounded-3xl bg-white/[0.02] hover:bg-white/[0.05] transition-all duration-300 border border-transparent hover:-translate-y-0.5 hover:rounded-2xl">
                                                             <div className="flex justify-between items-center z-10 relative px-3 sm:px-4 py-2.5 sm:py-3 gap-3">
                                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
                                                                     <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0 text-sm">{index + 1}</span>
                                                                     <EntityImage artist={artista[0]} type="artist" altText={artista[0]} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex-shrink-0 border border-white/10" />
                                                                     <span className="font-bold truncate text-gray-100 min-w-0 text-sm sm:text-base">{artista[0]}</span>
                                                                 </div>
-                                                                <span className="text-purple-300 font-mono text-xs sm:text-sm flex-shrink-0">{artista[1]} <span className="hidden sm:inline">{t.listens}</span></span>
+                                                                <span className="text-purple-300 font-display font-black text-xs sm:text-sm flex-shrink-0">{artista[1]} <span className="hidden sm:inline">{t.listens}</span></span>
                                                             </div>
                                                             <div className="absolute top-0 left-0 h-full w-full pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity">
                                                                 <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-1000" style={{ width }}></div>
@@ -5364,13 +5380,13 @@
                                                 <IconMusic className="text-pink-400 w-5 h-5 sm:w-6 sm:h-6" />
                                                 <h2 className="font-display text-xl sm:text-2xl font-bold">{t.topTracks}</h2>
                                             </div>
-                                            <div className="space-y-3">
+                                            <div className="space-y-2">
                                                 {stats.topBrani.length > 0 ? stats.topBrani.map((brano, index) => {
                                                     const [titolo, artista] = brano[0].split(' -|- ');
                                                     const maxCount = stats.topBrani[0][1];
                                                     const width = `${(brano[1] / maxCount) * 100}%`;
                                                     return (
-                                                        <div key={index} className="relative group overflow-hidden rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] transition-all duration-300 border border-transparent hover:border-white/10 hover:-translate-y-0.5">
+                                                        <div key={index} className="relative group overflow-hidden rounded-3xl bg-white/[0.02] hover:bg-white/[0.05] transition-all duration-300 border border-transparent hover:-translate-y-0.5 hover:rounded-2xl">
                                                             <div className="flex justify-between items-center z-10 relative px-3 sm:px-4 py-2.5 sm:py-3 gap-3">
                                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
                                                                     <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0 text-sm">{index + 1}</span>
@@ -5380,7 +5396,7 @@
                                                                         <p className="text-xs text-gray-400 truncate mt-0.5">{artista}</p>
                                                                     </div>
                                                                 </div>
-                                                                <span className="text-pink-300 font-mono text-xs sm:text-sm whitespace-nowrap flex-shrink-0">{brano[1]} <span className="hidden sm:inline">{t.listens}</span></span>
+                                                                <span className="text-pink-300 font-display font-black text-xs sm:text-sm whitespace-nowrap flex-shrink-0">{brano[1]} <span className="hidden sm:inline">{t.listens}</span></span>
                                                             </div>
                                                             <div className="absolute top-0 left-0 h-full w-full pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity">
                                                                 <div className="h-full bg-pink-500 transition-all duration-1000" style={{ width }}></div>
@@ -5396,13 +5412,13 @@
                                                 <IconDisc className="text-amber-400 w-5 h-5 sm:w-6 sm:h-6" />
                                                 <h2 className="font-display text-xl sm:text-2xl font-bold">{t.topAlbums}</h2>
                                             </div>
-                                            <div className="space-y-3">
+                                            <div className="space-y-2">
                                                 {albumStats.topAlbum.length > 0 ? albumStats.topAlbum.map((album, index) => {
                                                     const [titolo, artista] = album[0].split(' -|- ');
                                                     const maxCount = albumStats.topAlbum[0][1];
                                                     const width = `${(album[1] / maxCount) * 100}%`;
                                                     return (
-                                                        <div key={index} className="relative group overflow-hidden rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] transition-all duration-300 border border-transparent hover:border-white/10 hover:-translate-y-0.5">
+                                                        <div key={index} className="relative group overflow-hidden rounded-3xl bg-white/[0.02] hover:bg-white/[0.05] transition-all duration-300 border border-transparent hover:-translate-y-0.5 hover:rounded-2xl">
                                                             <div className="flex justify-between items-center z-10 relative px-3 sm:px-4 py-2.5 sm:py-3 gap-3">
                                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
                                                                     <span className="text-gray-500 font-bold w-4 text-center flex-shrink-0 text-sm">{index + 1}</span>
@@ -5412,7 +5428,7 @@
                                                                         <p className="text-xs text-gray-400 truncate mt-0.5">{artista}</p>
                                                                     </div>
                                                                 </div>
-                                                                <span className="text-amber-300 font-mono text-xs sm:text-sm whitespace-nowrap flex-shrink-0">{album[1]} <span className="hidden sm:inline">{t.listens}</span></span>
+                                                                <span className="text-amber-300 font-display font-black text-xs sm:text-sm whitespace-nowrap flex-shrink-0">{album[1]} <span className="hidden sm:inline">{t.listens}</span></span>
                                                             </div>
                                                             <div className="absolute top-0 left-0 h-full w-full pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity">
                                                                 <div className="h-full bg-amber-500 transition-all duration-1000" style={{ width }}></div>
@@ -5424,30 +5440,30 @@
                                         </div>
                                     </div>
 
-                                    <div className="reveal site-card bg-gradient-to-br from-indigo-900/15 to-purple-900/15 rounded-3xl p-5 sm:p-8">
+                                    <div className="reveal site-card bg-gradient-to-br from-purple-900/15 to-purple-900/15 rounded-3xl p-5 sm:p-8">
                                         <h2 className="font-display text-xl sm:text-2xl font-bold mb-5 sm:mb-6 flex items-center gap-3 text-white">
-                                            <IconCalendar className="text-indigo-400 w-5 h-5 sm:w-6 sm:h-6" /> {t.clockTitle}
+                                            <IconCalendar className="text-purple-400 w-5 h-5 sm:w-6 sm:h-6" /> {t.clockTitle}
                                         </h2>
                                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                                            <div className="border-l-2 border-indigo-500/50 pl-3 sm:pl-4">
+                                            <div className="border-l-2 border-purple-500/50 pl-3 sm:pl-4">
                                                 <p className="text-gray-400 text-xs sm:text-sm mb-1">{t.mostActiveDay}</p>
                                                 <p className="text-lg sm:text-xl font-bold text-gray-100">{stats.date.giornoTop ? (() => { const [y, m, d] = stats.date.giornoTop.data.split('-'); return lang === 'it' ? `${d}/${m}/${y}` : `${m}/${d}/${y}`; })() : t.na}</p>
-                                                <p className="text-indigo-300 text-xs sm:text-sm mt-1">{stats.date.giornoTop ? t.nListens(stats.date.giornoTop.count) : ''}</p>
+                                                <p className="text-purple-300 text-xs sm:text-sm mt-1">{stats.date.giornoTop ? t.nListens(stats.date.giornoTop.count) : ''}</p>
                                             </div>
-                                            <div className="border-l-2 border-indigo-500/50 pl-3 sm:pl-4">
+                                            <div className="border-l-2 border-purple-500/50 pl-3 sm:pl-4">
                                                 <p className="text-gray-400 text-xs sm:text-sm mb-1">{t.favoriteMonth}</p>
                                                 <p className="text-lg sm:text-xl font-bold text-gray-100">{stats.date.meseTop}</p>
-                                                <p className="text-indigo-300 text-xs sm:text-sm mt-1">{t.nListens(stats.date.meseCount)}</p>
+                                                <p className="text-purple-300 text-xs sm:text-sm mt-1">{t.nListens(stats.date.meseCount)}</p>
                                             </div>
-                                            <div className="border-l-2 border-indigo-500/50 pl-3 sm:pl-4 mt-2 sm:mt-0">
+                                            <div className="border-l-2 border-purple-500/50 pl-3 sm:pl-4 mt-2 sm:mt-0">
                                                 <p className="text-gray-400 text-xs sm:text-sm mb-1">{t.weekday}</p>
                                                 <p className="text-lg sm:text-xl font-bold text-gray-100">{stats.date.giornoSettimanaTop}</p>
-                                                <p className="text-indigo-300 text-xs sm:text-sm mt-1 truncate">{t.weekdaySub}</p>
+                                                <p className="text-purple-300 text-xs sm:text-sm mt-1 truncate">{t.weekdaySub}</p>
                                             </div>
-                                            <div className="border-l-2 border-indigo-500/50 pl-3 sm:pl-4 mt-2 sm:mt-0">
+                                            <div className="border-l-2 border-purple-500/50 pl-3 sm:pl-4 mt-2 sm:mt-0">
                                                 <p className="text-gray-400 text-xs sm:text-sm mb-1">{t.timeSlot}</p>
                                                 <p className="text-lg sm:text-xl font-bold text-gray-100">{stats.date.fasciaTop}</p>
-                                                <p className="text-indigo-300 text-xs sm:text-sm mt-1 truncate">{t.timeSlotSub}</p>
+                                                <p className="text-purple-300 text-xs sm:text-sm mt-1 truncate">{t.timeSlotSub}</p>
                                             </div>
                                         </div>
                                         <div className="mt-6 sm:mt-8 border-t border-white/10 pt-5 sm:pt-6">
@@ -5458,7 +5474,7 @@
                                                         <span className="text-[10px] sm:text-xs text-gray-400 mb-1">{w.count}</span>
                                                         <div className="w-full flex-1 flex items-end">
                                                             <div 
-                                                                className="w-full bg-gradient-to-t from-indigo-600/70 to-fuchsia-400/60 hover:from-indigo-500/90 hover:to-fuchsia-300/80 rounded-t-lg transition-all duration-700" 
+                                                                className="w-full bg-gradient-to-t from-purple-600/70 to-pink-400/60 hover:bg-white rounded-t-lg transition-all duration-400" 
                                                                 style={{ 
                                                                     height: `${(w.count / stats.maxWeekday) * 100}%`, 
                                                                     minHeight: w.count > 0 ? '4px' : '0px' 
@@ -5479,7 +5495,7 @@
                             )}
 
                             <footer className="reveal mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.4.1</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.4.2</span></p>
                             </footer>
                         </div>
                     </div>
