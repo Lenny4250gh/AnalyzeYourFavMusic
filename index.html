@@ -1257,6 +1257,24 @@
             dataUrlCache.set(artist, promise);
             return promise;
         };
+        // CONFIGURAZIONE PROXY ITUNES
+        // --------------------------------------------------------------
+        // L'endpoint pubblico itunes.apple.com/search applica un rate-limit non documentato PER IP.
+        // Se questo sito è ospitato su hosting condiviso (GitHub Pages, Netlify, Vercel free, ecc.),
+        // le richieste escono dagli IP condivisi della piattaforma, usati da migliaia di altri siti:
+        // la quota può risultare già esaurita indipendentemente da quante richieste fa QUESTO sito
+        // (403 anche sulla primissima richiesta, per artisti notissimi).
+        //
+        // Per aggirarlo, tutte le chiamate passano da un piccolo proxy (Cloudflare Worker gratuito,
+        // vedi file itunes-proxy-worker.js) che inoltra la richiesta a iTunes da un altro IP e la
+        // mette in cache. Se non hai ancora fatto il deploy del Worker, lascia questa costante
+        // com'è: il codice chiamerà itunes.apple.com direttamente (stesso comportamento di prima,
+        // quindi soggetto allo stesso rate-limit condiviso).
+        //
+        // DOPO aver distribuito il Worker (vedi istruzioni in cima a itunes-proxy-worker.js),
+        // sostituisci il valore qui sotto con l'URL del tuo Worker, es.:
+        //   const ITUNES_SEARCH_BASE = 'https://itunes-proxy.tuonome.workers.dev/search';
+        const ITUNES_SEARCH_BASE = 'https://itunes.apple.com/search';
         // NOTA SUL RATE LIMIT DI iTunes: l'endpoint pubblico itunes.apple.com/search applica un limite
         // per IP non documentato ma piuttosto basso (circa 20 richieste/minuto). Quando viene superato,
         // iTunes risponde con un errore SENZA header CORS: il browser lo segnala come "blocked by CORS
@@ -1413,7 +1431,7 @@
             const cleanArtist = artist.replace(/ - Topic/gi, '').trim();
             
             const query = encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
-            const url = `https://itunes.apple.com/search?term=${query}&entity=song&limit=1`;
+            const url = `${ITUNES_SEARCH_BASE}?term=${query}&entity=song&limit=1`;
             
             try {
                 const response = await fetch(url);
@@ -1578,7 +1596,7 @@
         const ITUNES_DISABLE_COOLDOWN_MS = 20000;
         const searchITunesResults = async (term, entity) => {
             if (Date.now() < itunesDisabledUntil) return [];
-            const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=${entity}&limit=15`;
+            const url = `${ITUNES_SEARCH_BASE}?term=${encodeURIComponent(term)}&entity=${entity}&limit=15`;
             const data = await runQueued(async () => {
                 let lastErr = null;
                 const ATTEMPTS = 2;
