@@ -1267,8 +1267,14 @@
         // a raffica una dopo l'altra. Qui aggiungiamo anche uno spazio minimo tra una partenza e l'altra
         // (throttle globale), così il RITMO delle richieste resta sotto il limite di iTunes, non solo il
         // numero di richieste contemporanee.
-        const MAX_CONCURRENT_IMAGE_REQUESTS = 2;
-        const MIN_DISPATCH_SPACING_MS = 260;
+        // Concorrenza 1 (nessuna richiesta sovrapposta) invece di 2: con 2 richieste "in parallelo",
+        // essendo entrambe async, potevano comunque scattare quasi nello stesso istante prima che la
+        // prima aggiornasse lastDispatchTime, vanificando parte dello spacing qui sotto. Lo spacing è
+        // stato inoltre allungato (260ms -> 900ms, circa 66 richieste/minuto) per restare più lontani
+        // dal limite non documentato di iTunes e ridurre la quantità di errori 429/CORS in console
+        // (il retry con backoff resta comunque attivo come rete di sicurezza per gli sforamenti residui).
+        const MAX_CONCURRENT_IMAGE_REQUESTS = 1;
+        const MIN_DISPATCH_SPACING_MS = 1400;
         let activeImageRequests = 0;
         let lastDispatchTime = 0;
         const imageRequestQueue = [];
@@ -1387,10 +1393,24 @@
             return null;
         };
 
+        // Parole che indicano una versione DIVERSA del brano (remix, edit, mix, versione live/acustica...):
+        // se compaiono nel titolo del risultato ma NON in quello cercato, il risultato non va considerato
+        // una corrispondenza valida, anche se il titolo cercato è contenuto come sottostringa in esso.
+        // Senza questo controllo, cercando "Mystery Lady" un risultato come "Mystery Lady (Sego's Remix)"
+        // veniva accettato solo perché "mystery lady" è contenuto in "mystery lady segos remix" — così
+        // durante il Wrapped partiva un remix di un altro artista al posto del brano originale scelto.
+        const VARIANT_MISMATCH_WORDS = ['remix', 'rmx', 'mix', 'edit', 'version', 'versione', 'flip', 'bootleg', 'mashup', 'rework', 'vip', 'reprise', 'redux', 'refix', 'dub', 'acoustic', 'acustica', 'unplugged', 'instrumental', 'strumentale', 'cover', 'tribute', 'karaoke', 'sped up', 'slowed', 'nightcore'];
+        const hasUnwantedVariantWord = (queryNorm, resultNorm) => {
+            const qWords = new Set(queryNorm.split(' '));
+            const rWords = resultNorm.split(' ');
+            return rWords.some(w => VARIANT_MISMATCH_WORDS.includes(w) && !qWords.has(w));
+        };
+
         const titleMatches = (queryTitle, resultTitle) => {
             const q = normalizeForMatch(stripTitleQualifiers(queryTitle));
             const r = normalizeForMatch(stripTitleQualifiers(resultTitle));
             if (!q || !r) return false;
+            if (hasUnwantedVariantWord(q, r)) return false;
             if (q === r) return true;
             if (q.includes(r) || r.includes(q)) return true;
             const qWords = q.split(' ').filter(w => w.length > 2);
@@ -1564,31 +1584,66 @@
         // trovato", e siccome QUALI richieste fallivano dipendeva dal carico/timing del momento, statistiche
         // come il totale degli album ascoltati risultavano diverse ad ogni ricarica pur partendo dagli
         // stessi dati. Il retry con backoff rende l'esito molto più stabile e riproducibile.
+        // Quando la pagina è aperta come file locale (doppio click, file://...) il browser invia
+        // un header "Origin: null" nelle richieste fetch. iTunes risponde comunque con successo
+        // (status 200), ma SENZA header CORS per questa origine "null" — quindi il browser blocca
+        // sempre la lettura della risposta (visibile in console come "net::ERR_FAILED 200 (OK)" /
+        // "blocked by CORS policy"). Non è un problema risolvibile lato codice: è una restrizione
+        // di sicurezza del browser sui contesti file://, non un bug dell'app né un rate-limit.
+        // Qui rileviamo il caso e usciamo subito, invece di sprecare tempo (e riempire la console)
+        // con tentativi e retry che dal file:// falliranno SEMPRE. L'app va quindi eseguita tramite
+        // un piccolo server locale (es. `python3 -m http.server` nella cartella, poi apri
+        // http://localhost:8000/33.html) oppure ospitata online (es. GitHub Pages): da un'origine
+        // http/https reale, iTunes include l'header CORS e le richieste funzionano normalmente.
+        const IS_FILE_PROTOCOL = (() => {
+            try { return window.location.protocol === 'file:'; } catch (e) { return false; }
+        })();
+        let fileProtocolWarningShown = false;
+        const warnFileProtocolOnce = () => {
+            if (fileProtocolWarningShown) return;
+            fileProtocolWarningShown = true;
+            console.warn(
+                'iTunes blocca sempre le richieste CORS quando la pagina è aperta come file locale (origin "null"): copertine, generi e anteprime audio restano disattivati in questa modalità. ' +
+                "Avvia un piccolo server locale (es. 'python3 -m http.server' nella cartella del file, poi apri http://localhost:8000/33.html) oppure carica il file online (es. GitHub Pages) per abilitarli."
+            );
+        };
+
         const searchITunesResults = async (term, entity) => {
+            if (IS_FILE_PROTOCOL) { warnFileProtocolOnce(); return []; }
             const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=${entity}&limit=15`;
-            const data = await runQueued(async () => {
-                let lastErr = null;
-                const ATTEMPTS = 5;
-                for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-                    try {
-                        if (attempt > 0) {
-                            // Backoff esponenziale (800ms, 1600ms, 3200ms, 6400ms) + un po' di jitter
-                            // casuale, per non far ripartire tutte le richieste in coda esattamente
-                            // nello stesso istante e rischiare di ricadere subito nello stesso rate-limit
-                            const backoff = 800 * Math.pow(2, attempt - 1);
-                            await wait(backoff + Math.random() * 300);
-                        }
+            // IMPORTANTE: il retry con backoff avviene FUORI da runQueued. Prima l'intero ciclo
+            // (tentativi + attese) girava dentro un'unica chiamata a runQueued: con concorrenza 1,
+            // questo teneva occupato l'UNICO slot della coda per tutta la durata del backoff (fino a
+            // ~6-12s), bloccando nel frattempo la ricerca di qualsiasi altro brano/artista/album in
+            // coda. Con tanti elementi che incappano nel rate-limit di iTunes uno dopo l'altro, i
+            // secondi si sommavano rapidamente (da qui i tempi di caricamento lunghissimi del Wrapped).
+            // Ora solo il singolo fetch (il tentativo vero e proprio) occupa lo slot della coda: mentre
+            // un elemento aspetta il proprio backoff, un altro elemento può comunque partire.
+            let lastErr = null;
+            const ATTEMPTS = 3;
+            for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+                if (attempt > 0) {
+                    // Backoff esponenziale (1200ms, 2400ms) + un po' di jitter casuale, per non far
+                    // ripartire tutte le richieste in coda esattamente nello stesso istante e rischiare
+                    // di ricadere subito nello stesso rate-limit. Essendo fuori dalla coda, questa attesa
+                    // non blocca più le ricerche di altri elementi nel frattempo.
+                    const backoff = 1200 * Math.pow(2, attempt - 1);
+                    await wait(backoff + Math.random() * 400);
+                }
+                try {
+                    const data = await runQueued(async () => {
                         const res = await fetch(url);
                         if (!res.ok) throw new Error(`iTunes HTTP ${res.status}`);
                         return await res.json();
-                    } catch (e) {
-                        lastErr = e;
-                    }
+                    });
+                    if (data) return data.results || [];
+                    lastErr = new Error('iTunes request failed');
+                } catch (e) {
+                    lastErr = e;
                 }
-                console.warn("Errore ricerca iTunes dopo i retry", lastErr);
-                return null;
-            });
-            return data?.results || [];
+            }
+            console.warn("Errore ricerca iTunes dopo i retry", lastErr);
+            return [];
         };
 
         // Cache condivisa titolo+artista -> URL dell'anteprima audio di 30s (o null), usata per la
@@ -2642,7 +2697,13 @@
                 const startTime = performance.now();
                 const step = (now) => {
                     const p = Math.min(1, (now - startTime) / duration);
-                    if (audioElRef.current) audioElRef.current.volume = startVolume + (targetVolume - startVolume) * p;
+                    if (audioElRef.current) {
+                        // Clamp: con p vicino a 0 o 1, l'arrotondamento in virgola mobile può produrre
+                        // valori come -0.0000003 o 1.0000002, che l'elemento <audio> rifiuta lanciando
+                        // IndexSizeError ("volume ... outside the range [0, 1]") e interrompe la dissolvenza.
+                        const nextVolume = Math.min(1, Math.max(0, startVolume + (targetVolume - startVolume) * p));
+                        audioElRef.current.volume = nextVolume;
+                    }
                     if (p < 1) fadeRafRef.current = requestAnimationFrame(step);
                 };
                 fadeRafRef.current = requestAnimationFrame(step);
@@ -4919,7 +4980,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3.1</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -5030,7 +5091,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3.1</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -5309,7 +5370,7 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3.1</span></p>
                             </footer>
                         </div>
                     </div>
