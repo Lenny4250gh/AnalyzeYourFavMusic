@@ -760,6 +760,8 @@
         const IconUpload = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M12 12v9"></path><path d="m16 16-4-4-4 4"></path></svg>;
         const IconMusic = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>;
         const IconMic = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 8-9.04 9.06a2.828 2.828 0 1 0 3.988 3.988L16 12"></path><circle cx="17" cy="7" r="5"></circle></svg>;
+        const IconVolume2 = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>;
+        const IconVolumeX = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="22" y1="9" x2="16" y2="15"></line><line x1="16" y1="9" x2="22" y2="15"></line></svg>;
         const IconCalendar = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>;
         const IconClock = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
         const IconPlay = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>;
@@ -834,6 +836,7 @@
                 cardTracks: 'Brani Diversi',
                 cardTracksSub: 'Scoperta continua',
                 topArtists: 'Top Artisti',
+                wrappedMusicTapToEnable: 'Tocca per attivare la musica',
                 topTracks: 'Top Brani',
                 topAlbums: 'Top Album',
                 listens: 'asc.',
@@ -936,6 +939,7 @@
                 wrappedPreparingImageCategories: { track: 'le copertine dei brani', album: 'le copertine degli album', artist: 'le foto degli artisti' },
                 wrappedPreparingImages: (category, done, total) => total > 0 ? `Sto caricando ${category}... (${done}/${total})` : 'Sto caricando le immagini...',
                 wrappedPreparingArtistPhoto: 'Sto scaricando la foto del tuo artista principale...',
+                wrappedPreparingAudio: 'Sto preparando la colonna sonora...',
                 wrappedStreamsTitle: 'Streaming totali',
                 wrappedStreamsSub: 'volte hai premuto play quest\'anno',
                 wrappedMinutesTitle: 'Minuti ascoltati',
@@ -1019,6 +1023,7 @@
                 cardTracks: 'Unique Tracks',
                 cardTracksSub: 'Continuous discovery',
                 topArtists: 'Top Artists',
+                wrappedMusicTapToEnable: 'Tap to enable music',
                 topTracks: 'Top Tracks',
                 topAlbums: 'Top Albums',
                 listens: 'plays',
@@ -1121,6 +1126,7 @@
                 wrappedPreparingImageCategories: { track: 'track artwork', album: 'album artwork', artist: 'artist photos' },
                 wrappedPreparingImages: (category, done, total) => total > 0 ? `Loading ${category}... (${done}/${total})` : 'Loading images...',
                 wrappedPreparingArtistPhoto: "Downloading your top artist's photo...",
+                wrappedPreparingAudio: 'Preparing the soundtrack...',
                 wrappedStreamsTitle: 'Total streams',
                 wrappedStreamsSub: 'times you hit play this year',
                 wrappedMinutesTitle: 'Minutes listened',
@@ -1251,13 +1257,30 @@
             dataUrlCache.set(artist, promise);
             return promise;
         };
-        const MAX_CONCURRENT_IMAGE_REQUESTS = 4;
+        // NOTA SUL RATE LIMIT DI iTunes: l'endpoint pubblico itunes.apple.com/search applica un limite
+        // per IP non documentato ma piuttosto basso (circa 20 richieste/minuto). Quando viene superato,
+        // iTunes risponde con un errore SENZA header CORS: il browser lo segnala come "blocked by CORS
+        // policy", il che è fuorviante (sembra un problema di permessi, ma è quasi sempre rate-limiting).
+        // Il Wrapped può generare decine di richieste ravvicinate (copertine di brani/album/artisti,
+        // generi, risoluzione album per YouTube Music, anteprime audio): un semplice limite di
+        // concorrenza (N richieste in parallelo) non basta, perché comunque le richieste partono tutte
+        // a raffica una dopo l'altra. Qui aggiungiamo anche uno spazio minimo tra una partenza e l'altra
+        // (throttle globale), così il RITMO delle richieste resta sotto il limite di iTunes, non solo il
+        // numero di richieste contemporanee.
+        const MAX_CONCURRENT_IMAGE_REQUESTS = 2;
+        const MIN_DISPATCH_SPACING_MS = 260;
         let activeImageRequests = 0;
+        let lastDispatchTime = 0;
         const imageRequestQueue = [];
 
         const runQueued = (fn) => new Promise((resolve) => {
             const runTask = async () => {
                 activeImageRequests++;
+                const sinceLast = performance.now() - lastDispatchTime;
+                if (sinceLast < MIN_DISPATCH_SPACING_MS) {
+                    await wait(MIN_DISPATCH_SPACING_MS - sinceLast);
+                }
+                lastDispatchTime = performance.now();
                 try {
                     resolve(await fn());
                 } catch (e) {
@@ -1541,19 +1564,45 @@
         // trovato", e siccome QUALI richieste fallivano dipendeva dal carico/timing del momento, statistiche
         // come il totale degli album ascoltati risultavano diverse ad ogni ricarica pur partendo dagli
         // stessi dati. Il retry con backoff rende l'esito molto più stabile e riproducibile.
+        //
+        // "INTERRUTTORE" (circuit breaker): se apri il file direttamente con doppio click (origine
+        // file://), il browser blocca SEMPRE le richieste a itunes.apple.com per policy CORS (l'origine
+        // "null" non è mai autorizzata) — non è un limite temporaneo che si risolve aspettando, quindi
+        // ritentare con backoff su OGNI singola richiesta (copertine, generi, album, anteprime: possono
+        // essere decine) è solo tempo sprecato e rende il caricamento lentissimo. Dopo poche richieste
+        // fallite di fila, smettiamo di ritentare per un po' e falliamo all'istante, così il resto
+        // dell'app (statistiche, grafici, ecc., che non dipendono da iTunes) resta comunque veloce.
+        let itunesConsecutiveFailures = 0;
+        let itunesDisabledUntil = 0;
+        const ITUNES_FAILURE_THRESHOLD = 3;
+        const ITUNES_DISABLE_COOLDOWN_MS = 20000;
         const searchITunesResults = async (term, entity) => {
+            if (Date.now() < itunesDisabledUntil) return [];
             const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=${entity}&limit=15`;
             const data = await runQueued(async () => {
                 let lastErr = null;
-                for (let attempt = 0; attempt < 3; attempt++) {
+                const ATTEMPTS = 2;
+                for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
                     try {
-                        if (attempt > 0) await wait(450 * attempt);
+                        if (attempt > 0) {
+                            // Backoff più breve di prima (500ms invece di 800ms-6400ms): con
+                            // l'interruttore sopra, un fallimento persistente non genera più
+                            // decine di attese lunghe in coda
+                            const backoff = 500 * Math.pow(2, attempt - 1);
+                            await wait(backoff + Math.random() * 200);
+                        }
                         const res = await fetch(url);
                         if (!res.ok) throw new Error(`iTunes HTTP ${res.status}`);
+                        itunesConsecutiveFailures = 0;
                         return await res.json();
                     } catch (e) {
                         lastErr = e;
                     }
+                }
+                itunesConsecutiveFailures++;
+                if (itunesConsecutiveFailures >= ITUNES_FAILURE_THRESHOLD) {
+                    itunesDisabledUntil = Date.now() + ITUNES_DISABLE_COOLDOWN_MS;
+                    console.warn(`iTunes sembra irraggiungibile da questa origine (probabile blocco CORS se il file è aperto con file://): richieste sospese per ${ITUNES_DISABLE_COOLDOWN_MS / 1000}s`);
                 }
                 console.warn("Errore ricerca iTunes dopo i retry", lastErr);
                 return null;
@@ -1561,12 +1610,49 @@
             return data?.results || [];
         };
 
-        const searchITunesDirect = async (term, entity) => {
-            const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=${entity}&limit=15`;
-            const res = await fetch(url);
-            const data = await res.json();
-            return data?.results || [];
+
+        // Cache condivisa titolo+artista -> URL dell'anteprima audio di 30s (o null), usata per la
+        // musica di sottofondo del Wrapped (copertina, top brano, top album, top artista).
+        const previewCache = new Map();
+        const fetchTrackPreviewUrl = async (title, artist) => {
+            if (!title) return null;
+            const cacheKey = `${artist || ''}-${title}`;
+            if (previewCache.has(cacheKey)) return previewCache.get(cacheKey);
+
+            const cleanTitle = stripTitleQualifiers(title);
+
+            const findMatch = (results) => {
+                const candidates = results.filter(r => r.previewUrl && titleMatches(title, r.trackName) && (!artist || artistMatches(artist, r.artistName)));
+                if (candidates.length === 0) return null;
+                const score = (r) => {
+                    let s = 0;
+                    if (artist && normalizeForMatch(r.artistName) === normalizeForMatch(artist)) s += 3;
+                    if (normalizeForMatch(stripTitleQualifiers(r.trackName)) === normalizeForMatch(cleanTitle)) s += 2;
+                    return s;
+                };
+                return candidates.slice().sort((a, b) => score(b) - score(a))[0];
+            };
+
+            try {
+                let results = await searchITunesResults(`${artist || ''} ${cleanTitle}`.trim(), 'song');
+                let match = findMatch(results);
+                if (!match) {
+                    results = await searchITunesResults(cleanTitle, 'song');
+                    match = findMatch(results);
+                }
+                const url = match ? match.previewUrl : null;
+                previewCache.set(cacheKey, url);
+                return url;
+            } catch (e) {
+                console.warn("Errore fetch anteprima audio iTunes", e);
+                previewCache.set(cacheKey, null);
+                return null;
+            }
         };
+
+        // Nota: searchITunesDirect è stata rimossa — faceva fetch dirette a itunes.apple.com senza
+        // passare dalla coda condivisa (runQueued) né dal retry con backoff, contribuendo a superare
+        // il rate-limit di iTunes. Tutte le ricerche ora passano da searchITunesResults.
 
         // Cache condivisa artista -> genere (Promise), per evitare richieste duplicate tra render
         const genreCache = new Map();
@@ -2517,7 +2603,150 @@
         // Reels/Shorts. Riusa esattamente lo stesso array `slides` (stesso `content`/
         // `gradient`/`bgVariant` per storia) generato per il formato Storie, così le due
         // modalità restano sempre in sincrono: cambia solo la presentazione, non i dati.
-        const WrappedScrollView = ({ slides, bgVariants, onClose, isSlideLocked, storyQuizAnswers }) => {
+        // ============================================================
+        // MUSICA DI SOTTOFONO DEL WRAPPED
+        // ============================================================
+        // Ogni slide del Wrapped può portare un "audioCue" (impostato solo sulle slide di
+        // rivelazione: copertina, top brano, top album, top artista). Scorrendo le slide
+        // all'indietro dalla slide attiva troviamo l'ultimo audioCue incontrato: così la
+        // musica resta la stessa per tutte le slide "intermedie" e cambia SOLO nei momenti
+        // di rivelazione, esattamente come richiesto.
+        const findActiveAudioCue = (slides, index) => {
+            for (let i = index; i >= 0; i--) {
+                if (slides[i] && slides[i].audioCue) return slides[i].audioCue;
+            }
+            return null;
+        };
+
+        // Hook condiviso da formato Storie e formato Scroll: crea un unico elemento <audio>,
+        // lo fa dissolvere (fade out/in) ogni volta che l'audioCue attivo cambia, e gestisce
+        // il caso in cui il browser blocchi l'autoplay con audio (in tal caso espone `blocked`
+        // e `retryPlay`, da richiamare da un tap esplicito dell'utente).
+        function useWrappedBackgroundMusic(slides, activeIndex, active) {
+            const audioElRef = useRef(null);
+            const currentCueIdRef = useRef(null);
+            const fadeRafRef = useRef(null);
+            const [muted, setMuted] = useState(false);
+            const mutedRef = useRef(false);
+            const [blocked, setBlocked] = useState(false);
+
+            useEffect(() => {
+                mutedRef.current = muted;
+                if (audioElRef.current) audioElRef.current.muted = muted;
+            }, [muted]);
+
+            // Crea/distrugge l'elemento audio quando il Wrapped si apre/chiude
+            useEffect(() => {
+                if (!active) return;
+                const audio = new Audio();
+                audio.loop = true;
+                audio.volume = 0;
+                audio.preload = 'auto';
+                audio.muted = mutedRef.current;
+                audioElRef.current = audio;
+                currentCueIdRef.current = null;
+                setBlocked(false);
+                return () => {
+                    if (fadeRafRef.current) cancelAnimationFrame(fadeRafRef.current);
+                    audio.pause();
+                    audio.src = '';
+                    audioElRef.current = null;
+                };
+            }, [active]);
+
+            const fadeTo = (targetVolume, duration) => {
+                const audio = audioElRef.current;
+                if (!audio) return;
+                if (fadeRafRef.current) cancelAnimationFrame(fadeRafRef.current);
+                const startVolume = audio.volume;
+                const startTime = performance.now();
+                const step = (now) => {
+                    // Il clamp su entrambi p e sul volume finale è necessario: per un normale
+                    // errore di arrotondamento in virgola mobile, il volume calcolato può uscire
+                    // leggermente dal range [0,1] (es. -0.0027). Impostare audio.volume fuori da
+                    // [0,1] lancia un IndexSizeError NON catturato, che interrompe silenziosamente
+                    // questo loop di dissolvenza a metà — con l'effetto che il volume resta bloccato
+                    // vicino a zero e il brano successivo sembra "non partire mai".
+                    const p = Math.max(0, Math.min(1, (now - startTime) / duration));
+                    const vol = Math.max(0, Math.min(1, startVolume + (targetVolume - startVolume) * p));
+                    if (audioElRef.current) {
+                        try {
+                            audioElRef.current.volume = vol;
+                        } catch (e) {
+                            // Non dovrebbe più accadere grazie al clamp sopra, ma in caso contrario
+                            // meglio fermare qui la dissolvenza che lasciare un'eccezione non gestita
+                            return;
+                        }
+                    }
+                    if (p < 1) fadeRafRef.current = requestAnimationFrame(step);
+                };
+                fadeRafRef.current = requestAnimationFrame(step);
+            };
+
+            useEffect(() => {
+                if (!active || !slides || slides.length === 0) return;
+                const cue = findActiveAudioCue(slides, activeIndex);
+                if (!cue || currentCueIdRef.current === cue.id) return;
+                currentCueIdRef.current = cue.id;
+
+                let cancelled = false;
+                (async () => {
+                    // Prova prima il brano "giusto" per questa slide; se l'anteprima non è
+                    // disponibile (iTunes in rate limit / CORS / 403...), prova in ordine i brani
+                    // di riserva (Top 10) allegati al cue finché uno restituisce un'anteprima
+                    // riproducibile, così la musica di sottofondo non resta muta. Se anche questo
+                    // fallisce del tutto, semplicemente non parte nulla (come prima).
+                    let previewUrl = await fetchTrackPreviewUrl(cue.title, cue.artist);
+                    if (!previewUrl && !cancelled) {
+                        const candidates = cue.candidates || [];
+                        for (let i = 0; i < candidates.length && !cancelled; i++) {
+                            const candidate = candidates[i];
+                            const candidateUrl = await fetchTrackPreviewUrl(candidate.title, candidate.artist);
+                            if (candidateUrl) { previewUrl = candidateUrl; break; }
+                        }
+                    }
+                    if (cancelled || !previewUrl || !audioElRef.current) return;
+                    // Se nel frattempo l'attivo audioCue è già cambiato (slide successiva), non
+                    // sovrascrivere: l'effect più recente si occuperà del brano corretto
+                    if (currentCueIdRef.current !== cue.id) return;
+
+                    const swap = async () => {
+                        const audio = audioElRef.current;
+                        if (!audio) return;
+                        audio.src = previewUrl;
+                        audio.currentTime = 0;
+                        try {
+                            await audio.play();
+                            setBlocked(false);
+                            fadeTo(0.55, 700);
+                        } catch (e) {
+                            // Autoplay con audio bloccato dal browser: serve un tap esplicito (retryPlay)
+                            setBlocked(true);
+                        }
+                    };
+
+                    if (audioElRef.current.volume > 0.02) {
+                        fadeTo(0, 300);
+                        setTimeout(() => { if (!cancelled) swap(); }, 320);
+                    } else {
+                        swap();
+                    }
+                })();
+
+                return () => { cancelled = true; };
+            }, [activeIndex, slides, active]);
+
+            const toggleMute = () => setMuted(m => !m);
+            const retryPlay = () => {
+                const audio = audioElRef.current;
+                if (!audio) return;
+                audio.play().then(() => { setBlocked(false); fadeTo(0.55, 500); }).catch(() => {});
+            };
+
+            return { muted, toggleMute, blocked, retryPlay };
+        }
+
+        const WrappedScrollView = ({ slides, bgVariants, onClose, isSlideLocked, storyQuizAnswers, musicTapLabel }) => {
             const containerRef = useRef(null);
             const sectionRefs = useRef([]);
             const [activeIndex, setActiveIndex] = useState(0);
@@ -2533,6 +2762,9 @@
             useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
             const isSlideLockedRef = useRef(isSlideLocked);
             useEffect(() => { isSlideLockedRef.current = isSlideLocked; }, [isSlideLocked]);
+
+            // Musica di sottofondo: segue l'activeIndex già tracciato dallo scroll (IntersectionObserver sopra)
+            const { muted: musicMuted, toggleMute: toggleMusicMute, blocked: musicBlocked, retryPlay: retryMusicPlay } = useWrappedBackgroundMusic(slides, activeIndex, true);
 
             useEffect(() => {
                 const root = containerRef.current;
@@ -2655,6 +2887,22 @@
                             <IconX className="w-5 h-5" />
                         </button>
 
+                        <button
+                            onClick={toggleMusicMute}
+                            className="absolute top-3 left-3 z-30 bg-black/30 hover:bg-black/50 p-2 rounded-full text-white/80 hover:text-white transition-colors"
+                        >
+                            {musicMuted ? <IconVolumeX className="w-5 h-5" /> : <IconVolume2 className="w-5 h-5" />}
+                        </button>
+
+                        {musicBlocked && (
+                            <button
+                                onClick={retryMusicPlay}
+                                className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 bg-black/60 hover:bg-black/80 text-white text-xs font-semibold px-4 py-2 rounded-full flex items-center gap-2 animate-pulse"
+                            >
+                                <IconVolume2 className="w-4 h-4" /> {musicTapLabel}
+                            </button>
+                        )}
+
                         {/* Feed verticale: una storia per schermata intera, aggancio (snap) di una
                             sola storia alla volta ad ogni swipe/scroll, proprio come un feed di
                             video brevi. */}
@@ -2755,6 +3003,11 @@
             // Descrizione mostrata durante la preparazione del Wrapped, aggiornata via via in base
             // a cosa si sta effettivamente caricando (statistiche, copertine, foto artista...).
             const [wrappedLoadingLabel, setWrappedLoadingLabel] = useState('');
+            // Brani di sottofondo per copertina/top brano/top album/top artista, GIÀ verificati (hanno
+            // davvero un'anteprima audio disponibile su iTunes, non solo "il brano giusto sulla carta")
+            // e già precaricati in previewCache durante la preparazione del Wrapped, così quando la
+            // storia diventa attiva la canzone parte all'istante invece di aspettare la rete.
+            const [resolvedAudioCues, setResolvedAudioCues] = useState({ intro: null, track: null, album: null, artist: null });
             // Vero durante l'attesa (1s) tra la risposta al quiz-storia e l'avanzamento automatico
             // alla storia successiva: blocca il tap "avanti" manuale in quella finestra, per evitare
             // di saltare due storie insieme (un avanzamento manuale + quello automatico in arrivo).
@@ -3154,6 +3407,13 @@
                     topBrani: sortObject(braniCount).filter(b => b[1] > 1).slice(0, 10),
                     topAlbum: sortObject(albumCount).filter(b => b[1] > 1).slice(0, 10),
                     albumCountBase: albumCount,
+                    // Elenco COMPLETO dei brani (non solo la top10): serve per la musica di sottofondo del
+                    // Wrapped, per risalire al brano più ascoltato di un dato artista o di un dato album.
+                    braniFull: sortObject(braniCount),
+                    // chiaveBrano -> nome album, per i brani il cui album è già noto direttamente dai dati
+                    // (Spotify) o per maggioranza di voti; i brani di YouTube Music risolti in un secondo
+                    // momento via iTunes vengono aggiunti separatamente in albumStats.trackAlbumMapResolved.
+                    trackAlbumMapKnown: trackToAlbumName,
                     // Brani più ascoltati per cui non conosciamo ancora l'album (tipicamente da YouTube Music):
                     // verranno risolti in un secondo momento via iTunes per completare le statistiche sugli album
                     unresolvedTracksForAlbum: sortObject(unknownAlbumTrackCount).slice(0, 80).map(([chiaveBrano, count]) => ({
@@ -3180,10 +3440,10 @@
                 setTopGenre(null);
                 (async () => {
                     try {
-                        let results = await searchITunesDirect(topArtistName, 'musicArtist');
+                        let results = await searchITunesResults(topArtistName, 'musicArtist');
                         let found = results.find(r => r.primaryGenreName)?.primaryGenreName;
                         if (!found) {
-                            results = await searchITunesDirect(topArtistName, 'song');
+                            results = await searchITunesResults(topArtistName, 'song');
                             found = results.find(r => normalizeForMatch(r.artistName) === normalizeForMatch(topArtistName) && r.primaryGenreName)?.primaryGenreName;
                         }
                         if (!cancelled) setTopGenre(found || null);
@@ -3220,11 +3480,11 @@
             // Statistiche sugli album, valide sia per Spotify che per YouTube Music: partiamo dagli album già
             // noti (Spotify) e arricchiamo in background con l'album dei brani ascoltati su YouTube Music,
             // risolto via iTunes (best-effort, sullo stesso modello usato per i generi musicali).
-            const [albumStats, setAlbumStats] = useState({ loading: false, albumUnici: 0, topAlbum: [] });
+            const [albumStats, setAlbumStats] = useState({ loading: false, albumUnici: 0, topAlbum: [], trackAlbumMapResolved: {} });
 
             useEffect(() => {
                 let cancelled = false;
-                if (!stats) { setAlbumStats({ loading: false, albumUnici: 0, topAlbum: [] }); return; }
+                if (!stats) { setAlbumStats({ loading: false, albumUnici: 0, topAlbum: [], trackAlbumMapResolved: {} }); return; }
 
                 const baseCount = stats.albumCountBase || {};
                 const baseSorted = Object.entries(baseCount).sort((a, b) => b[1] - a[1]);
@@ -3233,7 +3493,8 @@
                 setAlbumStats({
                     loading: unresolved.length > 0,
                     albumUnici: Object.keys(baseCount).length,
-                    topAlbum: baseSorted.filter(b => b[1] > 1).slice(0, 10)
+                    topAlbum: baseSorted.filter(b => b[1] > 1).slice(0, 10),
+                    trackAlbumMapResolved: {}
                 });
 
                 if (unresolved.length === 0) return;
@@ -3255,17 +3516,20 @@
 
                     if (cancelled) return;
 
+                    const resolvedMap = {};
                     results.forEach(res => {
                         if (!res) return;
                         const key = `${res.albumName} -|- ${res.tr.artista}`;
                         merged[key] = (merged[key] || 0) + res.tr.count;
+                        resolvedMap[res.tr.chiaveBrano] = res.albumName;
                     });
 
                     const sorted = Object.entries(merged).sort((a, b) => b[1] - a[1]);
                     setAlbumStats({
                         loading: false,
                         albumUnici: Object.keys(merged).length,
-                        topAlbum: sorted.filter(b => b[1] > 1).slice(0, 10)
+                        topAlbum: sorted.filter(b => b[1] > 1).slice(0, 10),
+                        trackAlbumMapResolved: resolvedMap
                     });
                 })();
 
@@ -3502,14 +3766,104 @@
                     .map((name, i) => ({ key: `${name}-${i}`, artist: name }));
             }, [stats]);
 
+            // Risale al brano PIÙ ASCOLTATO (in base ai dati reali) di un dato album, incrociando
+            // l'elenco completo dei brani con la mappa brano->album (sia quella nota direttamente
+            // dai dati sia quella risolta in un secondo momento via iTunes per YouTube Music).
+            // Chiave univoca titolo+artista, nello stesso formato di "chiaveBrano", usata per
+            // capire se un brano è già stato scelto come audioCue di un'altra slide del Wrapped
+            const trackAudioKey = (title, artist) => `${title} -|- ${artist || ''}`;
+
+            const getTopTrackForAlbum = (albumTitle, albumArtist, excludeKeys) => {
+                if (!stats || !albumTitle) return null;
+                const known = stats.trackAlbumMapKnown || {};
+                const resolved = albumStats.trackAlbumMapResolved || {};
+                let best = null; // migliore in assoluto, usato come fallback se sono tutti esclusi
+                let bestNotExcluded = null;
+                (stats.braniFull || []).forEach(([chiaveBrano, count]) => {
+                    const [title, artist] = chiaveBrano.split(' -|- ');
+                    if (albumArtist && artist !== albumArtist) return;
+                    const albumOfTrack = known[chiaveBrano] || resolved[chiaveBrano] || null;
+                    if (albumOfTrack !== albumTitle) return;
+                    if (!best || count > best.count) best = { title, artist, count };
+                    const isExcluded = excludeKeys && excludeKeys.has(trackAudioKey(title, artist));
+                    if (!isExcluded && (!bestNotExcluded || count > bestNotExcluded.count)) {
+                        bestNotExcluded = { title, artist, count };
+                    }
+                });
+                // Preferiamo un brano non ancora usato altrove nel Wrapped; se nell'album c'è un
+                // solo brano (o sono tutti già usati), ripieghiamo comunque sul più ascoltato
+                return bestNotExcluded || best;
+            };
+
+            // Risale al brano più ascoltato di un dato artista, in base ai dati reali. Se
+            // excludeKeys è passato, evita brani già scelti come audioCue di un'altra slide del
+            // Wrapped (es. lo stesso brano già mostrato come "top brano assoluto"), passando al
+            // brano successivo più ascoltato di quell'artista; se non ce ne sono altri, ripiega
+            // comunque sul più ascoltato per non lasciare la slide senza musica.
+            const getTopTrackForArtist = (artistName, excludeKeys) => {
+                if (!stats || !artistName) return null;
+                let best = null;
+                let bestNotExcluded = null;
+                (stats.braniFull || []).forEach(([chiaveBrano, count]) => {
+                    const [title, artist] = chiaveBrano.split(' -|- ');
+                    if (artist !== artistName) return;
+                    if (!best || count > best.count) best = { title, artist, count };
+                    const isExcluded = excludeKeys && excludeKeys.has(trackAudioKey(title, artist));
+                    if (!isExcluded && (!bestNotExcluded || count > bestNotExcluded.count)) {
+                        bestNotExcluded = { title, artist, count };
+                    }
+                });
+                return bestNotExcluded || best;
+            };
+
+            // Brano scelto (una sola volta a sessione) tra la Top 5 per accompagnare l'inizio del
+            // Wrapped, prima che vengano rivelati il top brano/album/artista
+            const introAudioTrack = useMemo(() => {
+                if (!stats || !stats.topBrani || stats.topBrani.length === 0) return null;
+                const pool = stats.topBrani.slice(0, 5);
+                const [key] = pool[Math.floor(Math.random() * pool.length)];
+                const [title, artist] = key.split(' -|- ');
+                return { title, artist };
+            }, [stats]);
+
+            // Pool di riserva (Top 10 brani) usato come fallback audio: se l'anteprima iTunes del
+            // brano "giusto" per una slide non è disponibile (rate limit, CORS, 403...), proviamo
+            // in ordine questi brani finché uno restituisce un'anteprima riproducibile, così la
+            // musica di sottofondo non resta muta. Appena l'anteprima corretta torna disponibile
+            // (es. cambiando slide e tornando indietro, o a un nuovo tentativo), viene usata quella.
+            const topAudioPool = useMemo(() => {
+                if (!stats || !stats.topBrani) return [];
+                return stats.topBrani.slice(0, 10).map(([key]) => {
+                    const [title, artist] = key.split(' -|- ');
+                    return { title, artist };
+                });
+            }, [stats]);
+
+            // Costruisce un audioCue con lista di brani di riserva (Top 10) allegata, escludendo
+            // il brano stesso dalla lista dei candidati di riserva
+            const buildAudioCue = (idPrefix, title, artist) => {
+                if (!title) return null;
+                return {
+                    id: `${idPrefix}-${title}-${artist}`,
+                    title,
+                    artist,
+                    candidates: topAudioPool.filter(c => !(c.title === title && c.artist === artist))
+                };
+            };
+
             const wrappedSlides = useMemo(() => {
                 if (!stats) return [];
                 const slides = [];
                 const dateFmt = (d) => d.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+                // Tiene traccia dei brani già usati come sottofondo di una slide precedente, così
+                // le slide successive (album/artista) evitano di riproporre lo stesso identico brano
+                const usedAudioTrackKeys = new Set();
+                if (introAudioTrack) usedAudioTrackKeys.add(trackAudioKey(introAudioTrack.title, introAudioTrack.artist));
 
                 // 0. Copertina
                 slides.push({
                     gradient: 'from-fuchsia-600 to-purple-700',
+                    audioCue: introAudioTrack ? buildAudioCue('intro', introAudioTrack.title, introAudioTrack.artist) : null,
                     content: (
                         <div className="flex flex-col items-center justify-center gap-6">
                             <div className="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center animate-float">
@@ -3665,6 +4019,7 @@
                     const [trackTitleW, trackArtistW] = trackKeyW.split(' -|- ');
                     slides.push({
                         gradient: 'from-orange-500 to-rose-600',
+                        audioCue: buildAudioCue('track', trackTitleW, trackArtistW),
                         content: (
                             <div className="flex flex-col items-center gap-4">
                                 <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
@@ -3676,6 +4031,7 @@
                             </div>
                         )
                     });
+                    usedAudioTrackKeys.add(trackAudioKey(trackTitleW, trackArtistW));
                 }
 
                 // 6. Top 5 brani più ascoltati
@@ -3744,8 +4100,11 @@
                 if (albumStats.topAlbum.length > 0) {
                     const [albumKeyW, albumCountW] = albumStats.topAlbum[0];
                     const [albumTitleW, albumArtistW] = albumKeyW.split(' -|- ');
+                    const albumTopTrackW = getTopTrackForAlbum(albumTitleW, albumArtistW, usedAudioTrackKeys);
+                    if (albumTopTrackW) usedAudioTrackKeys.add(trackAudioKey(albumTopTrackW.title, albumTopTrackW.artist));
                     slides.push({
                         gradient: 'from-fuchsia-600 to-indigo-700',
+                        audioCue: albumTopTrackW ? buildAudioCue('album', albumTopTrackW.title, albumTopTrackW.artist) : null,
                         content: (
                             <div className="flex flex-col items-center gap-4 -mt-12">
                                 <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
@@ -3901,9 +4260,12 @@
                 // 10. Top artista più ascoltato
                 if (stats.topArtisti.length > 0) {
                     const [artistName, artistCount] = stats.topArtisti[0];
+                    const artistTopTrackW = getTopTrackForArtist(artistName, usedAudioTrackKeys);
+                    if (artistTopTrackW) usedAudioTrackKeys.add(trackAudioKey(artistTopTrackW.title, artistTopTrackW.artist));
                     slides.push({
                         gradient: 'from-orange-500 to-red-700',
                         bgVariant: 'rings',
+                        audioCue: artistTopTrackW ? buildAudioCue('artist', artistTopTrackW.title, artistTopTrackW.artist) : null,
                         content: (
                             <div className="flex flex-col items-center gap-4">
                                 <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
@@ -4081,7 +4443,11 @@
                 });
 
                 return slides;
-            }, [stats, lang, topGenre, genreStats, albumStats, storyQuizQuestions, storyQuizAnswers, monthlyStoryIdx, randomArtistStoryIdx, shuffledTop5Artists, filterMode, selectedYear, dateFrom, dateTo]);
+            }, [stats, lang, topGenre, genreStats, albumStats, storyQuizQuestions, storyQuizAnswers, monthlyStoryIdx, randomArtistStoryIdx, shuffledTop5Artists, filterMode, selectedYear, dateFrom, dateTo, introAudioTrack]);
+
+            // Musica di sottofondo del Wrapped in formato Storie (il formato Scroll gestisce la
+            // propria istanza internamente, dato che tiene il proprio activeIndex)
+            const wrappedMusic = useWrappedBackgroundMusic(wrappedSlides, wrappedIndex, showWrapped && wrappedStyle === 'stories');
 
             // Raccoglie tutte le combinazioni artista/titolo/tipo la cui immagine servirà da qualche
             // parte nel Wrapped (top brano/album/artista, le rispettive Top 5, la corsa mensile, i
@@ -4237,6 +4603,75 @@
                         await getArtistPhotoDataUrl(stats.topArtisti[0][0]);
                     }
                     if (cancelled) return;
+
+                    // Fase 4: precarica le anteprime audio (30s) dei 4 momenti "clou" del Wrapped
+                    // (copertina, top brano, top album, top artista) INSIEME al resto, invece di
+                    // scaricarle al volo quando l'utente arriva su quella storia (da qui il ritardo
+                    // prima che parta la canzone). Per ciascun momento si parte dal brano "giusto"
+                    // (il più ascoltato in quel contesto) ma, se iTunes non ha un'anteprima per
+                    // QUEL brano preciso, si prova un altro brano a caso tra i primi 10 più
+                    // ascoltati in assoluto, uno dopo l'altro, finché uno risulta riproducibile:
+                    // così la slide ha comunque una canzone di sottofondo invece di restare muta.
+                    // Il risultato finisce sia in resolvedAudioCues (per le slide) sia già dentro
+                    // previewCache (fetchTrackPreviewUrl lo salva lì), quindi quando la storia
+                    // diventa attiva la musica parte all'istante, senza attese di rete.
+                    setWrappedLoadingLabel(t.wrappedPreparingAudio);
+                    const top10TracksForAudio = (stats.topBrani || []).slice(0, 10).map(([key]) => {
+                        const [title, artist] = key.split(' -|- ');
+                        return { title, artist };
+                    });
+                    const resolvePlayableTrack = async (preferred) => {
+                        const tried = new Set();
+                        const tryCandidate = async (cand) => {
+                            if (!cand || !cand.title || cancelled) return null;
+                            const k = trackAudioKey(cand.title, cand.artist);
+                            if (tried.has(k)) return null;
+                            tried.add(k);
+                            const url = await fetchTrackPreviewUrl(cand.title, cand.artist);
+                            return url ? cand : null;
+                        };
+                        const preferredHit = await tryCandidate(preferred);
+                        if (preferredHit || cancelled) return preferredHit;
+                        for (const cand of shuffleArray(top10TracksForAudio.slice())) {
+                            const hit = await tryCandidate(cand);
+                            if (hit) return hit;
+                            if (cancelled) return null;
+                        }
+                        return null;
+                    };
+
+                    let introPreferred = null;
+                    if (stats.topBrani && stats.topBrani.length > 0) {
+                        const pool5 = stats.topBrani.slice(0, 5);
+                        const [introKey] = pool5[Math.floor(Math.random() * pool5.length)];
+                        const [introTitle, introArtist] = introKey.split(' -|- ');
+                        introPreferred = { title: introTitle, artist: introArtist };
+                    }
+                    let trackPreferred = null;
+                    if (stats.topBrani && stats.topBrani.length > 0) {
+                        const [trackKey] = stats.topBrani[0];
+                        const [trackTitle, trackArtist] = trackKey.split(' -|- ');
+                        trackPreferred = { title: trackTitle, artist: trackArtist };
+                    }
+                    let albumPreferred = null;
+                    if (albumStats.topAlbum && albumStats.topAlbum.length > 0) {
+                        const [albumKey] = albumStats.topAlbum[0];
+                        const [albumTitle, albumArtist] = albumKey.split(' -|- ');
+                        albumPreferred = getTopTrackForAlbum(albumTitle, albumArtist);
+                    }
+                    let artistPreferred = null;
+                    if (stats.topArtisti && stats.topArtisti.length > 0) {
+                        artistPreferred = getTopTrackForArtist(stats.topArtisti[0][0]);
+                    }
+
+                    const [introResolved, trackResolved, albumResolved, artistResolved] = await Promise.all([
+                        resolvePlayableTrack(introPreferred),
+                        resolvePlayableTrack(trackPreferred),
+                        resolvePlayableTrack(albumPreferred),
+                        resolvePlayableTrack(artistPreferred),
+                    ]);
+                    if (cancelled) return;
+                    setResolvedAudioCues({ intro: introResolved, track: trackResolved, album: albumResolved, artist: artistResolved });
 
                     setShowWrapped(true);
                     setWrappedPreparing(false);
@@ -4560,7 +4995,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.2</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -4671,7 +5106,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.2</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -4950,7 +5385,7 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.2</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3</span></p>
                             </footer>
                         </div>
                     </div>
@@ -5031,6 +5466,7 @@
                             onClose={closeWrapped}
                             isSlideLocked={isWrappedSlideLocked}
                             storyQuizAnswers={storyQuizAnswers}
+                            musicTapLabel={t.wrappedMusicTapToEnable}
                         />
                     )}
 
@@ -5071,6 +5507,23 @@
                                     <IconX className="w-5 h-5" />
                                 </button>
 
+                                {/* Muto/attiva musica */}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); wrappedMusic.toggleMute(); }}
+                                    className="absolute top-7 left-3 z-30 bg-black/30 hover:bg-black/50 p-2 rounded-full text-white/80 hover:text-white transition-colors"
+                                >
+                                    {wrappedMusic.muted ? <IconVolumeX className="w-5 h-5" /> : <IconVolume2 className="w-5 h-5" />}
+                                </button>
+
+                                {wrappedMusic.blocked && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); wrappedMusic.retryPlay(); }}
+                                        className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 bg-black/60 hover:bg-black/80 text-white text-xs font-semibold px-4 py-2 rounded-full flex items-center gap-2 animate-pulse"
+                                    >
+                                        <IconVolume2 className="w-4 h-4" /> {t.wrappedMusicTapToEnable}
+                                    </button>
+                                )}
+
                                 {/* Zona di tap sinistra per tornare indietro. Sul quiz senza risposta viene
                                     ristretta a una fascia in alto (sotto la barra di avanzamento), per non
                                     coprire le opzioni di risposta più in basso, ma resta comunque possibile
@@ -5103,14 +5556,21 @@
                                     </div>
                                 )}
 
-                                {/* Contenuto della slide corrente */}
+                                {/* Contenuto della slide corrente. Nota: RaceLeaderBackdrop deve restare un
+                                    FRATELLO (non un figlio) del livello di contenuto con "z-10" esplicito —
+                                    esattamente come nel formato Scroll, dove il cambio di colore funziona.
+                                    Annidarlo dentro lo stesso div che porta anche le classi di animazione di
+                                    ingresso (transform/filter) lo intrappola in una nuova stacking context
+                                    "z-auto" e il cambio di colore smette di essere visibile. */}
                                 <div
                                     key={wrappedIndex}
-                                    className={`wrapped-slide-content story-ambient wrapped-variant-${wrappedItemVariant} absolute inset-0 flex flex-col items-center justify-center text-center p-8 sm:p-10 overflow-hidden ${wrappedSlides[wrappedIndex].bgOverrideColor ? '' : `bg-gradient-to-br ${wrappedSlides[wrappedIndex].gradient}`} ${wrappedDirection >= 0 ? 'animate-story-fwd' : 'animate-story-back'}`}
+                                    className={`absolute inset-0 overflow-hidden ${wrappedSlides[wrappedIndex].bgOverrideColor ? '' : `bg-gradient-to-br ${wrappedSlides[wrappedIndex].gradient}`} ${wrappedDirection >= 0 ? 'animate-story-fwd' : 'animate-story-back'}`}
                                 >
                                     {wrappedSlides[wrappedIndex].bgOverrideColor && <RaceLeaderBackdrop color={wrappedSlides[wrappedIndex].bgOverrideColor} />}
-                                    <WrappedBgFX variant={wrappedBgVariant} />
-                                    {wrappedSlides[wrappedIndex].content}
+                                    <div className={`wrapped-slide-content story-ambient wrapped-variant-${wrappedItemVariant} relative z-10 w-full h-full flex flex-col items-center justify-center text-center p-8 sm:p-10 overflow-hidden`}>
+                                        <WrappedBgFX variant={wrappedBgVariant} />
+                                        {wrappedSlides[wrappedIndex].content}
+                                    </div>
                                 </div>
                             </div>
                         </div>
