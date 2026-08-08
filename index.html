@@ -983,7 +983,6 @@
                 quizScoreLabel: 'Punteggio',
                 quizCorrect: 'Esatto!',
                 quizWrong: 'Risposta sbagliata',
-                quizCorrectWas: (c) => `La risposta corretta era: ${c}`,
                 quizNext: 'Prossima domanda',
                 quizPrev: 'Domanda precedente',
                 quizSeeResult: 'Vedi il risultato',
@@ -1170,7 +1169,6 @@
                 quizScoreLabel: 'Score',
                 quizCorrect: 'Correct!',
                 quizWrong: 'Wrong answer',
-                quizCorrectWas: (c) => `The correct answer was: ${c}`,
                 quizNext: 'Next question',
                 quizPrev: 'Previous question',
                 quizSeeResult: 'See result',
@@ -4104,7 +4102,7 @@
                                 </div>
                                 {answeredQ && (
                                     <p className={`text-sm font-bold animate-fadein ${selectedQ === q.correct ? 'text-emerald-300' : 'text-red-300'}`}>
-                                        {selectedQ === q.correct ? t.quizCorrect : `${t.quizWrong} — ${t.quizCorrectWas(String(q.correct).split(' -|- ')[0])}`}
+                                        {selectedQ === q.correct ? t.quizCorrect : `${t.quizWrong}`}
                                     </p>
                                 )}
                                 {!answeredQ && ( <p className="text-white/40 text-[11px] mt-1"> {t.wrappedQuizChoose} </p> )}
@@ -5099,7 +5097,7 @@
                                 )}
                             </div>
 
-                            <p className="reveal mt-8 text-center text-xs text-gray-500" style={{ transitionDelay: '0.2s' }}>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.4.2</span></p>
+                            <p className="reveal mt-8 text-center text-xs text-gray-500" style={{ transitionDelay: '0.2s' }}>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.4.3</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadebg" onClick={() => setShowGuide(false)}>
@@ -5216,7 +5214,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500 relative z-10">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.4.2</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500 relative z-10">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.4.3</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -5324,22 +5322,22 @@
                                     </button>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        <div className="reveal site-card site-card-lift rounded-2xl p-5 sm:p-6 flex flex-col hover:border-pink-400/30" style={{ transitionDelay: '0s' }}>
+                                        <div className="reveal site-card site-card-lift rounded-2xl hover:rounded-[30px] p-5 sm:p-6 flex flex-col hover:rounded3xl hover:border-pink-400/30 is-in transition-all duration-300" style={{ transitionDelay: '0s' }}>
                                             <div className="flex items-center gap-3 mb-3 sm:mb-4 text-gray-400"><IconPlay className="w-5 h-5 sm:w-6 sm:h-6 text-pink-400" /><h3 className="font-semibold text-xs sm:text-sm uppercase tracking-wider">{t.cardStreams}</h3></div>
                                             <p className="font-display site-counter text-3xl font-black mb-1 text-white">{stats.totali.toLocaleString()}</p>
                                             <p className="text-xs sm:text-sm text-gray-500">{t.cardStreamsSub(stats.spCount, stats.ytmCount)}</p>
                                         </div>
-                                        <div className="reveal site-card site-card-lift rounded-2xl p-5 sm:p-6 flex flex-col hover:border-purple-400/30" style={{ transitionDelay: '0.05s' }}>
+                                        <div className="reveal site-card site-card-lift rounded-2xl hover:rounded-[30px] p-5 sm:p-6 flex flex-col hover:rounded3xl hover:border-purple-400/30 is-in transition-all duration-300" style={{ transitionDelay: '0.05s' }}>
                                             <div className="flex items-center gap-3 mb-3 sm:mb-4 text-gray-400"><IconClock className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" /><h3 className="font-semibold text-xs sm:text-sm uppercase tracking-wider">{t.cardMinutes}</h3></div>
                                             <p className="font-display site-counter text-3xl font-black mb-1 text-white">{stats.minutiTotali.toLocaleString()}</p>
                                             <p className="text-xs sm:text-sm text-gray-500">{t.cardMinutesSub(Math.round(stats.minutiTotali/60))}</p>
                                         </div>
-                                        <div className="reveal site-card site-card-lift rounded-2xl p-5 sm:p-6 flex flex-col hover:border-green-400/30" style={{ transitionDelay: '0.1s' }}>
+                                        <div className="reveal site-card site-card-lift rounded-2xl hover:rounded-[30px] p-5 sm:p-6 flex flex-col hover:rounded3xl hover:border-green-400/30 is-in transition-all duration-300" style={{ transitionDelay: '0.1s' }}>
                                             <div className="flex items-center gap-3 mb-3 sm:mb-4 text-gray-400"><IconMic className="w-5 h-5 sm:w-6 sm:h-6 text-green-400" /><h3 className="font-semibold text-xs sm:text-sm uppercase tracking-wider">{t.cardArtists}</h3></div>
                                             <p className="font-display site-counter text-3xl font-black mb-1 text-white">{stats.artistiUnici.toLocaleString()}</p>
                                             <p className="text-xs sm:text-sm text-gray-500">{t.cardArtistsSub}</p>
                                         </div>
-                                        <div className="reveal site-card site-card-lift rounded-2xl p-5 sm:p-6 flex flex-col hover:border-blue-400/30" style={{ transitionDelay: '0.15s' }}>
+                                        <div className="reveal site-card site-card-lift rounded-2xl hover:rounded-[30px] p-5 sm:p-6 flex flex-col hover:rounded3xl hover:border-blue-400/30 is-in transition-all duration-300" style={{ transitionDelay: '0.15s' }}>
                                             <div className="flex items-center gap-3 mb-3 sm:mb-4 text-gray-400"><IconDisc className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" /><h3 className="font-semibold text-xs sm:text-sm uppercase tracking-wider">{t.cardTracks}</h3></div>
                                             <p className="font-display site-counter text-3xl font-black mb-1 text-white">{stats.braniUnici.toLocaleString()}</p>
                                             <p className="text-xs sm:text-sm text-gray-500">{t.cardTracksSub}</p>
@@ -5495,7 +5493,7 @@
                             )}
 
                             <footer className="reveal mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.4.2</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.4.3</span></p>
                             </footer>
                         </div>
                     </div>
@@ -5832,7 +5830,7 @@
                                                         {selectedOption === quizQuestions[quizIndex].correct ? (
                                                             <p className="text-emerald-400 font-bold text-lg flex items-center gap-2"><IconCheck className="w-6 h-6" /> {t.quizCorrect}</p>
                                                         ) : (
-                                                            <p className="text-red-400 font-bold text-base sm:text-lg flex items-center gap-2"><IconX className="w-6 h-6 flex-shrink-0" /> {t.quizWrong} — {t.quizCorrectWas(String(quizQuestions[quizIndex].correct).split(' -|- ')[0])}</p>
+                                                            <p className="text-red-400 font-bold text-base sm:text-lg flex items-center gap-2"><IconX className="w-6 h-6 flex-shrink-0" /> {t.quizWrong}</p>
                                                         )}
                                                     </div>
                                                 )}
