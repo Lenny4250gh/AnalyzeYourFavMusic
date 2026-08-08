@@ -3848,17 +3848,7 @@
                 // 0. Copertina
                 slides.push({
                     gradient: 'from-fuchsia-600 to-purple-700',
-                    // FIX "niente canzone all'inizio": non usiamo più direttamente introAudioTrack
-                    // (una scelta casuale calcolata qui) ma resolvedAudioCues.intro, cioè la canzone
-                    // che la fase di precaricamento ha GIÀ verificato avere un'anteprima riproducibile
-                    // e messo in cache. Prima le due scelte casuali potevano non coincidere: la copertina
-                    // mostrava audioCue di introAudioTrack ma in cache c'era (o falliva) quello di un
-                    // brano diverso scelto separatamente in fase di precaricamento, lasciando la slide
-                    // muta nella maggior parte dei casi. Fallback su introAudioTrack solo se la
-                    // risoluzione non è ancora disponibile.
-                    audioCue: resolvedAudioCues.intro
-                        ? { id: `intro-${resolvedAudioCues.intro.title}-${resolvedAudioCues.intro.artist}`, title: resolvedAudioCues.intro.title, artist: resolvedAudioCues.intro.artist }
-                        : (introAudioTrack ? { id: `intro-${introAudioTrack.title}-${introAudioTrack.artist}`, title: introAudioTrack.title, artist: introAudioTrack.artist } : null),
+                    audioCue: introAudioTrack ? { id: `intro-${introAudioTrack.title}-${introAudioTrack.artist}`, title: introAudioTrack.title, artist: introAudioTrack.artist } : null,
                     content: (
                         <div className="flex flex-col items-center justify-center gap-6">
                             <div className="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center animate-float">
@@ -4014,12 +4004,7 @@
                     const [trackTitleW, trackArtistW] = trackKeyW.split(' -|- ');
                     slides.push({
                         gradient: 'from-orange-500 to-rose-600',
-                        // Vedi nota sul fix "niente canzone all'inizio": usiamo il brano già
-                        // verificato/cachato in fase di precaricamento, con fallback al brano
-                        // "teorico" (il top brano) solo se non ancora risolto.
-                        audioCue: resolvedAudioCues.track
-                            ? { id: `track-${resolvedAudioCues.track.title}-${resolvedAudioCues.track.artist}`, title: resolvedAudioCues.track.title, artist: resolvedAudioCues.track.artist }
-                            : { id: `track-${trackTitleW}-${trackArtistW}`, title: trackTitleW, artist: trackArtistW },
+                        audioCue: { id: `track-${trackTitleW}-${trackArtistW}`, title: trackTitleW, artist: trackArtistW },
                         content: (
                             <div className="flex flex-col items-center gap-4">
                                 <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
@@ -4104,12 +4089,7 @@
                     if (albumTopTrackW) usedAudioTrackKeys.add(trackAudioKey(albumTopTrackW.title, albumTopTrackW.artist));
                     slides.push({
                         gradient: 'from-fuchsia-600 to-indigo-700',
-                        // Vedi nota sul fix "niente canzone all'inizio": usiamo il brano già
-                        // verificato/cachato in fase di precaricamento, con fallback al brano
-                        // "teorico" dell'album solo se non ancora risolto.
-                        audioCue: resolvedAudioCues.album
-                            ? { id: `album-${resolvedAudioCues.album.title}-${resolvedAudioCues.album.artist}`, title: resolvedAudioCues.album.title, artist: resolvedAudioCues.album.artist }
-                            : (albumTopTrackW ? { id: `album-${albumTopTrackW.title}-${albumTopTrackW.artist}`, title: albumTopTrackW.title, artist: albumTopTrackW.artist } : null),
+                        audioCue: albumTopTrackW ? { id: `album-${albumTopTrackW.title}-${albumTopTrackW.artist}`, title: albumTopTrackW.title, artist: albumTopTrackW.artist } : null,
                         content: (
                             <div className="flex flex-col items-center gap-4 -mt-12">
                                 <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
@@ -4270,12 +4250,7 @@
                     slides.push({
                         gradient: 'from-orange-500 to-red-700',
                         bgVariant: 'rings',
-                        // Vedi nota sul fix "niente canzone all'inizio": usiamo il brano già
-                        // verificato/cachato in fase di precaricamento, con fallback al brano
-                        // "teorico" dell'artista solo se non ancora risolto.
-                        audioCue: resolvedAudioCues.artist
-                            ? { id: `artist-${resolvedAudioCues.artist.title}-${resolvedAudioCues.artist.artist}`, title: resolvedAudioCues.artist.title, artist: resolvedAudioCues.artist.artist }
-                            : (artistTopTrackW ? { id: `artist-${artistTopTrackW.title}-${artistTopTrackW.artist}`, title: artistTopTrackW.title, artist: artistTopTrackW.artist } : null),
+                        audioCue: artistTopTrackW ? { id: `artist-${artistTopTrackW.title}-${artistTopTrackW.artist}`, title: artistTopTrackW.title, artist: artistTopTrackW.artist } : null,
                         content: (
                             <div className="flex flex-col items-center gap-4">
                                 <IconTrophy className="w-8 h-8 text-white/90 animate-float-icon" />
@@ -4453,7 +4428,7 @@
                 });
 
                 return slides;
-            }, [stats, lang, topGenre, genreStats, albumStats, storyQuizQuestions, storyQuizAnswers, monthlyStoryIdx, randomArtistStoryIdx, shuffledTop5Artists, filterMode, selectedYear, dateFrom, dateTo, introAudioTrack, resolvedAudioCues]);
+            }, [stats, lang, topGenre, genreStats, albumStats, storyQuizQuestions, storyQuizAnswers, monthlyStoryIdx, randomArtistStoryIdx, shuffledTop5Artists, filterMode, selectedYear, dateFrom, dateTo, introAudioTrack]);
 
             // Musica di sottofondo del Wrapped in formato Storie (il formato Scroll gestisce la
             // propria istanza internamente, dato che tiene il proprio activeIndex)
@@ -4650,13 +4625,13 @@
                         return null;
                     };
 
-                    // FIX "niente canzone all'inizio": prima qui veniva fatta una SECONDA estrazione
-                    // casuale indipendente tra i primi 5 brani, diversa da quella già calcolata in
-                    // introAudioTrack per la slide di copertina. Le due scelte quasi mai coincidevano:
-                    // si precaricava/verificava l'anteprima di un brano, ma la copertina ne mostrava
-                    // (e provava a riprodurre) un altro, spesso senza un'anteprima già pronta in cache.
-                    // Ora riusiamo la stessa identica scelta di introAudioTrack.
-                    let introPreferred = introAudioTrack || null;
+                    let introPreferred = null;
+                    if (stats.topBrani && stats.topBrani.length > 0) {
+                        const pool5 = stats.topBrani.slice(0, 5);
+                        const [introKey] = pool5[Math.floor(Math.random() * pool5.length)];
+                        const [introTitle, introArtist] = introKey.split(' -|- ');
+                        introPreferred = { title: introTitle, artist: introArtist };
+                    }
                     let trackPreferred = null;
                     if (stats.topBrani && stats.topBrani.length > 0) {
                         const [trackKey] = stats.topBrani[0];
@@ -5005,7 +4980,7 @@
                                 )}
                             </div>
 
-                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3.3</span></p>
+                            <p className="mt-8 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3.1</span></p>
 
                             {showGuide && (
                                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadein" onClick={() => setShowGuide(false)}>
@@ -5116,7 +5091,7 @@
                                 </div>
                             </div>
 
-                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3.3</span></p>
+                            <p className="mt-10 text-center text-xs text-gray-500">WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3.1</span></p>
                         </div>
                     </React.Fragment>
                 );
@@ -5395,7 +5370,7 @@
                             )}
 
                             <footer className="mt-10 sm:mt-12 pb-6 text-center text-xs text-gray-500">
-                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3.3</span></p>
+                                <p>WrapYourFavMusic.github.io <span className="opacity-75">v1.3.3.1</span></p>
                             </footer>
                         </div>
                     </div>
